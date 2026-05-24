@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
-import { verifyLaunchToken } from './verify.js';
-import { consumeSession } from './api-client.js';
+import { verifyLaunchToken } from './verify';
+import { consumeSession } from './api-client';
 
 export function requireLaunchToken(): RequestHandler {
   return async (req, res, next) => {

@@ -1,7 +1,7 @@
 import { jwtVerify } from 'jose';
-import { getKeySet, getKeySetWithKidFallback } from './jwks-cache.js';
-import { loadConfig } from './config.js';
-import type { MythosSession } from './types.js';
+import { getKeySet, getKeySetWithKidFallback } from './jwks-cache';
+import { loadConfig } from './config';
+import type { MythosSession } from './types';
 
 export async function verifyLaunchToken(token: string): Promise<MythosSession> {
   const { listingIds, apiUrl } = loadConfig();

@@ -1,4 +1,4 @@
-import type { MythosConfig } from './types.js';
+import type { MythosConfig } from './types';
 
 const DEFAULT_API_URL = 'https://api.mythos.work';
 

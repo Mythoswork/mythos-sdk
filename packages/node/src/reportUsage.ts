@@ -1,4 +1,4 @@
-import { meterSession } from './api-client.js';
+import { meterSession } from './api-client';
 
 export async function reportUsage(
   jti: string,

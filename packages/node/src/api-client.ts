@@ -1,5 +1,5 @@
-import { loadConfig } from './config.js';
-import { InsufficientFundsError, SessionNotFoundError } from './errors.js';
+import { loadConfig } from './config';
+import { InsufficientFundsError, SessionNotFoundError } from './errors';
 
 async function post(path: string, body: unknown): Promise<Response> {
   const { apiUrl } = loadConfig();
