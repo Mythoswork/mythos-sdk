@@ -30,10 +30,7 @@ async def get_jwks(api_url: str, force_refresh: bool = False) -> dict[str, Any]:
 
 
 async def get_jwks_with_kid_fallback(api_url: str) -> dict[str, Any]:
-    try:
-        return await get_jwks(api_url)
-    except Exception:
-        return await get_jwks(api_url, force_refresh=True)
+    return await get_jwks(api_url, force_refresh=True)
 
 
 def clear_cache() -> None:

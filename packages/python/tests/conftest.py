@@ -1,7 +1,13 @@
 import os
+import base64
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
+
+
+def _int_to_base64url(n: int) -> str:
+    length = (n.bit_length() + 7) // 8
+    return base64.urlsafe_b64encode(n.to_bytes(length, "big")).rstrip(b"=").decode()
 
 
 @pytest.fixture(autouse=True)
@@ -24,4 +30,13 @@ def rsa_key_pair():
         serialization.Encoding.PEM,
         serialization.PublicFormat.SubjectPublicKeyInfo,
     )
-    return {"private": private_pem, "public": public_pem, "private_key": private_key}
+    pub_numbers = public_key.public_numbers()
+    jwk = {
+        "kty": "RSA",
+        "use": "sig",
+        "alg": "RS256",
+        "kid": "test-kid",
+        "n": _int_to_base64url(pub_numbers.n),
+        "e": _int_to_base64url(pub_numbers.e),
+    }
+    return {"private": private_pem, "public": public_pem, "private_key": private_key, "jwk": jwk}
