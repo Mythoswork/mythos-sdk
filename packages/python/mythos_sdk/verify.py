@@ -1,3 +1,5 @@
+from typing import Any
+
 from jose import jwt, JWTError
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError
 
@@ -9,7 +11,7 @@ ALGORITHMS = ["RS256"]
 _DECODE_OPTIONS = {"verify_aud": False}
 
 
-def _build_session(payload: dict) -> MythosSession:
+def _build_session(payload: dict[str, Any]) -> MythosSession:
     return MythosSession(
         userId=payload["sub"],
         email=payload["email"],
@@ -19,7 +21,7 @@ def _build_session(payload: dict) -> MythosSession:
     )
 
 
-def _validate_audience(payload: dict, listing_ids: list[str]) -> None:
+def _validate_audience(payload: dict[str, Any], listing_ids: list[str]) -> None:
     """Check all aud elements for membership — avoids aud[0]-only ordering bug."""
     aud = payload.get("aud")
     if aud is None:
@@ -44,6 +46,9 @@ async def verify_launch_token(token: str) -> MythosSession:
     except JWTError as e:
         if isinstance(e, (ExpiredSignatureError, JWTClaimsError)):
             raise
+        # python-jose 3.x raises a bare JWTError with this message for signature
+        # failures (version pinned <4 in pyproject.toml so this text stays stable).
+        # A bad signature is not a kid miss — fail immediately, don't re-fetch JWKS.
         if "Signature verification failed" in str(e):
             raise
         # possible kid miss — re-fetch once

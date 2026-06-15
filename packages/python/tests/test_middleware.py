@@ -46,3 +46,25 @@ async def test_invalid_token_raises_401():
             await require_launch_token(lt="bad.token")
 
     assert exc_info.value.status_code == 401
+
+
+async def test_consume_500_raises_503():
+    consume_resp = MagicMock(spec=httpx.Response)
+    consume_resp.status_code = 500
+
+    with patch("mythos_sdk.middleware.verify_launch_token", new_callable=AsyncMock, return_value=MOCK_SESSION), \
+         patch("mythos_sdk.middleware.consume_session", new_callable=AsyncMock, return_value=consume_resp):
+        with pytest.raises(HTTPException) as exc_info:
+            await require_launch_token(lt="valid.token")
+
+    assert exc_info.value.status_code == 503
+
+
+async def test_consume_network_error_raises_503():
+    with patch("mythos_sdk.middleware.verify_launch_token", new_callable=AsyncMock, return_value=MOCK_SESSION), \
+         patch("mythos_sdk.middleware.consume_session", new_callable=AsyncMock,
+               side_effect=httpx.ConnectError("connection refused")):
+        with pytest.raises(HTTPException) as exc_info:
+            await require_launch_token(lt="valid.token")
+
+    assert exc_info.value.status_code == 503

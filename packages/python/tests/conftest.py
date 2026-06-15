@@ -1,4 +1,3 @@
-import os
 import base64
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa

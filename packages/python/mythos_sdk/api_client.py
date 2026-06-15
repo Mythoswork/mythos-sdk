@@ -1,3 +1,5 @@
+from typing import Any
+
 import httpx
 
 from .config import load_config
@@ -15,7 +17,7 @@ async def consume_session(jti: str) -> httpx.Response:
 
 async def meter_session(jti: str, credits: int, reason: str | None = None) -> None:
     config = load_config()
-    body: dict = {"credits": credits}
+    body: dict[str, Any] = {"credits": credits}
     if reason is not None:
         body["reason"] = reason
 
