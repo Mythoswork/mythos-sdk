@@ -18,9 +18,10 @@ async def _fetch_jwks(api_url: str) -> dict[str, Any]:
     async with httpx.AsyncClient() as client:
         resp = await client.get(f"{api_url}/.well-known/jwks.json")
         resp.raise_for_status()
-    _cache = resp.json()
+    data: dict[str, Any] = resp.json()
+    _cache = data
     _fetched_at = time.monotonic()
-    return _cache  # type: ignore[return-value]
+    return data
 
 
 async def get_jwks(api_url: str, force_refresh: bool = False) -> dict[str, Any]:
@@ -30,10 +31,7 @@ async def get_jwks(api_url: str, force_refresh: bool = False) -> dict[str, Any]:
 
 
 async def get_jwks_with_kid_fallback(api_url: str) -> dict[str, Any]:
-    try:
-        return await get_jwks(api_url)
-    except Exception:
-        return await get_jwks(api_url, force_refresh=True)
+    return await get_jwks(api_url, force_refresh=True)
 
 
 def clear_cache() -> None:
