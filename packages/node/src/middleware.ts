@@ -18,9 +18,19 @@ export function requireLaunchToken(): RequestHandler {
       return;
     }
 
-    const consumeRes = await consumeSession(session.sessionJti);
+    let consumeRes: { status: number };
+    try {
+      consumeRes = await consumeSession(session.sessionJti);
+    } catch {
+      res.status(503).json({ error: 'Could not verify session' });
+      return;
+    }
     if (consumeRes.status === 409) {
       res.status(401).json({ error: 'Token already consumed' });
+      return;
+    }
+    if (consumeRes.status < 200 || consumeRes.status >= 300) {
+      res.status(503).json({ error: 'Could not verify session' });
       return;
     }
 

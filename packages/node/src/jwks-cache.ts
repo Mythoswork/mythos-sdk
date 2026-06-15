@@ -32,11 +32,9 @@ export async function getKeySet(apiUrl: string, forceRefresh = false): Promise<R
 }
 
 export async function getKeySetWithKidFallback(apiUrl: string): Promise<ReturnType<typeof createLocalJWKSet>> {
-  try {
-    return await getKeySet(apiUrl);
-  } catch {
-    return getKeySet(apiUrl, true);
-  }
+  // A kid miss means our cached JWKS is stale — always force a fresh fetch.
+  // (Returning the cache first would just hand back the same stale keys and fail again.)
+  return getKeySet(apiUrl, true);
 }
 
 export function clearCache(): void {

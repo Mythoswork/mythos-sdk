@@ -12,6 +12,7 @@ export async function verifyLaunchToken(token: string): Promise<MythosSession> {
   try {
     ({ payload } = await jwtVerify(token, keySet, {
       algorithms: ['RS256'],
+      issuer: apiUrl,
     }));
   } catch (err: unknown) {
     const isKidError =
@@ -22,6 +23,7 @@ export async function verifyLaunchToken(token: string): Promise<MythosSession> {
     keySet = await getKeySetWithKidFallback(apiUrl);
     ({ payload } = await jwtVerify(token, keySet, {
       algorithms: ['RS256'],
+      issuer: apiUrl,
     }));
   }
 

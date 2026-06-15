@@ -75,3 +75,55 @@ test('replay: consume returns 409 → 401 to client', async () => {
   expect(res.status).toHaveBeenCalledWith(401);
   expect(next).not.toHaveBeenCalled();
 });
+
+test('consume 500 → 503, never grants access', async () => {
+  const { requireLaunchToken } = await import('../src/middleware');
+  jest.spyOn(apiClient, 'consumeSession').mockResolvedValue({ status: 500 } as unknown as globalThis.Response);
+
+  const token = await mintToken('jti-500');
+  const req = { query: { lt: token } } as unknown as Request;
+  const res = mockRes();
+  const next: NextFunction = jest.fn() as unknown as NextFunction;
+
+  await requireLaunchToken()(req, res, next);
+
+  expect(res.status).toHaveBeenCalledWith(503);
+  expect(next).not.toHaveBeenCalled();
+});
+
+test('consume network error → 503, never grants access', async () => {
+  const { requireLaunchToken } = await import('../src/middleware');
+  jest.spyOn(apiClient, 'consumeSession').mockRejectedValue(new Error('fetch failed'));
+
+  const token = await mintToken('jti-net');
+  const req = { query: { lt: token } } as unknown as Request;
+  const res = mockRes();
+  const next: NextFunction = jest.fn() as unknown as NextFunction;
+
+  await requireLaunchToken()(req, res, next);
+
+  expect(res.status).toHaveBeenCalledWith(503);
+  expect(next).not.toHaveBeenCalled();
+});
+
+test('iss mismatch → 401, token with wrong issuer rejected', async () => {
+  const { requireLaunchToken } = await import('../src/middleware');
+
+  const badToken = await new SignJWT({ sub: 'user-evil', email: 'e@e.com', displayName: 'Evil', listingId: 'listing-abc' })
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setIssuedAt()
+    .setIssuer('https://evil.example')
+    .setAudience('listing-abc')
+    .setJti('jti-evil')
+    .setExpirationTime('5m')
+    .sign(privateKey);
+
+  const req = { query: { lt: badToken } } as unknown as Request;
+  const res = mockRes();
+  const next: NextFunction = jest.fn() as unknown as NextFunction;
+
+  await requireLaunchToken()(req, res, next);
+
+  expect(res.status).toHaveBeenCalledWith(401);
+  expect(next).not.toHaveBeenCalled();
+});
