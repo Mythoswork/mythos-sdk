@@ -57,11 +57,8 @@ async def test_expired_token_rejected(rsa_key_pair, mock_jwks):
     from jose import JWTError
 
     with patch("jose.jwt.decode", side_effect=JWTError("expired")):
-        # kid fallback also fails
-        with patch("mythos_sdk.verify.get_jwks_with_kid_fallback", new_callable=AsyncMock, return_value=mock_jwks):
-            with patch("jose.jwt.decode", side_effect=JWTError("expired")):
-                with pytest.raises(JWTError):
-                    await verify_launch_token("expired.token.here")
+        with pytest.raises(JWTError):
+            await verify_launch_token("expired.token.here")
 
 
 async def test_wrong_aud_rejected(rsa_key_pair, mock_jwks):

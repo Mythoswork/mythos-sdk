@@ -9,6 +9,8 @@ def set_env(monkeypatch):
     monkeypatch.setenv("MYTHOS_LISTING_ID", "listing-abc")
     monkeypatch.setenv("MYTHOS_API_URL", "https://api.mythos.work")
     monkeypatch.delenv("MYTHOS_LISTING_IDS", raising=False)
+    from mythos_sdk.jwks_cache import clear_cache
+    clear_cache()
 
 
 @pytest.fixture(scope="session")
