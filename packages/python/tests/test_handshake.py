@@ -74,3 +74,25 @@ def test_no_purpose_claim_returns_401(client, rsa_key_pair, mock_jwks):
     resp = client.get("/.well-known/mythos-handshake", params={"lt": token})
     assert resp.status_code == 401
     assert resp.json()["error"] == "Invalid launch token"
+
+
+def test_kid_fallback_succeeds_with_fresh_jwks(client, rsa_key_pair):
+    stale_jwks = {"keys": [{**rsa_key_pair["jwk"], "kid": "stale-kid"}]}
+    valid_jwks = {"keys": [rsa_key_pair["jwk"]]}
+
+    with patch("mythos_sdk.handshake.get_jwks", new_callable=AsyncMock, return_value=stale_jwks), \
+         patch("mythos_sdk.handshake.get_jwks_with_kid_fallback", new_callable=AsyncMock, return_value=valid_jwks):
+        token = mint_handshake_token(rsa_key_pair["private"])
+        resp = client.get("/.well-known/mythos-handshake", params={"lt": token})
+
+    assert resp.status_code == 200
+    assert resp.json()["ok"] is True
+
+
+def test_jwks_fetch_failure_returns_503(client, rsa_key_pair):
+    with patch("mythos_sdk.handshake.get_jwks", new_callable=AsyncMock, side_effect=Exception("Network error")):
+        token = mint_handshake_token(rsa_key_pair["private"])
+        resp = client.get("/.well-known/mythos-handshake", params={"lt": token})
+
+    assert resp.status_code == 503
+    assert resp.json()["error"] == "Service unavailable"

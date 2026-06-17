@@ -110,3 +110,38 @@ test('no purpose claim → 401', async () => {
   expect(res.status).toHaveBeenCalledWith(401);
   expect(res.json).toHaveBeenCalledWith({ error: 'Invalid launch token' });
 });
+
+test('stale JWKS kid triggers fallback → 200', async () => {
+  const { handshakeRoute } = await import('../src/handshake');
+  const { createLocalJWKSet, generateKeyPair, exportJWK } = await import('jose');
+
+  const staleKp = await generateKeyPair('RS256', { modulusLength: 2048 });
+  const staleJwk = await exportJWK(staleKp.publicKey);
+  staleJwk.kid = 'stale-kid';
+  staleJwk.alg = 'RS256';
+  const staleKeySet = createLocalJWKSet({ keys: [staleJwk] });
+  (jwksCache.getKeySet as jest.Mock).mockResolvedValueOnce(staleKeySet);
+
+  const token = await mintHandshakeToken();
+  const req = mockReq(token);
+  const res = mockRes();
+
+  await handshakeRoute()(req, res, jest.fn() as never);
+
+  expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
+  expect(res.status).not.toHaveBeenCalled();
+});
+
+test('JWKS fetch failure → 503', async () => {
+  const { handshakeRoute } = await import('../src/handshake');
+  (jwksCache.getKeySet as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+
+  const token = await mintHandshakeToken();
+  const req = mockReq(token);
+  const res = mockRes();
+
+  await handshakeRoute()(req, res, jest.fn() as never);
+
+  expect(res.status).toHaveBeenCalledWith(503);
+  expect(res.json).toHaveBeenCalledWith({ error: 'Service unavailable' });
+});

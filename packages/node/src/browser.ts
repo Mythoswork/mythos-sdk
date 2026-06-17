@@ -7,7 +7,7 @@ function notImplemented(name: string): never {
   throw new MythosError(`${name} is not available in browser environments`, 'NOT_IMPLEMENTED');
 }
 
-export function verifyLaunchToken(_token: string): Promise<never> {
+export async function verifyLaunchToken(_token: string): Promise<never> {
   return notImplemented('verifyLaunchToken');
 }
 
@@ -15,7 +15,7 @@ export function requireLaunchToken(): never {
   return notImplemented('requireLaunchToken');
 }
 
-export function reportUsage(): Promise<never> {
+export async function reportUsage(): Promise<never> {
   return notImplemented('reportUsage');
 }
 
