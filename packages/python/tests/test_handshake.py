@@ -77,7 +77,22 @@ def test_no_purpose_claim_returns_401(client, rsa_key_pair, mock_jwks):
 
 
 def test_kid_fallback_succeeds_with_fresh_jwks(client, rsa_key_pair):
-    stale_jwks = {"keys": [{**rsa_key_pair["jwk"], "kid": "stale-kid"}]}
+    # python-jose never raises JWKError for key mismatches; it raises JWTError
+    # ("Signature verification failed") when no key validates the signature.
+    # The stale JWKS must have genuinely different key material — not just a
+    # different kid — otherwise python-jose validates it without triggering fallback.
+    import base64
+    from cryptography.hazmat.primitives.asymmetric import rsa as _rsa
+
+    stale_priv = _rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    stale_nums = stale_priv.public_key().public_numbers()
+
+    def _b64(n: int) -> str:
+        length = (n.bit_length() + 7) // 8
+        return base64.urlsafe_b64encode(n.to_bytes(length, "big")).rstrip(b"=").decode()
+
+    stale_jwks = {"keys": [{"kty": "RSA", "alg": "RS256", "kid": "stale-kid",
+                             "n": _b64(stale_nums.n), "e": _b64(stale_nums.e)}]}
     valid_jwks = {"keys": [rsa_key_pair["jwk"]]}
 
     with patch("mythos_sdk.handshake.get_jwks", new_callable=AsyncMock, return_value=stale_jwks), \

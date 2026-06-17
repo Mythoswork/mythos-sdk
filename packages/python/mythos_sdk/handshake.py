@@ -3,7 +3,7 @@ import os
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from jose import jwt
-from jose.exceptions import JOSEError, JWKError, JWTError
+from jose.exceptions import ExpiredSignatureError, JOSEError, JWTError
 
 from .jwks_cache import get_jwks, get_jwks_with_kid_fallback
 
@@ -18,7 +18,9 @@ async def _validate_handshake_token(token: str) -> None:
     jwks = await get_jwks(api_url)
     try:
         payload = jwt.decode(token, jwks, algorithms=["RS256"], options=_DECODE_OPTIONS)
-    except JWKError:
+    except ExpiredSignatureError:
+        raise
+    except JWTError:
         jwks = await get_jwks_with_kid_fallback(api_url)
         payload = jwt.decode(token, jwks, algorithms=["RS256"], options=_DECODE_OPTIONS)
 
