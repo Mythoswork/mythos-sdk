@@ -132,6 +132,18 @@ test('stale JWKS kid triggers fallback → 200', async () => {
   expect(res.status).not.toHaveBeenCalled();
 });
 
+test('duplicate ?lt= params → uses first value', async () => {
+  const { handshakeRoute } = await import('../src/handshake');
+  const token = await mintHandshakeToken();
+  const req = { query: { lt: [token, 'garbage'] } } as unknown as Request;
+  const res = mockRes();
+
+  await handshakeRoute()(req, res, jest.fn() as never);
+
+  expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
+  expect(res.status).not.toHaveBeenCalled();
+});
+
 test('JWKS fetch failure → 503', async () => {
   const { handshakeRoute } = await import('../src/handshake');
   (jwksCache.getKeySet as jest.Mock).mockRejectedValueOnce(new Error('Network error'));

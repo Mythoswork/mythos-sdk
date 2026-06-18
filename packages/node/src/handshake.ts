@@ -43,6 +43,7 @@ export function handshakeRoute(): RequestHandler {
       if (err instanceof errors.JOSEError) {
         res.status(401).json({ error: 'Invalid launch token' });
       } else {
+        console.error('[mythos-sdk] handshake: unexpected error', err);
         res.status(503).json({ error: 'Service unavailable' });
       }
       return;
