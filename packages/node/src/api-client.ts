@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { loadConfig } from './config';
 import { InsufficientFundsError, SessionNotFoundError } from './errors';
 
@@ -19,7 +20,9 @@ export async function meterSession(
   credits: number,
   reason?: string,
 ): Promise<void> {
-  const res = await post(`/api/apps/sessions/${jti}/meter`, { credits, reason });
+  // charge_id is a per-call idempotency key required by the backend's SQS metering
+  // job dedup (see backend docs/migrations) — generated here, not caller-supplied.
+  const res = await post(`/api/apps/sessions/${jti}/meter`, { credits, reason, charge_id: randomUUID() });
 
   if (res.status === 402) throw new InsufficientFundsError();
   if (res.status === 404) throw new SessionNotFoundError(jti);

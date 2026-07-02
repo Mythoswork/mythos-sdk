@@ -1,3 +1,4 @@
+import uuid
 from typing import Any
 
 import httpx
@@ -17,7 +18,9 @@ async def consume_session(jti: str) -> httpx.Response:
 
 async def meter_session(jti: str, credits: int, reason: str | None = None) -> None:
     config = load_config()
-    body: dict[str, Any] = {"credits": credits}
+    # charge_id is a per-call idempotency key required by the backend's SQS metering
+    # job dedup (see backend docs/migrations) — generated here, not caller-supplied.
+    body: dict[str, Any] = {"credits": credits, "charge_id": str(uuid.uuid4())}
     if reason is not None:
         body["reason"] = reason
 

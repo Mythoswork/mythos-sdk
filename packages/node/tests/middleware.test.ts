@@ -38,7 +38,7 @@ async function mintToken(jti = 'jti-001'): Promise<string> {
   return new SignJWT({ sub: 'user-1', email: 'e@e.com', displayName: 'User', listingId: 'listing-abc' })
     .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
     .setIssuedAt()
-    .setIssuer('https://api.mythos.work')
+    .setIssuer('mythos')
     .setAudience('listing-abc')
     .setJti(jti)
     .setExpirationTime('5m')
