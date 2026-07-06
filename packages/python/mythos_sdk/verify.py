@@ -10,6 +10,10 @@ from .types import MythosSession
 ALGORITHMS = ["RS256"]
 _DECODE_OPTIONS = {"verify_aud": False}
 
+# Matches backend's HANDSHAKE_ISS_CLAIM constant — the platform issuer is a
+# fixed identifier, not the API URL (which varies by environment).
+MYTHOS_ISSUER = "mythos"
+
 
 def _build_session(payload: dict[str, Any]) -> MythosSession:
     return MythosSession(
@@ -40,7 +44,7 @@ async def verify_launch_token(token: str) -> MythosSession:
             token,
             jwks,
             algorithms=ALGORITHMS,
-            issuer=config.api_url,
+            issuer=MYTHOS_ISSUER,
             options=_DECODE_OPTIONS,
         )
     except JWTError as e:
@@ -57,7 +61,7 @@ async def verify_launch_token(token: str) -> MythosSession:
             token,
             jwks,
             algorithms=ALGORITHMS,
-            issuer=config.api_url,
+            issuer=MYTHOS_ISSUER,
             options=_DECODE_OPTIONS,
         )
 

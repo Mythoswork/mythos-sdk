@@ -19,7 +19,7 @@ def mint_token(private_pem: bytes, overrides: dict | None = None) -> str:
         "displayName": "Test User",
         "listingId": "listing-abc",
         "aud": "listing-abc",
-        "iss": "https://api.mythos.work",
+        "iss": "mythos",
         "jti": "jti-001",
         "exp": int(time.time()) + 300,
         "iat": int(time.time()),

@@ -3,6 +3,10 @@ import { getKeySet, getKeySetWithKidFallback } from './jwks-cache';
 import { loadConfig } from './config';
 import type { MythosSession } from './types';
 
+// Matches backend's HANDSHAKE_ISS_CLAIM constant — the platform issuer is a
+// fixed identifier, not the API URL (which varies by environment).
+const MYTHOS_ISSUER = 'mythos';
+
 export async function verifyLaunchToken(token: string): Promise<MythosSession> {
   const { listingIds, apiUrl } = loadConfig();
 
@@ -12,7 +16,7 @@ export async function verifyLaunchToken(token: string): Promise<MythosSession> {
   try {
     ({ payload } = await jwtVerify(token, keySet, {
       algorithms: ['RS256'],
-      issuer: apiUrl,
+      issuer: MYTHOS_ISSUER,
     }));
   } catch (err: unknown) {
     const isKidError =
@@ -23,7 +27,7 @@ export async function verifyLaunchToken(token: string): Promise<MythosSession> {
     keySet = await getKeySetWithKidFallback(apiUrl);
     ({ payload } = await jwtVerify(token, keySet, {
       algorithms: ['RS256'],
-      issuer: apiUrl,
+      issuer: MYTHOS_ISSUER,
     }));
   }
 
