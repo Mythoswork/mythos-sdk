@@ -150,6 +150,45 @@ test('no static and no dynamic listing IDs → clear config error', async () => 
   );
 });
 
+test('aud list with valid member at index 1 accepted', async () => {
+  const { verifyLaunchToken } = await import('../src/verify');
+  const token = await new SignJWT({
+    sub: 'user-123',
+    email: 'consumer@example.com',
+    displayName: 'Test User',
+    listingId: 'listing-abc',
+  })
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setIssuedAt()
+    .setIssuer('mythos')
+    .setAudience(['evil-other-service', 'listing-abc'])
+    .setJti('jti-001')
+    .setExpirationTime('5m')
+    .sign(privateKey);
+
+  const session = await verifyLaunchToken(token);
+  expect(session.listingId).toBe('listing-abc');
+});
+
+test('aud list with no matching member rejected', async () => {
+  const { verifyLaunchToken } = await import('../src/verify');
+  const token = await new SignJWT({
+    sub: 'u',
+    email: 'e',
+    displayName: 'd',
+    listingId: 'listing-abc',
+  })
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setIssuedAt()
+    .setIssuer('mythos')
+    .setAudience(['evil-a', 'evil-b'])
+    .setJti('jti-bad-aud')
+    .setExpirationTime('5m')
+    .sign(privateKey);
+
+  await expect(verifyLaunchToken(token)).rejects.toThrow();
+});
+
 test('alg:none rejected — hard block', async () => {
   const { verifyLaunchToken } = await import('../src/verify');
   // Build a JWT with alg:none manually (jose won't sign with none — craft header manually)

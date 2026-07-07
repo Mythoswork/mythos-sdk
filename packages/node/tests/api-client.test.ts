@@ -22,3 +22,14 @@ test('meterSession sends a fresh UUID charge_id on every call', async () => {
   expect(bodies[0].charge_id).not.toBe(bodies[1].charge_id);
   expect(bodies[0]).toMatchObject({ credits: 5, reason: 'page-view' });
 });
+
+test('meterSession reuses caller-supplied chargeId', async () => {
+  await meterSession('jti-001', 5, 'page-view', 'stable-charge-key');
+  await meterSession('jti-001', 5, 'page-view', 'stable-charge-key');
+
+  const calls = (global.fetch as jest.Mock).mock.calls;
+  const bodies = calls.map((c) => JSON.parse(c[1].body));
+
+  expect(bodies[0].charge_id).toBe('stable-charge-key');
+  expect(bodies[1].charge_id).toBe('stable-charge-key');
+});
