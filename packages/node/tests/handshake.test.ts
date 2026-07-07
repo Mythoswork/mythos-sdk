@@ -1,6 +1,7 @@
 import { SignJWT, generateKeyPair, exportJWK, type KeyLike } from 'jose';
 import * as jwksCache from '../src/jwks-cache';
 import type { Request, Response as ExpressResponse } from 'express';
+import { SDK_VERSION } from '../src/version';
 
 let privateKey: KeyLike;
 
@@ -51,7 +52,7 @@ test('valid handshake token → 200 ok:true with sdk_version', async () => {
   await handshakeRoute()(req, res, jest.fn() as never);
 
   expect(res.json).toHaveBeenCalledWith(
-    expect.objectContaining({ ok: true, sdk_version: expect.any(String) }),
+    expect.objectContaining({ ok: true, sdk_version: SDK_VERSION }),
   );
   expect(res.status).not.toHaveBeenCalled();
 });

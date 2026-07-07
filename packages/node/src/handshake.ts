@@ -1,8 +1,8 @@
 import { jwtVerify, errors } from 'jose';
 import type { RequestHandler } from 'express';
 import { getKeySet, getKeySetWithKidFallback } from './jwks-cache';
+import { SDK_VERSION } from './version';
 
-const SDK_VERSION = '0.1.0';
 const DEFAULT_API_URL = 'https://api.mythos.work';
 
 async function validateHandshakeToken(token: string): Promise<void> {

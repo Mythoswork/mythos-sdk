@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
 from mythos_sdk import create_handshake_router
+from mythos_sdk.version import SDK_VERSION
 
 
 def mint_handshake_token(private_pem: bytes, overrides: dict | None = None) -> str:
@@ -41,7 +42,7 @@ def test_valid_handshake_token_returns_200(client, rsa_key_pair, mock_jwks):
     assert resp.status_code == 200
     body = resp.json()
     assert body["ok"] is True
-    assert isinstance(body["sdk_version"], str)
+    assert body["sdk_version"] == SDK_VERSION
 
 
 def test_missing_lt_returns_401(client, mock_jwks):

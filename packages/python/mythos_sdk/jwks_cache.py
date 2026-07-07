@@ -3,6 +3,8 @@ from typing import Any
 
 import httpx
 
+from .http import MYTHOS_HTTP_TIMEOUT
+
 CACHE_TTL = 600  # 10 minutes
 
 _cache: dict[str, Any] | None = None
@@ -15,7 +17,7 @@ def _is_stale() -> bool:
 
 async def _fetch_jwks(api_url: str) -> dict[str, Any]:
     global _cache, _fetched_at
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=MYTHOS_HTTP_TIMEOUT) as client:
         resp = await client.get(f"{api_url}/.well-known/jwks.json")
         resp.raise_for_status()
     data: dict[str, Any] = resp.json()

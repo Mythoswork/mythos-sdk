@@ -81,4 +81,6 @@ See [packages/node/](./packages/node) and [packages/python/](./packages/python) 
 
 ## License
 
-MIT
+Copyright (c) Mythos. All rights reserved.
+
+Proprietary software — see [LICENSE](./LICENSE).

@@ -1,6 +1,7 @@
 {
   "name": "@mythos/sdk",
   "version": "0.1.0",
+  "license": "UNLICENSED",
   "description": "Official Mythos SDK for Node.js — launch token verification, usage reporting, and handshake",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

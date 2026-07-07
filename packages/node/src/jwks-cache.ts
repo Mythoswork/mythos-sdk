@@ -1,4 +1,5 @@
 import { createLocalJWKSet, type JSONWebKeySet } from 'jose';
+import { mythosFetch } from './http';
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -14,7 +15,7 @@ function isStale(): boolean {
 }
 
 async function fetchJwks(apiUrl: string): Promise<ReturnType<typeof createLocalJWKSet>> {
-  const res = await fetch(`${apiUrl}/.well-known/jwks.json`);
+  const res = await mythosFetch(`${apiUrl}/.well-known/jwks.json`);
   if (!res.ok) {
     throw new Error(`JWKS fetch failed: ${res.status}`);
   }

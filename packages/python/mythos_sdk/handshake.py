@@ -7,10 +7,10 @@ from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JOSEError, JWTError
 
 from .jwks_cache import get_jwks, get_jwks_with_kid_fallback
+from .version import SDK_VERSION
 
 _logger = logging.getLogger(__name__)
 
-SDK_VERSION = "0.1.0"
 _DEFAULT_API_URL = "https://api.mythos.work"
 # Tokens in this SDK carry no aud/iss claims.
 _DECODE_OPTIONS = {"verify_aud": False, "verify_iss": False}

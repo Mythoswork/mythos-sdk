@@ -1,14 +1,9 @@
 import { randomUUID } from 'crypto';
-import { loadConfig } from './config';
+import { mythosPost } from './http';
 import { InsufficientFundsError, SessionNotFoundError } from './errors';
 
 async function post(path: string, body: unknown): Promise<Response> {
-  const { apiUrl } = loadConfig();
-  return fetch(`${apiUrl}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  return mythosPost(path, body);
 }
 
 export async function consumeSession(jti: string): Promise<Response> {

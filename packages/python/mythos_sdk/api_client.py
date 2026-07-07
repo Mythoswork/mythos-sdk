@@ -5,11 +5,12 @@ import httpx
 
 from .config import load_config
 from .errors import InsufficientFundsError, SessionNotFoundError
+from .http import MYTHOS_HTTP_TIMEOUT
 
 
 async def consume_session(jti: str) -> httpx.Response:
     config = load_config()
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=MYTHOS_HTTP_TIMEOUT) as client:
         return await client.post(
             f"{config.api_url}/api/apps/sessions/{jti}/consume",
             json={},
@@ -24,7 +25,7 @@ async def meter_session(jti: str, credits: int, reason: str | None = None) -> No
     if reason is not None:
         body["reason"] = reason
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=MYTHOS_HTTP_TIMEOUT) as client:
         resp = await client.post(
             f"{config.api_url}/api/apps/sessions/{jti}/meter",
             json=body,
