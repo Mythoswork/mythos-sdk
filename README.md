@@ -58,6 +58,15 @@ async def dashboard(session = Depends(require_launch_token)):
     return {"ok": True}
 ```
 
+## Producer integration
+
+Producers can wire Mythos into their app using these resources:
+
+- **Copy-paste prompt for your AI:** [docs/PRODUCER_MASTER_PROMPT.md](./docs/PRODUCER_MASTER_PROMPT.md)
+- **Full integration guide:** [docs/PRODUCER_INTEGRATION.md](./docs/PRODUCER_INTEGRATION.md)
+- **Code examples:** [docs/examples/](./docs/examples/)
+- **Cursor skill:** copy [`.cursor/skills/integrate-mythos-sdk/`](./.cursor/skills/integrate-mythos-sdk/) into your project
+
 ## Configuration
 
 | Env var | Required | Default | Description |
