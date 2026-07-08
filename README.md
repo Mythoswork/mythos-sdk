@@ -81,4 +81,4 @@ See [packages/node/](./packages/node) and [packages/python/](./packages/python) 
 
 ## License
 
-MIT
+Apache-2.0 — see [LICENSE](./LICENSE).
