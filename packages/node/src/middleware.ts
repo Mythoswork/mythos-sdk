@@ -2,7 +2,9 @@ import type { RequestHandler } from 'express';
 import { verifyLaunchToken } from './verify';
 import { consumeSession } from './api-client';
 
-export function requireLaunchToken(): RequestHandler {
+export function requireLaunchToken(options?: {
+  resolveListingIds?: () => Promise<string[]>;
+}): RequestHandler {
   return async (req, res, next) => {
     const token = req.query['lt'] as string | undefined;
     if (!token) {
@@ -12,7 +14,7 @@ export function requireLaunchToken(): RequestHandler {
 
     let session;
     try {
-      session = await verifyLaunchToken(token);
+      session = await verifyLaunchToken(token, options);
     } catch {
       res.status(401).json({ error: 'Invalid launch token' });
       return;

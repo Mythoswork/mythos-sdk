@@ -106,6 +106,29 @@ async def test_alg_none_rejected(rsa_key_pair, mock_jwks):
         await verify_launch_token(none_token)
 
 
+async def test_resolve_listing_ids_allows_aud_not_in_static_list(rsa_key_pair, mock_jwks, monkeypatch):
+    # Regression: producer with no MYTHOS_LISTING_ID(S) at all, relying purely on
+    # dynamic resolution (e.g. via the listing-registered callback), must still work.
+    monkeypatch.delenv("MYTHOS_LISTING_ID", raising=False)
+    monkeypatch.delenv("MYTHOS_LISTING_IDS", raising=False)
+    token = mint_token(rsa_key_pair["private"], {"aud": "listing-dynamic", "listingId": "listing-dynamic"})
+
+    async def resolve_ids():
+        return ["listing-dynamic"]
+
+    session = await verify_launch_token(token, resolve_listing_ids=resolve_ids)
+    assert session.listingId == "listing-dynamic"
+
+
+async def test_no_static_and_no_dynamic_listing_ids_raises_config_error(rsa_key_pair, mock_jwks, monkeypatch):
+    monkeypatch.delenv("MYTHOS_LISTING_ID", raising=False)
+    monkeypatch.delenv("MYTHOS_LISTING_IDS", raising=False)
+    token = mint_token(rsa_key_pair["private"])
+
+    with pytest.raises(RuntimeError, match="MYTHOS_LISTING_ID"):
+        await verify_launch_token(token)
+
+
 async def test_bad_signature_does_not_refetch(rsa_key_pair):
     other_key = _rsa.generate_private_key(public_exponent=65537, key_size=2048)
     other_pem = other_key.private_bytes(

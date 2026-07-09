@@ -9,6 +9,7 @@ export interface MythosSession {
 export interface MythosConfig {
   listingIds: string[];
   apiUrl: string;
+  resolveListingIds?: () => Promise<string[]>;
 }
 
 declare global {

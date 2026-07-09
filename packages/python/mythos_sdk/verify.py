@@ -1,3 +1,4 @@
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from jose import jwt, JWTError
@@ -35,7 +36,10 @@ def _validate_audience(payload: dict[str, Any], listing_ids: list[str]) -> None:
         raise JWTClaimsError("Invalid audience")
 
 
-async def verify_launch_token(token: str) -> MythosSession:
+async def verify_launch_token(
+    token: str,
+    resolve_listing_ids: Callable[[], Awaitable[list[str]]] | None = None,
+) -> MythosSession:
     config = load_config()
 
     jwks = await get_jwks(config.api_url)
@@ -65,5 +69,10 @@ async def verify_launch_token(token: str) -> MythosSession:
             options=_DECODE_OPTIONS,
         )
 
-    _validate_audience(payload, config.listing_ids)
+    dynamic_ids = await resolve_listing_ids() if resolve_listing_ids else []
+    if not config.listing_ids and not dynamic_ids:
+        raise RuntimeError(
+            "MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required, or pass resolve_listing_ids"
+        )
+    _validate_audience(payload, config.listing_ids + dynamic_ids)
     return _build_session(payload)

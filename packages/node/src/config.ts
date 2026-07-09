@@ -13,9 +13,5 @@ export function loadConfig(): MythosConfig {
       ? [single]
       : [];
 
-  if (listingIds.length === 0) {
-    throw new Error('MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required');
-  }
-
   return { listingIds, apiUrl };
 }
