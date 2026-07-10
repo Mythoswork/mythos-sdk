@@ -2,7 +2,7 @@ import logging
 import os
 from collections.abc import Awaitable, Callable
 
-from fastapi import APIRouter, Request
+from fastapi import Request
 from fastapi.responses import JSONResponse
 from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JOSEError, JWTClaimsError, JWTError
@@ -37,12 +37,9 @@ async def _validate_listing_callback_token(token: str) -> str:
     return payload["listingId"]
 
 
-def create_listing_callback_router(
+def create_listing_callback_handler(
     on_registered: Callable[[str], Awaitable[None]],
-) -> APIRouter:
-    router = APIRouter()
-
-    @router.api_route("/.well-known/mythos-listing-registered", methods=["GET", "POST"])
+) -> Callable[[Request], Awaitable[JSONResponse]]:
     async def mythos_listing_registered(request: Request) -> JSONResponse:
         token = request.query_params.get("lt")
         if not token:
@@ -57,4 +54,4 @@ def create_listing_callback_router(
             return JSONResponse({"error": "Service unavailable"}, status_code=503)
         return JSONResponse({"ok": True})
 
-    return router
+    return mythos_listing_registered

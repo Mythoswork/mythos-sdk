@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from jose import jwt
 
-from mythos_sdk import create_listing_callback_router
+from mythos_sdk import create_listing_callback_handler
 
 
 def mint_callback_token(private_pem: bytes, overrides: dict | None = None) -> str:
@@ -32,7 +32,11 @@ def mock_jwks(rsa_key_pair):
 
 def make_client(on_registered):
     app = FastAPI()
-    app.include_router(create_listing_callback_router(on_registered))
+    app.add_api_route(
+        "/.well-known/mythos-listing-registered",
+        create_listing_callback_handler(on_registered),
+        methods=["GET", "POST"],
+    )
     return TestClient(app)
 
 
