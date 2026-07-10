@@ -30,7 +30,7 @@ import { requireLaunchToken, reportUsage, handshakeRoute } from '@mythos/sdk';
 // MYTHOS_LISTING_ID=<your-listing-id>
 // (MYTHOS_API_URL defaults to https://api.mythos.work)
 
-app.get('/.well-known/mythos-handshake', handshakeRoute());
+app.use(handshakeRoute());
 
 app.get('/dashboard', requireLaunchToken(), async (req, res) => {
   // req.mythos = { userId, email, displayName, listingId, sessionJti }

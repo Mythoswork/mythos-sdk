@@ -11,37 +11,47 @@ npm install @mythos-work/sdk
 ## Quick start
 
 ```typescript
-import { requireLaunchToken, reportUsage, handshakeRoute } from '@mythos-work/sdk';
+import { requireLaunchToken, reportUsage, handshakeRoute, listingCallbackRoute } from '@mythos-work/sdk';
 import express from 'express';
 
 const app = express();
+const listingIds = new Set<string>(); // populated by listingCallbackRoute
 
 // Handshake endpoint — Mythos pings this before publishing your listing
-app.get('/.well-known/mythos-handshake', handshakeRoute());
+app.use(handshakeRoute());
+
+// Listing registration callback — Mythos calls this after your listing is registered
+app.post('/.well-known/mythos-listing-registered', listingCallbackRoute(async (listingId) => {
+  listingIds.add(listingId); // persist so resolveListingIds can read it
+}));
 
 // Protected route — verifies and consumes the launch token automatically
-app.get('/dashboard', requireLaunchToken(), async (req, res) => {
-  // req.mythos = { userId, email, displayName, listingId, sessionJti }
-  await reportUsage(req.mythos.sessionJti, { credits: 1, reason: 'page-view' });
-  res.json({ ok: true });
-});
+app.get(
+  '/dashboard',
+  requireLaunchToken({ resolveListingIds: async () => Array.from(listingIds) }),
+  async (req, res) => {
+    // req.mythos = { userId, email, displayName, listingId, sessionJti }
+    await reportUsage(req.mythos.sessionJti, { credits: 1, reason: 'page-view' });
+    res.json({ ok: true });
+  },
+);
 ```
 
 ## Environment variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `MYTHOS_LISTING_ID` | Yes* | — | Your listing ID |
-| `MYTHOS_LISTING_IDS` | Yes* | — | Comma-separated listing IDs (overrides above) |
-| `MYTHOS_API_URL` | No | `https://api.mythos.work` | API base URL override |
+| Variable             | Required | Default                   | Description                                   |
+| ----------------------| ----------| ---------------------------| -----------------------------------------------|
+| `MYTHOS_LISTING_ID`  | No*      | —                         | Your listing ID                               |
+| `MYTHOS_LISTING_IDS` | No*      | —                         | Comma-separated listing IDs (overrides above) |
+| `MYTHOS_API_URL`     | No       | `https://api.mythos.work` | API base URL override                         |
 
-*One of `MYTHOS_LISTING_ID` or `MYTHOS_LISTING_IDS` is required.
+*Optional when you provide `resolveListingIds`; otherwise one of `MYTHOS_LISTING_ID` or `MYTHOS_LISTING_IDS` is required.
 
 ## API
 
-### `requireLaunchToken()`
+### `requireLaunchToken({ resolveListingIds? })`
 
-Express middleware. Verifies the RS256 launch token from `?lt=`, enforces single-use semantics, and attaches `req.mythos` to the request. Returns `401` if the token is missing, invalid, or already consumed.
+Express middleware. Verifies the RS256 launch token from `?lt=`, enforces single-use semantics, and attaches `req.mythos` to the request. Listing IDs are read from `MYTHOS_LISTING_ID(S)` by default; pass `resolveListingIds` to supply them dynamically (e.g. from storage populated by `listingCallbackRoute`). Returns `401` if the token is missing, invalid, or already consumed.
 
 ### `reportUsage(sessionJti, { credits, reason? })`
 
@@ -49,11 +59,15 @@ Reports credit consumption against a session. Call after delivering value to the
 
 ### `handshakeRoute()`
 
-Mounts `GET /.well-known/mythos-handshake`. Mythos calls this endpoint during listing publish to confirm the SDK is installed and reachable.
+Returns an Express `Router` that mounts `GET /.well-known/mythos-handshake`. Use `app.use(handshakeRoute())` so the backend can reach the designated address during listing publish.
 
-### `verifyLaunchToken(token)`
+### `listingCallbackRoute(onRegistered)`
 
-Low-level token verifier. Returns the decoded payload. Use `requireLaunchToken()` middleware instead for most cases.
+Returns an Express `RequestHandler`. Mount it at the listing callback URL you configure. It validates the `?lt=` token, calls `onRegistered(listingId)` on success, and responds with `{ ok: true }`. Use the callback to persist the listing ID so `resolveListingIds` can read it. Returns `401` for missing/invalid tokens and `503` for unexpected errors.
+
+### `verifyLaunchToken(token, { resolveListingIds? })`
+
+Low-level token verifier. Validates the launch token and returns the decoded `MythosSession`. Listing IDs are read from `MYTHOS_LISTING_ID(S)` by default; pass `resolveListingIds` to supply them dynamically. Use `requireLaunchToken()` middleware instead for most cases.
 
 ## Security
 

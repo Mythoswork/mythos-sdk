@@ -1,18 +1,34 @@
 import { SignJWT, generateKeyPair, exportJWK, type KeyLike } from 'jose';
+import { EventEmitter } from 'events';
 import * as jwksCache from '../src/jwks-cache';
 import type { Request, Response as ExpressResponse } from 'express';
 
 let privateKey: KeyLike;
 
 function mockRes(): ExpressResponse {
-  return {
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
-  } as unknown as ExpressResponse;
+  const res = new EventEmitter() as unknown as ExpressResponse;
+  (res as any).status = jest.fn().mockReturnThis();
+  (res as any).json = jest.fn().mockImplementation(() => {
+    res.emit('finish');
+    return res;
+  });
+  return res;
 }
 
-function mockReq(lt?: string): Request {
-  return { query: lt !== undefined ? { lt } : {} } as unknown as Request;
+function waitForResponse(res: ExpressResponse): Promise<void> {
+  return new Promise((resolve) => res.once('finish', resolve));
+}
+
+function mockReq(lt?: string | string[]): Request {
+  const query = lt !== undefined ? { lt } : {};
+  const search =
+    lt !== undefined
+      ? Array.isArray(lt)
+        ? lt.map((v) => `lt=${encodeURIComponent(v)}`).join('&')
+        : `lt=${encodeURIComponent(lt)}`
+      : '';
+  const url = '/.well-known/mythos-handshake' + (search ? `?${search}` : '');
+  return { method: 'GET', url, originalUrl: url, query } as unknown as Request;
 }
 
 beforeAll(async () => {
@@ -48,7 +64,9 @@ test('valid handshake token → 200 ok:true with sdk_version', async () => {
   const req = mockReq(token);
   const res = mockRes();
 
-  await handshakeRoute()(req, res, jest.fn() as never);
+  const finish = waitForResponse(res);
+  handshakeRoute()(req, res, jest.fn() as never);
+  await finish;
 
   expect(res.json).toHaveBeenCalledWith(
     expect.objectContaining({ ok: true, sdk_version: expect.any(String) }),
@@ -61,7 +79,9 @@ test('missing ?lt= → 401', async () => {
   const req = mockReq();
   const res = mockRes();
 
-  await handshakeRoute()(req, res, jest.fn() as never);
+  const finish = waitForResponse(res);
+  handshakeRoute()(req, res, jest.fn() as never);
+  await finish;
 
   expect(res.status).toHaveBeenCalledWith(401);
   expect(res.json).toHaveBeenCalledWith({ error: 'Missing launch token' });
@@ -77,7 +97,9 @@ test('expired token → 401', async () => {
   const req = mockReq(token);
   const res = mockRes();
 
-  await handshakeRoute()(req, res, jest.fn() as never);
+  const finish = waitForResponse(res);
+  handshakeRoute()(req, res, jest.fn() as never);
+  await finish;
 
   expect(res.status).toHaveBeenCalledWith(401);
   expect(res.json).toHaveBeenCalledWith({ error: 'Invalid launch token' });
@@ -89,7 +111,9 @@ test('wrong purpose → 401', async () => {
   const req = mockReq(token);
   const res = mockRes();
 
-  await handshakeRoute()(req, res, jest.fn() as never);
+  const finish = waitForResponse(res);
+  handshakeRoute()(req, res, jest.fn() as never);
+  await finish;
 
   expect(res.status).toHaveBeenCalledWith(401);
   expect(res.json).toHaveBeenCalledWith({ error: 'Invalid launch token' });
@@ -105,7 +129,9 @@ test('no purpose claim → 401', async () => {
   const req = mockReq(token);
   const res = mockRes();
 
-  await handshakeRoute()(req, res, jest.fn() as never);
+  const finish = waitForResponse(res);
+  handshakeRoute()(req, res, jest.fn() as never);
+  await finish;
 
   expect(res.status).toHaveBeenCalledWith(401);
   expect(res.json).toHaveBeenCalledWith({ error: 'Invalid launch token' });
@@ -126,7 +152,9 @@ test('stale JWKS kid triggers fallback → 200', async () => {
   const req = mockReq(token);
   const res = mockRes();
 
-  await handshakeRoute()(req, res, jest.fn() as never);
+  const finish = waitForResponse(res);
+  handshakeRoute()(req, res, jest.fn() as never);
+  await finish;
 
   expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
   expect(res.status).not.toHaveBeenCalled();
@@ -135,10 +163,12 @@ test('stale JWKS kid triggers fallback → 200', async () => {
 test('duplicate ?lt= params → uses first value', async () => {
   const { handshakeRoute } = await import('../src/handshake');
   const token = await mintHandshakeToken();
-  const req = { query: { lt: [token, 'garbage'] } } as unknown as Request;
+  const req = mockReq([token, 'garbage']);
   const res = mockRes();
 
-  await handshakeRoute()(req, res, jest.fn() as never);
+  const finish = waitForResponse(res);
+  handshakeRoute()(req, res, jest.fn() as never);
+  await finish;
 
   expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
   expect(res.status).not.toHaveBeenCalled();
@@ -152,7 +182,9 @@ test('JWKS fetch failure → 503', async () => {
   const req = mockReq(token);
   const res = mockRes();
 
-  await handshakeRoute()(req, res, jest.fn() as never);
+  const finish = waitForResponse(res);
+  handshakeRoute()(req, res, jest.fn() as never);
+  await finish;
 
   expect(res.status).toHaveBeenCalledWith(503);
   expect(res.json).toHaveBeenCalledWith({ error: 'Service unavailable' });

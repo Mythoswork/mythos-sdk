@@ -1,6 +1,6 @@
 {
   "name": "@mythos-work/sdk",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Official Mythos SDK for Node.js — launch token verification, usage reporting, and handshake",
   "license": "Apache-2.0",
   "repository": {
