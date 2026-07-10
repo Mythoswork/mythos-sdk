@@ -22,7 +22,4 @@ def load_config() -> MythosConfig:
     else:
         listing_ids = []
 
-    if not listing_ids:
-        raise RuntimeError("MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required")
-
     return MythosConfig(listing_ids=listing_ids, api_url=api_url)

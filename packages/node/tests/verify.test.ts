@@ -83,6 +83,73 @@ test('wrong aud rejected', async () => {
   await expect(verifyLaunchToken(token)).rejects.toThrow();
 });
 
+test('resolveListingIds allows aud not in static list', async () => {
+  const { verifyLaunchToken } = await import('../src/verify');
+  const token = await new SignJWT({ sub: 'u', email: 'e', displayName: 'd', listingId: 'listing-dynamic' })
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setIssuedAt()
+    .setIssuer('mythos')
+    .setAudience('listing-dynamic')
+    .setJti('jti-dyn')
+    .setExpirationTime('5m')
+    .sign(privateKey);
+
+  const session = await verifyLaunchToken(token, {
+    resolveListingIds: async () => ['listing-dynamic'],
+  });
+  expect(session.listingId).toBe('listing-dynamic');
+});
+
+test('resolveListingIds miss + static miss → rejected', async () => {
+  const { verifyLaunchToken } = await import('../src/verify');
+  const token = await new SignJWT({ sub: 'u', email: 'e', displayName: 'd', listingId: 'other' })
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setIssuedAt()
+    .setIssuer('mythos')
+    .setAudience('other')
+    .setJti('jti-miss')
+    .setExpirationTime('5m')
+    .sign(privateKey);
+
+  await expect(
+    verifyLaunchToken(token, { resolveListingIds: async () => ['listing-xyz'] }),
+  ).rejects.toThrow('Token audience does not match configured listing ID');
+});
+
+test('resolveListingIds allows aud when no static listing IDs configured at all', async () => {
+  // Regression: producer relying purely on dynamic resolution (e.g. via the
+  // listing-registered callback), with no MYTHOS_LISTING_ID(S) env var set.
+  delete process.env.MYTHOS_LISTING_ID;
+  delete process.env.MYTHOS_LISTING_IDS;
+
+  const { verifyLaunchToken } = await import('../src/verify');
+  const token = await new SignJWT({ sub: 'u', email: 'e', displayName: 'd', listingId: 'listing-dynamic' })
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setIssuedAt()
+    .setIssuer('mythos')
+    .setAudience('listing-dynamic')
+    .setJti('jti-dyn-only')
+    .setExpirationTime('5m')
+    .sign(privateKey);
+
+  const session = await verifyLaunchToken(token, {
+    resolveListingIds: async () => ['listing-dynamic'],
+  });
+  expect(session.listingId).toBe('listing-dynamic');
+});
+
+test('no static and no dynamic listing IDs → clear config error', async () => {
+  delete process.env.MYTHOS_LISTING_ID;
+  delete process.env.MYTHOS_LISTING_IDS;
+
+  const { verifyLaunchToken } = await import('../src/verify');
+  const token = await mintToken();
+
+  await expect(verifyLaunchToken(token)).rejects.toThrow(
+    'MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required',
+  );
+});
+
 test('alg:none rejected — hard block', async () => {
   const { verifyLaunchToken } = await import('../src/verify');
   // Build a JWT with alg:none manually (jose won't sign with none — craft header manually)

@@ -7,7 +7,10 @@ import type { MythosSession } from './types';
 // fixed identifier, not the API URL (which varies by environment).
 const MYTHOS_ISSUER = 'mythos';
 
-export async function verifyLaunchToken(token: string): Promise<MythosSession> {
+export async function verifyLaunchToken(
+  token: string,
+  options?: { resolveListingIds?: () => Promise<string[]> },
+): Promise<MythosSession> {
   const { listingIds, apiUrl } = loadConfig();
 
   let keySet = await getKeySet(apiUrl);
@@ -32,7 +35,11 @@ export async function verifyLaunchToken(token: string): Promise<MythosSession> {
   }
 
   const aud = Array.isArray(payload.aud) ? payload.aud[0] : payload.aud;
-  if (!aud || !listingIds.includes(aud)) {
+  const dynamicIds = options?.resolveListingIds ? await options.resolveListingIds() : [];
+  if (listingIds.length === 0 && dynamicIds.length === 0) {
+    throw new Error('MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required, or pass resolveListingIds');
+  }
+  if (!aud || (!listingIds.includes(aud) && !dynamicIds.includes(aud))) {
     throw new Error('Token audience does not match configured listing ID');
   }
 
