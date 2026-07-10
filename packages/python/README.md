@@ -42,9 +42,9 @@ app.add_api_route(
 
 # Protected route — verifies and consumes the launch token automatically
 @app.get("/dashboard")
-async def dashboard(session = Depends(require_launch_token(resolve_listing_ids=get_listing_ids))):
-    # session = MythosSession(user_id, email, display_name, listing_id, session_jti)
-    await report_usage(session.session_jti, credits=1, reason="page-view")
+async def dashboard(session=Depends(require_launch_token(resolve_listing_ids=get_listing_ids))):
+    # session = MythosSession(userId, email, displayName, listingId, sessionJti)
+    await report_usage(session.sessionJti, credits=1, reason="page-view")
     return {"ok": True}
 ```
 

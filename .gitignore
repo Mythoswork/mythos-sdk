@@ -4,6 +4,9 @@ dist/
 *.tsbuildinfo
 .npm
 
+# HonKit local preview build
+docs/_book/
+
 # Python
 __pycache__/
 *.py[cod]

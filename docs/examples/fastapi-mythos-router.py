@@ -4,7 +4,7 @@ Mount in main.py:
     from routers import mythos
     app.include_router(mythos.router)
 
-Env required:
+Env required (unless using resolve_listing_ids):
     MYTHOS_LISTING_ID=<your-listing-id>
 """
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,6 +13,24 @@ from pydantic import BaseModel
 
 router = APIRouter()
 router.include_router(handshake_router)
+
+# Optional: dynamic listing IDs via listing callback
+# from mythos_sdk import create_listing_callback_handler
+#
+# listing_ids: list[str] = []
+#
+# async def add_listing_id(listing_id: str) -> None:
+#     if listing_id not in listing_ids:
+#         listing_ids.append(listing_id)
+#
+# async def get_listing_ids() -> list[str]:
+#     return listing_ids
+#
+# router.add_api_route(
+#     "/.well-known/mythos-listing-registered",
+#     create_listing_callback_handler(add_listing_id),
+#     methods=["GET", "POST"],
+# )
 
 
 class MythosSessionResponse(BaseModel):
@@ -24,7 +42,9 @@ class MythosSessionResponse(BaseModel):
 
 
 @router.get("/api/mythos/session", response_model=MythosSessionResponse)
-async def mythos_session(session: MythosSession = Depends(require_launch_token)) -> MythosSessionResponse:
+async def mythos_session(
+    session: MythosSession = Depends(require_launch_token()),
+) -> MythosSessionResponse:
     """Verify + single-use-consume the launch token; return session to frontend."""
     return MythosSessionResponse(
         userId=session.userId,

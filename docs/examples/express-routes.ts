@@ -1,14 +1,14 @@
 /**
  * Express route stubs for Mythos SDK — wire into your Express app.
  *
- * Env required:
+ * Env required (unless using resolveListingIds):
  *   MYTHOS_LISTING_ID=<your-listing-id>
  */
 import express from 'express';
 import { handshakeRoute, requireLaunchToken, reportUsage, MythosError } from '@mythos/sdk';
 
 export function mountMythosRoutes(app: express.Application): void {
-  app.get('/.well-known/mythos-handshake', handshakeRoute());
+  app.use(handshakeRoute());
 
   app.get('/api/mythos/session', requireLaunchToken(), (req, res) => {
     res.json({ ok: true, session: req.mythos });
