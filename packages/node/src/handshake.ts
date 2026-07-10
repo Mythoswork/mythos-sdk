@@ -1,5 +1,6 @@
 import { jwtVerify, errors } from 'jose';
-import type { RequestHandler } from 'express';
+import { Router } from 'express';
+import type { Request, Response } from 'express';
 import { getKeySet, getKeySetWithKidFallback } from './jwks-cache';
 
 const SDK_VERSION = '0.1.0';
@@ -28,8 +29,10 @@ async function validateHandshakeToken(token: string): Promise<void> {
   }
 }
 
-export function handshakeRoute(): RequestHandler {
-  return async (req, res) => {
+export function handshakeRoute(): Router {
+  const router = Router();
+
+  router.get('/.well-known/mythos-handshake', async (req: Request, res: Response) => {
     const raw = req.query['lt'];
     const first = Array.isArray(raw) ? raw[0] : raw;
     const token = typeof first === 'string' ? first : undefined;
@@ -49,5 +52,7 @@ export function handshakeRoute(): RequestHandler {
       return;
     }
     res.json({ ok: true, sdk_version: SDK_VERSION });
-  };
+  });
+
+  return router;
 }
