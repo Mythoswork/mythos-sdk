@@ -1,7 +1,5 @@
 from importlib.metadata import PackageNotFoundError, version
 
-MYTHOS_HTTP_TIMEOUT = 5.0
-
 
 def get_sdk_version() -> str:
     try:
