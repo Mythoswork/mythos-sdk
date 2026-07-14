@@ -1,11 +1,11 @@
 # handshakeRoute
 
-Returns an Express `Router` with the Mythos publish handshake endpoint.
+Returns an Express request handler for the Mythos publish handshake endpoint. It has no path or method matching of its own and never calls `next()` — it must be mounted at the exact handshake path.
 
 ## Signature
 
 ```typescript
-function handshakeRoute(): Router
+function handshakeRoute(): RequestHandler
 ```
 
 ## Route
@@ -22,7 +22,7 @@ GET /.well-known/mythos-handshake?lt=<handshake-jwt>
 
 ## Returns
 
-Express `Router` — mount with `app.use(handshakeRoute())`.
+`RequestHandler` — mount at the exact path with `app.use('/.well-known/mythos-handshake', handshakeRoute())`.
 
 ## Responses
 
@@ -40,11 +40,11 @@ import express from 'express';
 import { handshakeRoute } from '@mythos/sdk';
 
 const app = express();
-app.use(handshakeRoute());
+app.use('/.well-known/mythos-handshake', handshakeRoute());
 ```
 
 {% hint style="warning" %}
-Use `app.use(handshakeRoute())`, not `app.get('/.well-known/...', handshakeRoute())`.
+Always mount at `/.well-known/mythos-handshake` explicitly. Mounting unpathed (`app.use(handshakeRoute())`) intercepts every request to your app, since the handler matches all methods/paths at its mount point and never calls `next()`.
 {% endhint %}
 
 ## See also

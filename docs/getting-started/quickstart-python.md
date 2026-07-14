@@ -30,7 +30,7 @@ app.include_router(handshake_router)
 
 
 @app.get("/api/mythos/session")
-async def mythos_session(session: MythosSession = Depends(require_launch_token())):
+async def mythos_session(session: MythosSession = Depends(require_launch_token)):
     return {
         "userId": session.userId,
         "email": session.email,
@@ -56,7 +56,7 @@ async def mythos_report_usage(request: ReportUsageRequest):
 ```
 
 {% hint style="warning" %}
-`require_launch_token` is a **factory** — use `Depends(require_launch_token())` with parentheses. `MythosSession` fields are camelCase (`session.sessionJti`, not `session_jti`).
+Use `Depends(require_launch_token)` — no parentheses, it's not a factory. `MythosSession` fields are camelCase (`session.sessionJti`, not `session_jti`).
 {% endhint %}
 
 ## 3. Run

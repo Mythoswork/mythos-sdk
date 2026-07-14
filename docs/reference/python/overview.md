@@ -19,7 +19,7 @@ pip install "mythos-sdk[fastapi]"
 | `handshake_router` | Pre-built FastAPI router for publish handshake |
 | `create_handshake_router` | Factory for customizable handshake router |
 | `create_listing_callback_handler` | Handler for listing registration callback |
-| `require_launch_token` | FastAPI dependency factory — verify + consume |
+| `require_launch_token` | FastAPI dependency — verify + consume |
 | `verify_launch_token` | Low-level JWT verify |
 | `report_usage` | Debit Consumer wallet |
 | `MythosSession` | Session dataclass |

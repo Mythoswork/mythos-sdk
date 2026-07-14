@@ -32,7 +32,7 @@ GET /.well-known/mythos-handshake?lt=<handshake-jwt>
 | 401 | `{"error":"Invalid launch token"}` | Bad, expired, or wrong-purpose token |
 | 503 | `{"error":"Service unavailable"}` | Unexpected server error |
 
-**Node mount:** `app.use(handshakeRoute())`
+**Node mount:** `app.use('/.well-known/mythos-handshake', handshakeRoute())` — `handshakeRoute()` is a bare handler with no path matching of its own; mounting it unpathed intercepts every request to your app.
 
 **Python mount:** `app.include_router(handshake_router)`
 

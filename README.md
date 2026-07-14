@@ -43,7 +43,7 @@ import { requireLaunchToken, reportUsage, handshakeRoute } from '@mythos/sdk';
 // MYTHOS_LISTING_ID=<your-listing-id>
 // (MYTHOS_API_URL defaults to https://api.mythos.work)
 
-app.use(handshakeRoute());
+app.use('/.well-known/mythos-handshake', handshakeRoute());
 
 app.get('/dashboard', requireLaunchToken(), async (req, res) => {
   // req.mythos = { userId, email, displayName, listingId, sessionJti }
@@ -66,7 +66,7 @@ app = FastAPI()
 app.include_router(handshake_router)
 
 @app.get("/dashboard")
-async def dashboard(session=Depends(require_launch_token())):
+async def dashboard(session=Depends(require_launch_token)):
     await report_usage(session.sessionJti, credits=1, reason="page-view")
     return {"ok": True}
 ```

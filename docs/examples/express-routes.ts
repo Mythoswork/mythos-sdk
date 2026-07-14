@@ -8,7 +8,9 @@ import express from 'express';
 import { handshakeRoute, requireLaunchToken, reportUsage, MythosError } from '@mythos/sdk';
 
 export function mountMythosRoutes(app: express.Application): void {
-  app.use(handshakeRoute());
+  // handshakeRoute() is a bare handler with no path matching of its own,
+  // so it must be mounted at the exact path
+  app.use('/.well-known/mythos-handshake', handshakeRoute());
 
   app.get('/api/mythos/session', requireLaunchToken(), (req, res) => {
     res.json({ ok: true, session: req.mythos });

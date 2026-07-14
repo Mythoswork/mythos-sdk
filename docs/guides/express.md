@@ -23,8 +23,9 @@ import {
 const app = express();
 app.use(express.json());
 
-// Handshake — mount Router, do not pass to app.get()
-app.use(handshakeRoute());
+// Handshake — handshakeRoute() is a bare handler with no path matching of
+// its own, so it must be mounted at the exact path
+app.use('/.well-known/mythos-handshake', handshakeRoute());
 
 // Optional: dynamic listing IDs
 const listingIds: string[] = [];
@@ -67,7 +68,7 @@ Wrap the routes above in a `mountMythosRoutes(app)` helper if you prefer a singl
 
 ```typescript
 export function mountMythosRoutes(app: express.Application): void {
-  app.use(handshakeRoute());
+  app.use('/.well-known/mythos-handshake', handshakeRoute());
 
   app.get('/api/mythos/session', requireLaunchToken(), (req, res) => {
     res.json({ ok: true, session: req.mythos });

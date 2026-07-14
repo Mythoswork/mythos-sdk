@@ -46,14 +46,14 @@ Read these from the mythos-sdk repo (or ask user to provide):
 
 | Route | SDK |
 |-------|-----|
-| `GET /.well-known/mythos-handshake?lt=` | `app.use(handshakeRoute())` / `handshake_router` |
-| `GET /api/mythos/session?lt=` | `requireLaunchToken()` / `require_launch_token()` |
+| `GET /.well-known/mythos-handshake?lt=` | `app.use('/.well-known/mythos-handshake', handshakeRoute())` / `handshake_router` |
+| `GET /api/mythos/session?lt=` | `requireLaunchToken()` / `require_launch_token` (no parens in Python — see hard rules) |
 | `POST /api/mythos/report-usage` | `reportUsage()` / `report_usage` |
 | `GET\|POST /.well-known/mythos-listing-registered?lt=` (optional) | `listingCallbackRoute()` / `create_listing_callback_handler` |
 
 Copy from `docs/examples/` for your stack:
-- Express → `express-routes.ts` — use `app.use(handshakeRoute())`
-- FastAPI → `fastapi-mythos-router.py` — use `Depends(require_launch_token())`
+- Express → `express-routes.ts` — mount handshake at the exact path, not unpathed
+- FastAPI → `fastapi-mythos-router.py` — use `Depends(require_launch_token)`, no parens
 - Next.js → `next-mythos-shim.ts` + route handlers
 - Vercel → one handler per route + `vercel.json` rewrite for `.well-known`
 
@@ -94,10 +94,10 @@ Real tokens from Mythos or mock app: handshake → 200 ok; browser `?lt=` → au
 
 - **Never** verify JWTs in browser — server only
 - **Never** skip `/consume` — use SDK middleware/dependency only (ADR-0003)
-- Handshake path: `/.well-known/mythos-handshake` — mount with `app.use(handshakeRoute())` on Node
+- Handshake path: `/.well-known/mythos-handshake` — on Node, `handshakeRoute()` is a bare handler with no path matching of its own and never calls `next()`, so mount it at the exact path: `app.use('/.well-known/mythos-handshake', handshakeRoute())`. Mounting unpathed intercepts every request.
 - Listing callback path: `/.well-known/mythos-listing-registered` (when used)
 - Three token types: `handshake-check` ≠ launch ≠ `listing_registered`
-- Python: `Depends(require_launch_token())` with parentheses; `session.sessionJti` camelCase
+- Python: `Depends(require_launch_token)` — no parentheses, it's not a factory; `session.sessionJti` camelCase
 - Consume failure → 503, fail closed
 - Usage reporting non-fatal on frontend
 - Wire **every** production server entry point

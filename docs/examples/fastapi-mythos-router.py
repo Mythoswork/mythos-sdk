@@ -43,7 +43,7 @@ class MythosSessionResponse(BaseModel):
 
 @router.get("/api/mythos/session", response_model=MythosSessionResponse)
 async def mythos_session(
-    session: MythosSession = Depends(require_launch_token()),
+    session: MythosSession = Depends(require_launch_token),
 ) -> MythosSessionResponse:
     """Verify + single-use-consume the launch token; return session to frontend."""
     return MythosSessionResponse(

@@ -1,22 +1,16 @@
 # require_launch_token
 
-FastAPI dependency factory that verifies a launch token and calls Mythos `/consume`.
+FastAPI dependency that verifies a launch token and calls Mythos `/consume`.
 
 ## Signature
 
 ```python
-def require_launch_token(
-    resolve_listing_ids: Callable[[], Awaitable[list[str]]] | None = None,
-) -> Callable[..., Awaitable[MythosSession]]
+async def require_launch_token(
+    lt: str = Query(..., alias="lt"),
+) -> MythosSession
 ```
 
-## Parameters
-
-| Param | Type | Required | Description |
-|-------|------|----------|-------------|
-| `resolve_listing_ids` | `async () -> list[str]` | No | Dynamic listing IDs from callback |
-
-Reads `lt` from query string.
+Reads `lt` from the query string via FastAPI's `Query`.
 
 ## Usage
 
@@ -25,12 +19,12 @@ from fastapi import Depends
 from mythos_sdk import require_launch_token, MythosSession
 
 @app.get("/api/mythos/session")
-async def session(session: MythosSession = Depends(require_launch_token())):
+async def session(session: MythosSession = Depends(require_launch_token)):
     return session
 ```
 
 {% hint style="warning" %}
-`require_launch_token` is a **factory** — always use `Depends(require_launch_token())` with parentheses.
+`require_launch_token` is a **dependency itself, not a factory** — always use `Depends(require_launch_token)` with no parentheses. Calling it (`Depends(require_launch_token())`) passes FastAPI an already-invoked coroutine instead of a callable and breaks dependency injection.
 {% endhint %}
 
 ## HTTP exceptions

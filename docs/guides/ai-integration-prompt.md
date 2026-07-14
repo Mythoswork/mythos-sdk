@@ -64,8 +64,8 @@ Your app must:
 | **Strip `?lt=` from URL after session** | Token is single-use and already consumed; remove from browser history |
 | **Usage reporting is non-fatal on frontend** | Never block the user's main flow if billing fails (402/500) |
 | **Wire ALL server entry points** | If the app has multiple (e.g. `backend/main.py` AND `api/index.py` on Vercel), Mythos routes must exist on **every** entry point that serves production traffic |
-| **Node: mount Routers with `app.use()`** | `handshakeRoute()` returns a Router — use `app.use(handshakeRoute())`, not `app.get(...)` |
-| **Python: `require_launch_token` is a factory** | Use `Depends(require_launch_token())` with parentheses |
+| **Node: `handshakeRoute()` must be path-mounted** | It's a bare handler with no route matching of its own and never calls `next()` — use `app.use('/.well-known/mythos-handshake', handshakeRoute())`, never unpathed |
+| **Python: `require_launch_token` is used directly, not called** | Use `Depends(require_launch_token)` — no parentheses |
 | **Python: camelCase session fields** | `session.sessionJti`, not `session_jti` on the dataclass |
 
 ---
@@ -135,7 +135,7 @@ import {
   MythosError,
 } from '@mythos/sdk';
 
-app.use(handshakeRoute());  // NOT app.get('/.well-known/...', ...)
+app.use('/.well-known/mythos-handshake', handshakeRoute());  // path is required — see hard rules
 
 app.get('/api/mythos/session', requireLaunchToken(), (req, res) => {
   res.json({ ok: true, session: req.mythos });
@@ -171,7 +171,7 @@ from mythos_sdk import (
 app.include_router(handshake_router)
 
 @app.get("/api/mythos/session")
-async def mythos_session(session: MythosSession = Depends(require_launch_token())):
+async def mythos_session(session: MythosSession = Depends(require_launch_token)):
     return {
         "userId": session.userId,
         "email": session.email,
@@ -371,9 +371,9 @@ Provide this checklist:
 | Mistake | Symptom | Fix |
 |---------|---------|-----|
 | Only wired local entry, not Vercel `api/index.py` | Works locally, 404 in production | Add mythos routes to every deploy entry point |
-| Wrong handshake mount | 404 on publish | Use `app.use(handshakeRoute())` on Node |
+| Handshake mounted unpathed (`app.use(handshakeRoute())`) | Intercepts every request to the app | Mount at the exact path: `app.use('/.well-known/mythos-handshake', handshakeRoute())` |
 | Wrong handshake path | 404 on publish | Must be `/.well-known/mythos-handshake` exactly |
-| `Depends(require_launch_token)` without `()` | FastAPI dependency error | Use `Depends(require_launch_token())` |
+| `Depends(require_launch_token())` with `()` | FastAPI dependency error | Use `Depends(require_launch_token)` — no parentheses |
 | `session.session_jti` in Python | AttributeError | Use `session.sessionJti` (camelCase) |
 | Using placeholder test token | 401 always | Get real JWT from Mythos dashboard or mock app |
 | Verifying token in frontend | Security hole / SDK throws | Move to server session endpoint |

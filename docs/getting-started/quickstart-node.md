@@ -26,8 +26,9 @@ import {
 const app = express();
 app.use(express.json());
 
-// Publish handshake — mount the Router returned by handshakeRoute()
-app.use(handshakeRoute());
+// Publish handshake — handshakeRoute() returns a bare handler with no
+// path/method matching of its own, so it must be mounted at the exact path
+app.use('/.well-known/mythos-handshake', handshakeRoute());
 
 // Session exchange for frontend ?lt= handling
 app.get('/api/mythos/session', requireLaunchToken(), (req, res) => {
@@ -53,7 +54,7 @@ app.listen(8080);
 ```
 
 {% hint style="warning" %}
-Use `app.use(handshakeRoute())` — not `app.get('/.well-known/...', handshakeRoute())`. `handshakeRoute()` returns an Express `Router` with the route already defined.
+`handshakeRoute()` returns a plain request handler, not a scoped `Router` — it has no route matching of its own and never calls `next()`. Mount it at the exact path: `app.use('/.well-known/mythos-handshake', handshakeRoute())`. Mounting it unpathed (`app.use(handshakeRoute())`) intercepts every request to your app.
 {% endhint %}
 
 ## 3. Frontend (minimal)

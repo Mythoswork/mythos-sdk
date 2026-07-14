@@ -11,7 +11,7 @@ Common integration issues and fixes.
 | Always 401 with real token | Wrong listing ID or placeholder token | Set correct `MYTHOS_LISTING_ID`; get real JWT from Mythos |
 | 503 on session | `/consume` unreachable | Check `MYTHOS_API_URL`; ensure backend is running |
 | Works locally, fails in prod | Only wired local entry point | Add Mythos routes to Vercel `api/` or production `main` |
-| Publish gate fails | Handshake not mounted correctly | Use `app.use(handshakeRoute())` on Node |
+| Publish gate fails | Handshake not mounted at the exact path | Use `app.use('/.well-known/mythos-handshake', handshakeRoute())` on Node — unpathed mounting intercepts every request |
 
 ## Duplicate entry points
 
@@ -47,7 +47,7 @@ Node often wraps `{ session: ... }`; Python often returns flat fields. Frontend 
 
 | Mistake | Fix |
 |---------|-----|
-| `Depends(require_launch_token)` | Use `Depends(require_launch_token())` |
+| `Depends(require_launch_token())` | Use `Depends(require_launch_token)` — no parentheses, it's not a factory |
 | `session.session_jti` | Use `session.sessionJti` (camelCase) |
 | `python main.py` | Use `uvicorn main:app` |
 
@@ -55,7 +55,7 @@ Node often wraps `{ session: ... }`; Python often returns flat fields. Frontend 
 
 | Mistake | Fix |
 |---------|-----|
-| `app.get('/.well-known/...', handshakeRoute())` | Use `app.use(handshakeRoute())` |
+| `app.use(handshakeRoute())` unpathed | Mount at the exact path: `app.use('/.well-known/mythos-handshake', handshakeRoute())` |
 | Verifying JWT in browser | Move to server session endpoint |
 
 ## Placeholder tokens

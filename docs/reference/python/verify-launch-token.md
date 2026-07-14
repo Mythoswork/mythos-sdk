@@ -46,7 +46,7 @@ await report_usage(session.sessionJti, credits=1, reason="calculator:add")
 ```
 
 {% hint style="warning" %}
-Direct use skips `/consume`. Prefer `require_launch_token()` unless you implement consume yourself.
+Direct use skips `/consume`. Prefer `require_launch_token` unless you implement consume yourself.
 {% endhint %}
 
 ## See also
