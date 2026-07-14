@@ -2,10 +2,6 @@
 
 Full FastAPI integration guide for the Mythos SDK.
 
-{% hint style="info" %}
-**Quick version:** [Quickstart: Python](../getting-started/quickstart-python.md) · **Stub:** [fastapi-mythos-router.py](../examples/fastapi-mythos-router.py)
-{% endhint %}
-
 ## Install
 
 ```bash

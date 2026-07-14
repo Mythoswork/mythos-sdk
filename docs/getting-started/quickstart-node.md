@@ -74,7 +74,7 @@ if (lt) {
 }
 ```
 
-Full client stub: [mythos-client.ts](../examples/mythos-client.ts). See [Frontend client](../guides/frontend-client.md).
+See [Frontend client](../guides/frontend-client.md) for the full client stub.
 
 ## 4. Verify
 

@@ -2,10 +2,6 @@
 
 Full Express integration guide for the Mythos SDK.
 
-{% hint style="info" %}
-**Quick version:** [Quickstart: Node.js](../getting-started/quickstart-node.md) · **Stub:** [express-routes.ts](../examples/express-routes.ts)
-{% endhint %}
-
 ## Install
 
 ```bash
@@ -67,7 +63,35 @@ app.post('/api/mythos/report-usage', async (req, res) => {
 
 ## Reusable mount helper
 
-See [express-routes.ts](../examples/express-routes.ts) for a `mountMythosRoutes(app)` helper you can drop into an existing Express app.
+Wrap the routes above in a `mountMythosRoutes(app)` helper if you prefer a single drop-in for an existing Express app:
+
+```typescript
+export function mountMythosRoutes(app: express.Application): void {
+  app.use(handshakeRoute());
+
+  app.get('/api/mythos/session', requireLaunchToken(), (req, res) => {
+    res.json({ ok: true, session: req.mythos });
+  });
+
+  app.post('/api/mythos/report-usage', express.json(), async (req, res) => {
+    const { sessionJti, credits, reason } = req.body ?? {};
+    if (!sessionJti || typeof credits !== 'number') {
+      res.status(400).json({ error: 'sessionJti and credits are required' });
+      return;
+    }
+    try {
+      await reportUsage(sessionJti, { credits, reason });
+      res.json({ ok: true });
+    } catch (err) {
+      if (err instanceof MythosError) {
+        res.status(402).json({ error: err.message, code: err.code });
+        return;
+      }
+      res.status(503).json({ error: 'Failed to report usage' });
+    }
+  });
+}
+```
 
 ## Environment
 

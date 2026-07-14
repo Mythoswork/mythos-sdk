@@ -2,10 +2,6 @@
 
 Handle `?lt=` on page load, exchange for a session, and report usage after billable actions.
 
-{% hint style="info" %}
-**Copy-paste stubs:** [mythos-client.ts](../examples/mythos-client.ts) · [mythos-client.js](../examples/mythos-client.js)
-{% endhint %}
-
 ## Integration steps
 
 1. On app load, read `lt` from `window.location.search`

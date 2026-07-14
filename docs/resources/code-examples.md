@@ -8,22 +8,21 @@ Copy-paste stubs for integrating the Mythos SDK.
 
 ## Server stubs
 
-| File | Stack | Copy to |
-|------|-------|---------|
-| [express-routes.ts](../examples/express-routes.ts) | Express | `lib/mythosRoutes.ts` or inline in `server.ts` |
-| [fastapi-mythos-router.py](../examples/fastapi-mythos-router.py) | FastAPI | `routers/mythos.py` |
-| [next-mythos-shim.ts](../examples/next-mythos-shim.ts) | Next.js App Router | `lib/mythos.ts` |
+| Guide | Stack | Copy to |
+|-------|-------|---------|
+| [Express](../guides/express.md) | Express | `lib/mythosRoutes.ts` or inline in `server.ts` |
+| [FastAPI](../guides/fastapi.md) | FastAPI | `routers/mythos.py` |
+| [Next.js](../guides/nextjs.md) | Next.js App Router | `lib/mythos.ts` |
 
 ## Frontend clients
 
-| File | Stack | Copy to |
-|------|-------|---------|
-| [mythos-client.ts](../examples/mythos-client.ts) | TypeScript / React / Next.js | `lib/mythosClient.ts` |
-| [mythos-client.js](../examples/mythos-client.js) | Vanilla JS | `static/mythosClient.js` or equivalent |
+| Guide | Stack | Copy to |
+|-------|-------|---------|
+| [Frontend client](../guides/frontend-client.md) | TypeScript / React / Next.js / vanilla JS | `lib/mythosClient.ts` or `static/mythosClient.js` |
 
 ## Usage
 
-1. Copy the stub for your stack
+1. Open the guide for your stack and copy the inline stubs
 2. Install the SDK — [Install](../getting-started/install.md)
 3. Set `MYTHOS_LISTING_ID` in `.env`
 4. Mount routes on **every** production entry point
