@@ -12,7 +12,7 @@ from .version import SDK_VERSION
 _logger = logging.getLogger(__name__)
 
 _DEFAULT_API_URL = "https://api.mythos.work"
-# Tokens in this SDK carry no aud/iss claims.
+# Handshake tokens are validated by signature and purpose only.
 _DECODE_OPTIONS = {"verify_aud": False, "verify_iss": False}
 
 

@@ -5,6 +5,9 @@
   "description": "Official Mythos SDK for Node.js — launch token verification, usage reporting, and handshake",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
       "browser": "./dist/browser.js",
@@ -14,7 +17,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "jest"
+    "test": "jest",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "jose": "^5.0.0"

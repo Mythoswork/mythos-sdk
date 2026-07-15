@@ -1,6 +1,7 @@
 import { jwtVerify, errors } from 'jose';
 import type { RequestHandler } from 'express';
 import { getKeySet, getKeySetWithKidFallback } from './jwks-cache';
+import { extractLaunchToken } from './query';
 import { SDK_VERSION } from './version';
 
 const DEFAULT_API_URL = 'https://api.mythos.work';
@@ -30,9 +31,7 @@ async function validateHandshakeToken(token: string): Promise<void> {
 
 export function handshakeRoute(): RequestHandler {
   return async (req, res) => {
-    const raw = req.query['lt'];
-    const first = Array.isArray(raw) ? raw[0] : raw;
-    const token = typeof first === 'string' ? first : undefined;
+    const token = extractLaunchToken(req.query['lt']);
     if (!token) {
       res.status(401).json({ error: 'Missing launch token' });
       return;
@@ -43,7 +42,6 @@ export function handshakeRoute(): RequestHandler {
       if (err instanceof errors.JOSEError) {
         res.status(401).json({ error: 'Invalid launch token' });
       } else {
-        console.error('[mythos-sdk] handshake: unexpected error', err);
         res.status(503).json({ error: 'Service unavailable' });
       }
       return;

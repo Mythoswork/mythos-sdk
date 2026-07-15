@@ -4,6 +4,7 @@ from jose import jwt, JWTError
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError
 
 from .config import load_config
+from .errors import InvalidLaunchTokenError
 from .jwks_cache import get_jwks, get_jwks_with_kid_fallback
 from .types import MythosSession
 
@@ -15,27 +16,44 @@ _DECODE_OPTIONS = {"verify_aud": False}
 MYTHOS_ISSUER = "mythos"
 
 
-def _build_session(payload: dict[str, Any]) -> MythosSession:
-    return MythosSession(
-        userId=payload["sub"],
-        email=payload["email"],
-        displayName=payload["displayName"],
-        listingId=payload["listingId"],
-        sessionJti=payload["jti"],
-    )
+def _require_string_claim(payload: dict[str, Any], claim: str) -> str:
+    value = payload.get(claim)
+    if not isinstance(value, str) or not value:
+        raise InvalidLaunchTokenError(f"Missing {claim} claim")
+    return value
 
 
 def _validate_audience(payload: dict[str, Any], listing_ids: list[str]) -> None:
-    """Check all aud elements for membership — avoids aud[0]-only ordering bug."""
     aud = payload.get("aud")
     if aud is None:
-        raise JWTClaimsError("Missing audience claim")
+        raise InvalidLaunchTokenError("Missing audience claim")
     aud_values = aud if isinstance(aud, list) else [aud]
     if not any(a in listing_ids for a in aud_values):
-        raise JWTClaimsError("Invalid audience")
+        raise InvalidLaunchTokenError("Invalid audience")
+
+
+def _build_session(payload: dict[str, Any], listing_ids: list[str]) -> MythosSession:
+    _validate_audience(payload, listing_ids)
+
+    listing_id = _require_string_claim(payload, "listingId")
+    if listing_id not in listing_ids:
+        raise InvalidLaunchTokenError("listingId does not match configured listing ID")
+
+    return MythosSession(
+        userId=_require_string_claim(payload, "sub"),
+        email=_require_string_claim(payload, "email"),
+        displayName=_require_string_claim(payload, "displayName"),
+        listingId=listing_id,
+        sessionJti=_require_string_claim(payload, "jti"),
+    )
 
 
 async def verify_launch_token(token: str) -> MythosSession:
+    """Verify a launch token signature and claims only.
+
+    WARNING: This does NOT call /consume and does NOT enforce single-use semantics.
+    Use require_launch_token() for route protection (ADR-0003).
+    """
     config = load_config()
 
     jwks = await get_jwks(config.api_url)
@@ -48,14 +66,10 @@ async def verify_launch_token(token: str) -> MythosSession:
             options=_DECODE_OPTIONS,
         )
     except JWTError as e:
-        if isinstance(e, (ExpiredSignatureError, JWTClaimsError)):
+        if isinstance(e, (ExpiredSignatureError, JWTClaimsError, InvalidLaunchTokenError)):
             raise
-        # python-jose 3.x raises a bare JWTError with this message for signature
-        # failures (version pinned <4 in pyproject.toml so this text stays stable).
-        # A bad signature is not a kid miss — fail immediately, don't re-fetch JWKS.
         if "Signature verification failed" in str(e):
             raise
-        # possible kid miss — re-fetch once
         jwks = await get_jwks_with_kid_fallback(config.api_url)
         payload = jwt.decode(
             token,
@@ -65,5 +79,4 @@ async def verify_launch_token(token: str) -> MythosSession:
             options=_DECODE_OPTIONS,
         )
 
-    _validate_audience(payload, config.listing_ids)
-    return _build_session(payload)
+    return _build_session(payload, config.listing_ids)

@@ -1,6 +1,8 @@
 import os
 from dataclasses import dataclass
 
+from .errors import MythosConfigError
+
 DEFAULT_API_URL = "https://api.mythos.work"
 
 
@@ -23,6 +25,6 @@ def load_config() -> MythosConfig:
         listing_ids = []
 
     if not listing_ids:
-        raise RuntimeError("MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required")
+        raise MythosConfigError("MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required")
 
     return MythosConfig(listing_ids=listing_ids, api_url=api_url)

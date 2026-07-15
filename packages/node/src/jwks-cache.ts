@@ -8,10 +8,10 @@ interface CacheEntry {
   fetchedAt: number;
 }
 
-let _cache: CacheEntry | null = null;
+const _cache = new Map<string, CacheEntry>();
 
-function isStale(): boolean {
-  return _cache === null || Date.now() - _cache.fetchedAt > CACHE_TTL_MS;
+function isStale(entry: CacheEntry): boolean {
+  return Date.now() - entry.fetchedAt > CACHE_TTL_MS;
 }
 
 async function fetchJwks(apiUrl: string): Promise<ReturnType<typeof createLocalJWKSet>> {
@@ -21,23 +21,22 @@ async function fetchJwks(apiUrl: string): Promise<ReturnType<typeof createLocalJ
   }
   const jwks = (await res.json()) as JSONWebKeySet;
   const keySet = createLocalJWKSet(jwks);
-  _cache = { keySet, fetchedAt: Date.now() };
+  _cache.set(apiUrl, { keySet, fetchedAt: Date.now() });
   return keySet;
 }
 
 export async function getKeySet(apiUrl: string, forceRefresh = false): Promise<ReturnType<typeof createLocalJWKSet>> {
-  if (!forceRefresh && !isStale() && _cache) {
-    return _cache.keySet;
+  const cached = _cache.get(apiUrl);
+  if (!forceRefresh && cached && !isStale(cached)) {
+    return cached.keySet;
   }
   return fetchJwks(apiUrl);
 }
 
 export async function getKeySetWithKidFallback(apiUrl: string): Promise<ReturnType<typeof createLocalJWKSet>> {
-  // A kid miss means our cached JWKS is stale — always force a fresh fetch.
-  // (Returning the cache first would just hand back the same stale keys and fail again.)
   return getKeySet(apiUrl, true);
 }
 
 export function clearCache(): void {
-  _cache = null;
+  _cache.clear();
 }

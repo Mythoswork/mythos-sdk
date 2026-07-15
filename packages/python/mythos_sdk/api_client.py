@@ -1,35 +1,47 @@
 import uuid
 from typing import Any
-
-import httpx
+from urllib.parse import quote
 
 from .config import load_config
-from .errors import InsufficientFundsError, SessionNotFoundError
-from .http import MYTHOS_HTTP_TIMEOUT
+from .errors import InsufficientFundsError, InvalidUsageError, SessionNotFoundError
+from .http import get_http_client
 
 
-async def consume_session(jti: str) -> httpx.Response:
+def _encode_jti(jti: str) -> str:
+    return quote(jti, safe="")
+
+
+def _validate_credits(credits: int) -> None:
+    if not isinstance(credits, int) or isinstance(credits, bool) or credits <= 0:
+        raise InvalidUsageError("credits must be a positive integer")
+
+
+async def consume_session(jti: str) -> Any:
     config = load_config()
-    async with httpx.AsyncClient(timeout=MYTHOS_HTTP_TIMEOUT) as client:
-        return await client.post(
-            f"{config.api_url}/api/apps/sessions/{jti}/consume",
-            json={},
-        )
+    client = get_http_client()
+    return await client.post(
+        f"{config.api_url}/api/apps/sessions/{_encode_jti(jti)}/consume",
+        json={},
+    )
 
 
-async def meter_session(jti: str, credits: int, reason: str | None = None) -> None:
+async def meter_session(
+    jti: str,
+    credits: int,
+    reason: str | None = None,
+    charge_id: str | None = None,
+) -> None:
+    _validate_credits(credits)
     config = load_config()
-    # charge_id is a per-call idempotency key required by the backend's SQS metering
-    # job dedup (see backend docs/migrations) — generated here, not caller-supplied.
-    body: dict[str, Any] = {"credits": credits, "charge_id": str(uuid.uuid4())}
+    body: dict[str, Any] = {"credits": credits, "charge_id": charge_id or str(uuid.uuid4())}
     if reason is not None:
         body["reason"] = reason
 
-    async with httpx.AsyncClient(timeout=MYTHOS_HTTP_TIMEOUT) as client:
-        resp = await client.post(
-            f"{config.api_url}/api/apps/sessions/{jti}/meter",
-            json=body,
-        )
+    client = get_http_client()
+    resp = await client.post(
+        f"{config.api_url}/api/apps/sessions/{_encode_jti(jti)}/meter",
+        json=body,
+    )
 
     if resp.status_code == 402:
         raise InsufficientFundsError()
