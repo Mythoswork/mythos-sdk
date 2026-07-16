@@ -16,16 +16,41 @@ that opt in: block, confirm, then charge.
 
 ## Scope
 
+This is a cross-repo feature — this repo (`mythos-sdk`) implements the
+sender half; `frontend-main` (the Mythos dashboard, `D:\frontend-main`)
+implements the listener/UI half. They ship as two separate branches/PRs,
+coordinated by this spec.
+
+**mythos-sdk (this repo):**
+
 - `docs/examples/mythos-client.js` (vanilla JS reference client)
 - `docs/examples/mythos-client.ts` (TypeScript reference client)
 - `docs/concepts/usage-metering.md` (new documented section)
 
-Out of scope: `packages/node`, `packages/python` (server SDK). This is a
-browser-side, iframe-to-parent-frame concern — the server SDK has no channel
-to the Consumer's browser. Also out of scope: implementing the listener on
-the Mythos dashboard (parent frame) side — that's the platform's
-responsibility, not this SDK's. This spec documents the contract the SDK
-speaks; it does not implement the other end.
+Out of scope here: `packages/node`, `packages/python` (server SDK). This is
+a browser-side, iframe-to-parent-frame concern — the server SDK has no
+channel to the Consumer's browser.
+
+**frontend-main (companion repo, tracked as FE-INT-17 there):**
+
+- `src/features/run/components/run-frame.tsx` — add `mythos:confirm-charge`
+  listener alongside the existing `mythos:handshake` one, reusing
+  `resolveAllowedOrigins`/`isAllowedOrigin` from `src/features/run/origin.ts`
+  for origin validation (same pattern the handshake listener already uses).
+- `src/features/run/run-machine.ts` — new events/state for the confirm flow.
+- `src/features/run/components/run-view.tsx` — wires the new state to a
+  banner.
+- New `src/features/run/components/confirm-charge-banner.tsx`, modeled on
+  the existing `low-balance-banner.tsx` (plain `role="alert"` div, not the
+  MUI `confirmation-modal.tsx` — that one is listing/purchase-shaped and
+  styled differently from the run page).
+
+Full detail for the frontend-main half lives in that repo's own spec/plan
+pair, `docs/adr/fe-int-17-pre-charge-confirmation-spec.md` and
+`-plan.md`, following its existing `fe-int-NN` numbering convention (see
+`fe-int-16-session-teardown-spec.md` for the most recent prior art). This
+document is the source of truth for the wire protocol both repos implement
+against.
 
 ## API
 
@@ -56,6 +81,12 @@ the ticket's screenshot — credit-counter chrome around the embedded app is
 the dashboard's own FE). Confirmation is negotiated via `postMessage` between
 the iframe (producer client) and `window.parent` (dashboard).
 
+The ticket's "unique code for notification popup" requirement is the
+`requestId`: generated fresh inside the client's `reportUsage` call for
+every confirmation round-trip, it's how the dashboard's response is matched
+back to the specific charge that requested it (two overlapping charges in
+flight — unlikely but not impossible — don't cross-resolve each other).
+
 Producer → parent:
 ```json
 { "type": "mythos:confirm-charge", "requestId": "<uuid>", "credits": 1, "reason": "calculator:multiply" }
@@ -69,6 +100,17 @@ Parent → producer:
 The producer client validates `event.source === window.parent` and matches
 `requestId` before trusting a response — ignore anything else received on
 the `message` listener.
+
+**targetOrigin:** the producer → parent message is sent with `postMessage(msg, '*')`
+— the producer client generally doesn't know the dashboard's origin, and
+this is safe because only `window.parent` ever receives it (it isn't
+broadcast). The parent → producer direction is different: `frontend-main`
+already knows the exact iframe origin (`launch.iframe_url`, same value
+`resolveAllowedOrigins` derives from) and its response postMessage must
+target that origin explicitly, not `'*'` — this is a requirement on the
+frontend-main side, not something mythos-sdk enforces, but it's called out
+here since a wildcard there would be a real leak (dashboard state going to
+whatever page happens to be in that iframe).
 
 ## Fail-closed behavior
 
