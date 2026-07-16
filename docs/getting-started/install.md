@@ -1,6 +1,6 @@
 # Install the SDK
 
-Install `@mythos/sdk` or `mythos-sdk` and configure environment variables.
+Install `@mythos-work/sdk` or `mythos-sdk` and configure environment variables.
 
 {% hint style="info" %}
 **Just getting started?** After installing, follow [Quickstart: Node.js](quickstart-node.md) or [Quickstart: Python](quickstart-python.md).
@@ -9,7 +9,7 @@ Install `@mythos/sdk` or `mythos-sdk` and configure environment variables.
 ## Node.js / TypeScript
 
 ```bash
-npm install @mythos/sdk
+npm install @mythos-work/sdk
 ```
 
 If the package is not yet on the npm registry:
@@ -74,7 +74,7 @@ MYTHOS_LISTING_ID=
 
 ## Browser imports
 
-Do **not** import server SDK functions in client bundles. The `@mythos/sdk` browser export throws `NOT_IMPLEMENTED` for `verifyLaunchToken`, `requireLaunchToken`, and `reportUsage`. All token verification happens server-side.
+Do **not** import server SDK functions in client bundles. The `@mythos-work/sdk` browser export throws `NOT_IMPLEMENTED` for `verifyLaunchToken`, `requireLaunchToken`, and `reportUsage`. All token verification happens server-side.
 
 ## Next steps
 

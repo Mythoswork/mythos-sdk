@@ -55,7 +55,7 @@ Your app must:
 
 | Rule | Why |
 |------|-----|
-| **Never verify JWTs in browser code** | `@mythos/sdk` browser build throws; tokens must be verified server-side only |
+| **Never verify JWTs in browser code** | `@mythos-work/sdk` browser build throws; tokens must be verified server-side only |
 | **Never skip `/consume`** | Use SDK `requireLaunchToken()` / `require_launch_token()` only (ADR-0003 single-use) |
 | **Handshake path must be exact** | `/.well-known/mythos-handshake` — Mythos publish gate pings this URL |
 | **Listing callback path must be exact** | `/.well-known/mythos-listing-registered` — when using dynamic IDs |
@@ -90,7 +90,7 @@ Stop and ask the user if stack is ambiguous or there are multiple conflicting en
 ### Node.js / TypeScript
 
 ```bash
-npm install @mythos/sdk
+npm install @mythos-work/sdk
 ```
 
 If not on npm registry yet:
@@ -133,7 +133,7 @@ import {
   requireLaunchToken,
   reportUsage,
   MythosError,
-} from '@mythos/sdk';
+} from '@mythos-work/sdk';
 
 app.use(handshakeRoute());  // NOT app.get('/.well-known/...', ...)
 
@@ -223,7 +223,7 @@ Wire the listing registration callback and dynamic ID resolution.
 ### Node.js
 
 ```typescript
-import { listingCallbackRoute, requireLaunchToken } from '@mythos/sdk';
+import { listingCallbackRoute, requireLaunchToken } from '@mythos-work/sdk';
 
 const listingIds: string[] = [];
 

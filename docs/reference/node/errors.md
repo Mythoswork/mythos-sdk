@@ -1,6 +1,6 @@
 # Errors (Node.js)
 
-Typed errors thrown by `@mythos/sdk`.
+Typed errors thrown by `@mythos-work/sdk`.
 
 ## MythosError
 
@@ -41,7 +41,7 @@ Thrown by `reportUsage` when Mythos returns 404.
 ## HTTP mapping in route handlers
 
 ```typescript
-import { MythosError, InsufficientFundsError, SessionNotFoundError } from '@mythos/sdk';
+import { MythosError, InsufficientFundsError, SessionNotFoundError } from '@mythos-work/sdk';
 
 try {
   await reportUsage(sessionJti, { credits: 1 });

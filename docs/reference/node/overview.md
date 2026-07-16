@@ -1,6 +1,6 @@
 # Node.js SDK overview
 
-API reference for `@mythos/sdk` — the official Mythos SDK for Node.js and TypeScript.
+API reference for `@mythos-work/sdk` — the official Mythos SDK for Node.js and TypeScript.
 
 {% hint style="info" %}
 **Just getting started?** [Quickstart: Node.js](../../getting-started/quickstart-node.md)
@@ -9,7 +9,7 @@ API reference for `@mythos/sdk` — the official Mythos SDK for Node.js and Type
 ## Install
 
 ```bash
-npm install @mythos/sdk
+npm install @mythos-work/sdk
 ```
 
 ## Exports

@@ -6,7 +6,7 @@ Official SDK packages for integrating with the Mythos platform.
 
 | Package | Language | Registry |
 |---------|----------|----------|
-| [`@mythos/sdk`](./packages/node) | Node.js / TypeScript | npm |
+| [`@mythos-work/sdk`](./packages/node) | Node.js / TypeScript | npm |
 | [`mythos-sdk`](./packages/python) | Python | PyPI |
 
 ## Overview
@@ -33,11 +33,11 @@ Full Producer documentation lives in [`docs/`](./docs/) (GitBook-ready):
 ## Quick start (Node.js)
 
 ```bash
-npm install @mythos/sdk
+npm install @mythos-work/sdk
 ```
 
 ```typescript
-import { requireLaunchToken, reportUsage, handshakeRoute } from '@mythos/sdk';
+import { requireLaunchToken, reportUsage, handshakeRoute } from '@mythos-work/sdk';
 
 // Env vars required:
 // MYTHOS_LISTING_ID=<your-listing-id>
