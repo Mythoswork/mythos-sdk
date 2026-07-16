@@ -32,7 +32,11 @@ copy-paste reference files, not compiled package source.
 - No new test infra — these files have none today (see spec `## Testing`).
   Verification is `node --check` / `tsc --noEmit` (syntax/type checks) plus
   manual protocol trace, not unit tests.
-- Full protocol/contract source of truth: `docs/superpowers/specs/2026-07-16-pre-charge-confirmation-design.md`.
+- Full protocol/contract source of truth: `docs/adr/pre-charge-confirmation-spec.md`.
+- The files this plan modifies (`docs/examples/*`, `docs/concepts/usage-metering.md`)
+  live on the unmerged `docs/watch-out-for-and-other-languages` branch, not
+  `main` — Task 1/2/3 Step 1 checks assume that branch (or its merge) is
+  present.
 
 ---
 
@@ -94,12 +98,13 @@ window.MythosClient = (function () {
 
   const CONFIRM_REQUEST_TYPE = "mythos:confirm-charge";
   const CONFIRM_RESPONSE_TYPE = "mythos:confirm-charge-response";
+  const CONFIRM_TIMEOUT_TYPE = "mythos:confirm-charge-timeout";
   const DEFAULT_CONFIRM_TIMEOUT_MS = 10000;
 
   // Posts a confirm-charge request to the dashboard parent frame and waits
   // for a matching response. Resolves false (never rejects) on timeout, on
   // explicit decline, or if the page isn't embedded — all fail-closed.
-  function confirmCharge(credits, reason, timeoutMs) {
+  function confirmCharge(credits, reason, timeoutMs = DEFAULT_CONFIRM_TIMEOUT_MS) {
     return new Promise((resolve) => {
       if (window === window.parent) {
         console.warn(
@@ -119,6 +124,7 @@ window.MythosClient = (function () {
       const timer = setTimeout(() => {
         if (settled) return;
         console.warn("[MythosClient] confirm-charge timed out — skipping charge.");
+        window.parent.postMessage({ type: CONFIRM_TIMEOUT_TYPE, requestId }, "*");
         cleanup();
         resolve(false);
       }, timeoutMs);
@@ -126,7 +132,8 @@ window.MythosClient = (function () {
       function onMessage(event) {
         if (event.source !== window.parent) return;
         const data = event.data;
-        if (!data || data.type !== CONFIRM_RESPONSE_TYPE || data.requestId !== requestId) return;
+        if (!data || data.type !== CONFIRM_RESPONSE_TYPE) return;
+        if (typeof data.requestId !== "string" || data.requestId !== requestId) return;
         cleanup();
         resolve(Boolean(data.approved));
       }
@@ -151,11 +158,7 @@ window.MythosClient = (function () {
     const options = opts || {};
 
     if (options.requireConfirmation) {
-      const approved = await confirmCharge(
-        credits,
-        reason,
-        options.confirmTimeoutMs || DEFAULT_CONFIRM_TIMEOUT_MS,
-      );
+      const approved = await confirmCharge(credits, reason, options.confirmTimeoutMs);
       if (!approved) return;
     }
 
@@ -183,41 +186,67 @@ window.MythosClient = (function () {
 Run: `node --check docs/examples/mythos-client.js`
 Expected: no output, exit code 0.
 
-- [ ] **Step 4: Manual protocol trace in a scratch HTML page**
+- [ ] **Step 4: Manual protocol trace with a two-page harness**
 
-Create a throwaway file (not committed) to exercise both paths without a
-real dashboard listener:
+Create two scratch files in `docs/examples/` (not committed — delete after
+verifying), then serve the directory with `npx serve docs/examples` (or
+`python -m http.server` from inside it) and open the dashboard page in a
+browser, since `postMessage`/`fetch` need `http://`, not `file://`.
+
+`docs/examples/_scratch-producer.html`:
 
 ```html
-<!-- scratch, do not commit -->
-<script src="../mythos-sdk/docs/examples/mythos-client.js"></script>
 <script>
-  window.MythosClient.init().then(() => {
-    // Manually fake a session for this trace since there's no ?lt= param.
+  window.fetch = async (url) => {
+    if (String(url).startsWith("/api/mythos/session")) {
+      return { ok: true, json: async () => ({ session: { userId: "u1", email: "a@b.com", displayName: "Test", listingId: "l1", sessionJti: "jti-1" } }) };
+    }
+    if (String(url).startsWith("/api/mythos/report-usage")) {
+      document.title = "CHARGED";
+      return { ok: true, json: async () => ({}) };
+    }
+    throw new Error("unexpected fetch: " + url);
+  };
+  history.replaceState({}, "", "?lt=fake");
+</script>
+<script src="./mythos-client.js"></script>
+<script>
+  window.MythosClient.init().then(async () => {
+    document.title = "READY";
+    await window.MythosClient.reportUsage(5, "manual-trace", { requireConfirmation: true, confirmTimeoutMs: 3000 });
+    if (document.title !== "CHARGED") document.title = "SKIPPED";
   });
 </script>
 ```
 
-Simpler: open a browser devtools console on any page and run:
+`docs/examples/_scratch-dashboard.html`:
 
-```js
-window.MythosClient.getSession(); // null — expected, confirms init() no-ops without ?lt=
+```html
+<p>Watch the iframe tab title below: READY -> CHARGED or SKIPPED.</p>
+<iframe src="./_scratch-producer.html" style="width:100%;height:120px;"></iframe>
+<script>
+  window.addEventListener("message", (event) => {
+    if (!event.data) return;
+    if (event.data.type === "mythos:confirm-charge") {
+      console.log("confirm-charge received", event.data);
+      const APPROVE = true; // flip to false to trace the decline path
+      event.source.postMessage(
+        { type: "mythos:confirm-charge-response", requestId: event.data.requestId, approved: APPROVE },
+        "*",
+      );
+    }
+    if (event.data.type === "mythos:confirm-charge-timeout") {
+      console.log("confirm-charge-timeout received", event.data); // fires if you comment out the postMessage above
+    }
+  });
+</script>
 ```
 
-Then verify the not-embedded fail-closed path directly, since `window ===
-window.parent` is true for a top-level tab:
-
-```js
-// After manually setting an internal session isn't possible from outside
-// the IIFE, so instead verify confirmCharge's not-embedded branch directly
-// by pasting its body into the console and calling it — expect it to
-// console.warn and resolve(false) synchronously without posting a message.
-```
-
-Expected: the not-embedded branch logs the `console.warn` and never calls
-`window.parent.postMessage` (observe via a `postMessage` spy in devtools if
-desired). This confirms the fail-closed path without needing a running
-dashboard.
+Expected: with `APPROVE = true`, iframe title goes READY → CHARGED. With
+`APPROVE = false`, READY → SKIPPED. Commenting out the `postMessage` call
+entirely traces the timeout path — after 3s the dashboard console logs
+`confirm-charge-timeout received` and the iframe title becomes SKIPPED.
+Delete both scratch files once all three paths are confirmed.
 
 - [ ] **Step 5: Commit**
 
@@ -281,11 +310,17 @@ interface ConfirmChargeResponseMessage {
   approved: boolean;
 }
 
+interface ConfirmChargeTimeoutMessage {
+  type: "mythos:confirm-charge-timeout";
+  requestId: string;
+}
+
 let session: MythosClientSession | null = null;
 let initPromise: Promise<void> | null = null;
 
 const CONFIRM_REQUEST_TYPE: ConfirmChargeRequestMessage["type"] = "mythos:confirm-charge";
 const CONFIRM_RESPONSE_TYPE: ConfirmChargeResponseMessage["type"] = "mythos:confirm-charge-response";
+const CONFIRM_TIMEOUT_TYPE: ConfirmChargeTimeoutMessage["type"] = "mythos:confirm-charge-timeout";
 const DEFAULT_CONFIRM_TIMEOUT_MS = 10_000;
 
 export function getMythosSession(): MythosClientSession | null {
@@ -326,7 +361,7 @@ export function initMythosFromUrl(): Promise<void> {
 function confirmCharge(
   credits: number,
   reason: string | undefined,
-  timeoutMs: number,
+  timeoutMs: number = DEFAULT_CONFIRM_TIMEOUT_MS,
 ): Promise<boolean> {
   return new Promise((resolve) => {
     if (window === window.parent) {
@@ -347,6 +382,8 @@ function confirmCharge(
     const timer = window.setTimeout(() => {
       if (settled) return;
       console.warn("[MythosClient] confirm-charge timed out — skipping charge.");
+      const timeoutMessage: ConfirmChargeTimeoutMessage = { type: CONFIRM_TIMEOUT_TYPE, requestId };
+      window.parent.postMessage(timeoutMessage, "*");
       cleanup();
       resolve(false);
     }, timeoutMs);
@@ -354,7 +391,8 @@ function confirmCharge(
     function onMessage(event: MessageEvent) {
       if (event.source !== window.parent) return;
       const data = event.data as Partial<ConfirmChargeResponseMessage> | null;
-      if (!data || data.type !== CONFIRM_RESPONSE_TYPE || data.requestId !== requestId) return;
+      if (!data || data.type !== CONFIRM_RESPONSE_TYPE) return;
+      if (typeof data.requestId !== "string" || data.requestId !== requestId) return;
       cleanup();
       resolve(Boolean(data.approved));
     }
@@ -385,7 +423,7 @@ export async function reportMythosUsage(
   if (!session) return;
 
   if (opts?.requireConfirmation) {
-    const approved = await confirmCharge(credits, reason, opts.confirmTimeoutMs ?? DEFAULT_CONFIRM_TIMEOUT_MS);
+    const approved = await confirmCharge(credits, reason, opts.confirmTimeoutMs);
     if (!approved) return;
   }
 
@@ -405,8 +443,10 @@ export async function reportMythosUsage(
 
 Run: `npx tsc --noEmit --strict --target es2020 --lib es2020,dom docs/examples/mythos-client.ts`
 Expected: no output, exit code 0. (This file has no project tsconfig since
-it's a copy-paste snippet, not built package source — flags here mirror
-`packages/node/tsconfig.json`'s strictness.)
+it's a copy-paste snippet, not built package source. `--strict --target
+es2020` matches `packages/node/tsconfig.json`'s floor; `--lib es2020,dom` is
+added on top since this is browser code and that tsconfig has no `dom` lib
+— it's a Node package.)
 
 - [ ] **Step 4: Commit**
 
@@ -457,7 +497,8 @@ When set, the client posts a `mythos:confirm-charge` message to
 in) and waits up to `confirmTimeoutMs` (default `10000`) for a matching
 `mythos:confirm-charge-response`. The charge is skipped — `report-usage` is
 never called — unless the dashboard responds `approved: true` within the
-timeout.
+timeout. On timeout, the client also posts `mythos:confirm-charge-timeout`
+so the dashboard can close a stale confirmation prompt.
 
 {% hint style="warning" %}
 This depends on the Mythos dashboard implementing the
@@ -495,9 +536,16 @@ git commit -m "docs: document requireConfirmation flag for pre-charge confirmati
   `tsc --noEmit`) — no new test infra, as the spec specifies.
 - **Type consistency:** `confirmTimeoutMs` name matches across JS/TS/docs.
   Message `type` string literals (`mythos:confirm-charge`,
-  `mythos:confirm-charge-response`) and the `requestId`/`approved` field
-  names are identical across both client files and the doc section.
+  `mythos:confirm-charge-response`, `mythos:confirm-charge-timeout`) and the
+  `requestId`/`approved` field names are identical across both client files
+  and the doc section. Default-timeout handling uses a default parameter in
+  both files (not `||`/`??` at the call site), so `confirmTimeoutMs: 0`
+  behaves the same in JS and TS instead of the JS version silently
+  overriding it to `10000`.
 - **Frontend-main half:** intentionally not a task here — tracked in that
-  repo's own `fe-int-17-pre-charge-confirmation-plan.md`. This plan's Task 1
-  Step 4 and Task 2 note that end-to-end verification against a real
-  dashboard listener isn't possible until that companion PR lands.
+  repo's own `fe-int-17-pre-charge-confirmation-plan.md` (not yet written;
+  no branch/PR exists there yet, see `docs/adr/fe-int-17-frontend-main-companion-spec.md`
+  in this repo for the reference copy). Task 1 Step 4's manual harness
+  covers the sender side end-to-end (approve/decline/timeout) with a faked
+  dashboard listener; real dashboard integration still needs that companion
+  PR.

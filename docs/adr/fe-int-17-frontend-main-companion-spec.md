@@ -7,14 +7,14 @@
 > `frontend-main` yet. When that repo's implementation work starts, this
 > content becomes its `fe-int-17-...-spec.md`, and an
 > `fe-int-17-...-plan.md` gets written there following the same process
-> used for this repo's `docs/superpowers/plans/2026-07-16-pre-charge-confirmation.md`.
+> used for this repo's `docs/adr/pre-charge-confirmation-plan.md`.
 
 ---
 
 # FE-INT-17 · RUN — Pre-charge confirmation dialog (in-app actions)
 
 **Status:** Pending — depends on mythos-sdk shipping `requireConfirmation`
-(this repo, `docs/superpowers/specs/2026-07-16-pre-charge-confirmation-design.md`)
+(this repo, `docs/adr/pre-charge-confirmation-spec.md`)
 **Ticket:** FE-INT-17 | **Wave:** W3
 **Deps:** FE-INT-13 (handshake — `run-frame.tsx` message-listener pattern this reuses), FE-INT-16 (session teardown — this listener must follow the same cleanup contract)
 
@@ -31,8 +31,7 @@ charge must not happen.
 
 This is the listener/UI half, implemented in `frontend-main`. The
 producer-facing sender half (client SDK option, postMessage send) is this
-repo's work, spec'd in
-`docs/superpowers/specs/2026-07-16-pre-charge-confirmation-design.md`.
+repo's work, spec'd in `docs/adr/pre-charge-confirmation-spec.md`.
 
 **Not to be confused with:** `run-view.tsx` on `frontend-main`'s
 `origin/staging` already has a *different*, already-shipped confirm dialog
@@ -55,6 +54,9 @@ Producer iframe → dashboard (window.parent):
 
 Dashboard → producer iframe:
   { type: 'mythos:confirm-charge-response', requestId: string, approved: boolean }
+
+Producer iframe → dashboard, on give-up:
+  { type: 'mythos:confirm-charge-timeout', requestId: string }
 ```
 
 - Dashboard's response `postMessage` targets the iframe's own origin
@@ -64,11 +66,12 @@ Dashboard → producer iframe:
 - Dashboard validates the incoming request the same way the existing
   handshake listener does: `isAllowedOrigin(resolveAllowedOrigins(launch),
   event.origin)` before trusting `event.data`.
-- No response from the dashboard (dialog dismissed without a choice, user
-  navigates away) is the producer client's problem to time out on — the
-  dashboard side just doesn't send a response; it does not need its own
-  timeout to satisfy this contract, but the dialog should not stay stuck
-  forever (see Acceptance Criteria).
+- The producer client has its own timeout (default 10s) and posts
+  `mythos:confirm-charge-timeout` when it gives up waiting — the dashboard
+  should listen for this and close/gray out the dialog for that
+  `requestId`, so a late click doesn't silently do nothing (see Acceptance
+  Criteria). Until that listener exists, a late OK click is a no-op with no
+  error shown — a known gap, not this contract's fault.
 
 ---
 
@@ -112,15 +115,18 @@ the handshake listener.
       undefined
 - [ ] The existing launch-cost `AlertDialog` (`confirmOpen` state) is
       untouched — both dialogs can coexist without interfering
+- [ ] Receiving `mythos:confirm-charge-timeout` for the open dialog's
+      `requestId` closes it (or disables its actions) and no longer posts a
+      response if the user then clicks OK/Cancel
 
 ---
 
 ## Out of Scope
 
 - The producer SDK's send-side implementation (this repo, `mythos-sdk`)
-- Confirm-timeout behavior on the producer side — that's the SDK's
-  fail-closed timer, not the dashboard's; the dashboard has no timeout of
-  its own, it just may respond late or never
+- The producer-side timeout timer itself — that's the SDK's fail-closed
+  clock, not the dashboard's. The dashboard's job is limited to reacting to
+  the `mythos:confirm-charge-timeout` notice, not owning any timing logic
 - Persisting confirm decisions across page reloads — every charge gets a
   fresh confirmation, no "remember my choice"
 - Any change to the `mythos:handshake` listener or its gating — this is an
