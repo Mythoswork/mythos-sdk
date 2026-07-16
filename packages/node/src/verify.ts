@@ -7,6 +7,16 @@ import type { MythosSession } from './types';
 // fixed identifier, not the API URL (which varies by environment).
 const MYTHOS_ISSUER = 'mythos';
 
+function validateAudience(aud: unknown, listingIds: string[]): void {
+  if (aud === undefined || aud === null) {
+    throw new Error('Missing audience claim');
+  }
+  const audValues = Array.isArray(aud) ? aud : [aud];
+  if (!audValues.some((a) => typeof a === 'string' && listingIds.includes(a))) {
+    throw new Error('Token audience does not match configured listing ID');
+  }
+}
+
 export async function verifyLaunchToken(
   token: string,
   options?: { resolveListingIds?: () => Promise<string[]> },
@@ -34,14 +44,11 @@ export async function verifyLaunchToken(
     }));
   }
 
-  const aud = Array.isArray(payload.aud) ? payload.aud[0] : payload.aud;
   const dynamicIds = options?.resolveListingIds ? await options.resolveListingIds() : [];
   if (listingIds.length === 0 && dynamicIds.length === 0) {
     throw new Error('MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required, or pass resolveListingIds');
   }
-  if (!aud || (!listingIds.includes(aud) && !dynamicIds.includes(aud))) {
-    throw new Error('Token audience does not match configured listing ID');
-  }
+  validateAudience(payload.aud, [...listingIds, ...dynamicIds]);
 
   return {
     userId: payload.sub as string,

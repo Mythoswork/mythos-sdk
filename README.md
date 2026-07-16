@@ -35,6 +35,8 @@ app.use(handshakeRoute());
 app.get('/dashboard', requireLaunchToken(), async (req, res) => {
   // req.mythos = { userId, email, displayName, listingId, sessionJti }
   await reportUsage(req.mythos.sessionJti, { credits: 1, reason: 'page-view' });
+  // Optional idempotency key for retries / double-click protection:
+  // await reportUsage(req.mythos.sessionJti, { credits: 1, reason: 'page-view', chargeId: 'unique-action-id' });
   res.json({ ok: true });
 });
 ```
@@ -55,6 +57,8 @@ app.include_router(handshake_router)
 @app.get("/dashboard")
 async def dashboard(session = Depends(require_launch_token)):
     await report_usage(session.session_jti, credits=1, reason="page-view")
+    # Optional idempotency key for retries / double-click protection:
+    # await report_usage(session.session_jti, credits=1, reason="page-view", charge_id="unique-action-id")
     return {"ok": True}
 ```
 
