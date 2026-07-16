@@ -74,4 +74,5 @@ Use `curl.exe`, not PowerShell `curl` (alias for `Invoke-WebRequest`).
 
 - [Verify your integration](../getting-started/verify-integration.md)
 - [Required routes](../guides/required-routes.md)
+- [What to watch out for](../guides/watch-out-for.md)
 - [Security](security.md)

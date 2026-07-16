@@ -20,6 +20,7 @@
 
 * [AI integration prompt](guides/ai-integration-prompt.md)
 * [Required routes](guides/required-routes.md)
+* [What to watch out for](guides/watch-out-for.md)
 * [Frontend client](guides/frontend-client.md)
 * [Auth patterns](guides/auth-patterns.md)
 * [Idempotency](guides/idempotency.md)

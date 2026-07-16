@@ -97,4 +97,5 @@ More checks: [Verify your integration](verify-integration.md).
 
 - [Express guide](../guides/express.md) — production patterns and error handling
 - [Next.js](../guides/nextjs.md) — App Router shim
+- [What to watch out for](../guides/watch-out-for.md) — real gotchas before you ship
 - [AI integration prompt](../guides/ai-integration-prompt.md) — full agent brief
