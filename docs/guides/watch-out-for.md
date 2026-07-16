@@ -50,7 +50,7 @@ Mythos issues three different JWT "kinds" from the same key set, distinguished b
 
 This matters more than it looks like it should, because **issuer checking is asymmetric across token types** — a genuine surprise once you read the source closely:
 
-- Launch tokens and listing-registered tokens check `iss == "mythos"` (`packages/node/src/verify.ts`, `packages/python/mythos_sdk/listing_callback.py`)
+- Launch tokens and listing-registered tokens check `iss == "mythos"` (`packages/node/src/verify.ts`, `packages/node/src/listing-callback.ts`, `packages/python/mythos_sdk/verify.py`, `packages/python/mythos_sdk/listing_callback.py`)
 - Handshake-check tokens check **no issuer at all** — `packages/node/src/handshake.ts` passes no `issuer` option to `jwtVerify`, and `packages/python/mythos_sdk/handshake.py` sets `_DECODE_OPTIONS = {"verify_aud": False, "verify_iss": False}` with the code comment *"Tokens in this SDK carry no aud/iss claims."*
 
 That means `purpose` is the **only** thing stopping a listing-registered token from being replayed at your handshake endpoint. If you write your own handshake logic instead of using `handshakeRoute()`/`handshake_router` verbatim, don't skip the purpose check just because the signature already validated.
@@ -218,10 +218,15 @@ Content-Type: application/json
 | `402` | Insufficient funds in the consumer's wallet |
 | `404` | Session not found (expired or invalid `jti`) |
 | `409` on `/consume` | Token already consumed — treat as your own `401` |
+| Any other non-2xx, or unreachable/timeout | See "fail closed" below |
 
 {% hint style="warning" %}
 The exact JSON error-body shape for these statuses isn't verifiable from the SDK source or its tests — both SDKs' test suites only assert on status codes, not response bodies, for these paths. Treat status codes as the only guaranteed contract and confirm body shapes against a live/staging environment yourself before hardcoding a parser for them.
 {% endhint %}
+
+**Fail closed on `/consume`.** This is a documented security property (see [Security](../resources/security.md#fail-closed)), not just SDK internals: if `/consume` is unreachable, times out, or returns a 5xx, do not grant access. Both SDKs return their own 503 in this case rather than falling back to "verified but not consumed." Replicate that — a network blip on `/consume` must never be treated as equivalent to a successful consume.
+
+For `/meter`, a 5xx or unreachable call means the usage report didn't land — surface it to your own error handling (retry with the same `charge_id`, or queue for later) rather than silently dropping it, but it's a billing-accuracy concern rather than an auth bypass, so it doesn't need the same fail-closed treatment as `/consume`.
 
 **7. Implement the two `.well-known` routes**
 
