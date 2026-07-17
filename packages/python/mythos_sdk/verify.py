@@ -1,3 +1,4 @@
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from jose import jwt, JWTError
@@ -48,7 +49,10 @@ def _build_session(payload: dict[str, Any], listing_ids: list[str]) -> MythosSes
     )
 
 
-async def verify_launch_token(token: str) -> MythosSession:
+async def verify_launch_token(
+    token: str,
+    resolve_listing_ids: Callable[[], Awaitable[list[str]]] | None = None,
+) -> MythosSession:
     """Verify a launch token signature and claims only.
 
     WARNING: This does NOT call /consume and does NOT enforce single-use semantics.
@@ -79,4 +83,11 @@ async def verify_launch_token(token: str) -> MythosSession:
             options=_DECODE_OPTIONS,
         )
 
-    return _build_session(payload, config.listing_ids)
+    dynamic_ids = await resolve_listing_ids() if resolve_listing_ids else []
+    if not config.listing_ids and not dynamic_ids:
+        raise RuntimeError(
+            "MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required, or pass resolve_listing_ids"
+        )
+    all_listing_ids = config.listing_ids + dynamic_ids
+    _validate_audience(payload, all_listing_ids)
+    return _build_session(payload, all_listing_ids)

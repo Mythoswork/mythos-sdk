@@ -5,7 +5,9 @@ import { consumeSession } from './api-client';
 import { extractLaunchToken } from './query';
 import { InvalidLaunchTokenError, MythosConfigError } from './errors';
 
-export function requireLaunchToken(): RequestHandler {
+export function requireLaunchToken(options?: {
+  resolveListingIds?: () => Promise<string[]>;
+}): RequestHandler {
   return async (req, res, next) => {
     const token = extractLaunchToken(req.query['lt']);
     if (!token) {

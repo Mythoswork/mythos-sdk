@@ -42,3 +42,14 @@ test('meterSession rejects non-positive credits', async () => {
   await expect(meterSession('jti-001', 0)).rejects.toBeInstanceOf(InvalidUsageError);
   await expect(meterSession('jti-001', -1)).rejects.toBeInstanceOf(InvalidUsageError);
 });
+
+test('meterSession reuses caller-supplied chargeId', async () => {
+  await meterSession('jti-001', 5, 'page-view', 'stable-charge-key');
+  await meterSession('jti-001', 5, 'page-view', 'stable-charge-key');
+
+  const calls = (global.fetch as jest.Mock).mock.calls;
+  const bodies = calls.map((c) => JSON.parse(c[1].body));
+
+  expect(bodies[0].charge_id).toBe('stable-charge-key');
+  expect(bodies[1].charge_id).toBe('stable-charge-key');
+});

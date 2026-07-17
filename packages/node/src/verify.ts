@@ -44,13 +44,10 @@ function buildSession(payload: JWTPayload, listingIds: string[]): MythosSession 
   };
 }
 
-/**
- * Verifies a launch token signature and claims only.
- *
- * WARNING: This does NOT call /consume and does NOT enforce single-use semantics.
- * Use requireLaunchToken() middleware for route protection (ADR-0003).
- */
-export async function verifyLaunchToken(token: string): Promise<MythosSession> {
+export async function verifyLaunchToken(
+  token: string,
+  options?: { resolveListingIds?: () => Promise<string[]> },
+): Promise<MythosSession> {
   const { listingIds, apiUrl } = loadConfig();
 
   let keySet = await getKeySet(apiUrl);
@@ -71,5 +68,12 @@ export async function verifyLaunchToken(token: string): Promise<MythosSession> {
     }));
   }
 
-  return buildSession(payload, listingIds);
+  const dynamicIds = options?.resolveListingIds ? await options.resolveListingIds() : [];
+  if (listingIds.length === 0 && dynamicIds.length === 0) {
+    throw new Error('MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required, or pass resolveListingIds');
+  }
+  const allListingIds = [...listingIds, ...dynamicIds];
+  validateAudience(payload, allListingIds);
+
+  return buildSession(payload, allListingIds);
 }

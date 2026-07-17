@@ -6,7 +6,7 @@ Official SDK packages for integrating with the Mythos platform.
 
 | Package | Language | Registry |
 |---------|----------|----------|
-| [`@mythos/sdk`](./packages/node) | Node.js / TypeScript | npm |
+| [`@mythos-work/sdk`](./packages/node) | Node.js / TypeScript | npm |
 | [`mythos-sdk`](./packages/python) | Python | PyPI |
 
 ## Overview
@@ -16,18 +16,30 @@ Producers install the Mythos SDK to:
 1. **Verify launch tokens** — RS256 JWKS-backed verification of the `?lt=` token Mythos embeds in the redirect URL
 2. **Enforce single-use semantics** — the SDK middleware automatically calls `/consume` (per ADR-0003); Producers cannot skip this
 3. **Report usage** — `reportUsage()` / `report_usage()` debits the Consumer's Mythos wallet
+4. **Publish handshake** — `handshakeRoute()` / `handshake_router` for the Mythos publish gate
+5. **Listing callback** — `listingCallbackRoute()` / `create_listing_callback_handler` for dynamic listing ID registration
+
+## Documentation
+
+Full Producer documentation lives in [`docs/`](./docs/) (GitBook-ready):
+
+- **Docs home:** [docs/README.md](./docs/README.md)
+- **Quickstart (Node):** [docs/getting-started/quickstart-node.md](./docs/getting-started/quickstart-node.md)
+- **Quickstart (Python):** [docs/getting-started/quickstart-python.md](./docs/getting-started/quickstart-python.md)
+- **AI integration prompt:** [docs/guides/ai-integration-prompt.md](./docs/guides/ai-integration-prompt.md)
+- **Code examples:** [docs/examples/](./docs/examples/)
+- **Cursor skill:** copy [`.cursor/skills/integrate-mythos-sdk/`](./.cursor/skills/integrate-mythos-sdk/) into your project
 
 See [docs/INTEGRATION.md](./docs/INTEGRATION.md) for the full launch → session → metering flow.
 
 ## Quick start (Node.js)
 
 ```bash
-npm install @mythos/sdk express
+npm install @mythos-work/sdk
 ```
 
 ```typescript
-import express from 'express';
-import { requireLaunchToken, reportUsage, handshakeRoute } from '@mythos/sdk';
+import { requireLaunchToken, reportUsage, handshakeRoute } from '@mythos-work/sdk';
 
 const app = express();
 
@@ -35,11 +47,13 @@ const app = express();
 // MYTHOS_LISTING_ID=<your-listing-id>
 // (MYTHOS_API_URL defaults to https://api.mythos.work)
 
-app.get('/.well-known/mythos-handshake', handshakeRoute());
+app.use(handshakeRoute());
 
 app.get('/dashboard', requireLaunchToken(), async (req, res) => {
   // req.mythos = { userId, email, displayName, listingId, sessionJti }
   await reportUsage(req.mythos.sessionJti, { credits: 1, reason: 'page-view' });
+  // Optional idempotency key for retries / double-click protection:
+  // await reportUsage(req.mythos.sessionJti, { credits: 1, reason: 'page-view', chargeId: 'unique-action-id' });
   res.json({ ok: true });
 });
 ```
@@ -60,8 +74,10 @@ app = FastAPI()
 app.include_router(handshake_router)
 
 @app.get("/dashboard")
-async def dashboard(session = Depends(require_launch_token)):
+async def dashboard(session=Depends(require_launch_token())):
     await report_usage(session.sessionJti, credits=1, reason="page-view")
+    # Optional idempotency key for retries / double-click protection:
+    # await report_usage(session.sessionJti, credits=1, reason="page-view", charge_id="unique-action-id")
     return {"ok": True}
 ```
 
@@ -73,42 +89,7 @@ async def dashboard(session = Depends(require_launch_token)):
 | `MYTHOS_LISTING_IDS` | Yes* | — | Comma-separated listing IDs (overrides above) |
 | `MYTHOS_API_URL` | No | `https://api.mythos.work` | API base URL override |
 
-*One of `MYTHOS_LISTING_ID` or `MYTHOS_LISTING_IDS` is required for launch token verification and metering. Handshake only needs `MYTHOS_API_URL`.
-
-## API reference
-
-### `requireLaunchToken()` / `require_launch_token`
-
-Express middleware or FastAPI dependency. Reads `?lt=`, verifies JWT, calls `/consume`, attaches session.
-
-| Outcome | Node status | Python status |
-|---------|-------------|---------------|
-| Missing `lt` | 401 | 401 |
-| Invalid/expired token | 401 | 401 |
-| Already consumed | 401 | 401 |
-| Missing config | 500 | 500 |
-| Consume unreachable | 503 | 503 |
-
-### `reportUsage(jti, opts)` / `report_usage(jti, credits, ...)`
-
-Posts to `/meter`. `credits` must be a positive integer.
-
-| Option | Node | Python |
-|--------|------|--------|
-| Reason | `reason?: string` | `reason: str \| None` |
-| Idempotency | `idempotencyKey?: string` | `idempotency_key: str \| None` |
-
-Pass the same idempotency key when retrying a failed meter call to avoid double-charging.
-
-### Errors
-
-| Error | Code | When |
-|-------|------|------|
-| `MythosConfigError` | `CONFIG_ERROR` | Missing listing ID env |
-| `InvalidLaunchTokenError` | `INVALID_LAUNCH_TOKEN` | Bad JWT claims |
-| `InsufficientFundsError` | `INSUFFICIENT_FUNDS` | Meter returns 402 |
-| `SessionNotFoundError` | `SESSION_NOT_FOUND` | Meter returns 404 |
-| `InvalidUsageError` | `INVALID_USAGE` | Invalid credits value |
+\*One of `MYTHOS_LISTING_ID` or `MYTHOS_LISTING_IDS` is required — unless using [dynamic listing IDs](./docs/concepts/dynamic-listing-ids.md).
 
 ## Security
 
@@ -133,6 +114,4 @@ See [packages/node/README.md](./packages/node/README.md) and [packages/python/RE
 
 ## License
 
-Copyright (c) Mythos. All rights reserved.
-
-Proprietary software — see [LICENSE](./LICENSE).
+Apache-2.0 — see [LICENSE](./LICENSE).

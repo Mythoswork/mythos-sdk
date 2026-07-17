@@ -1,8 +1,12 @@
 {
-  "name": "@mythos/sdk",
-  "version": "0.1.0",
-  "license": "UNLICENSED",
+  "name": "@mythos-work/sdk",
+  "version": "0.0.5",
   "description": "Official Mythos SDK for Node.js — launch token verification, usage reporting, and handshake",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mythoswork/mythos-sdk"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -12,8 +16,12 @@
     ".": {
       "browser": "./dist/browser.js",
       "require": "./dist/index.js",
+      "default": "./dist/index.js",
       "types": "./dist/index.d.ts"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc",

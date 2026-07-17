@@ -1,5 +1,6 @@
 import { jwtVerify, errors } from 'jose';
-import type { RequestHandler } from 'express';
+import { Router } from 'express';
+import type { Request, Response } from 'express';
 import { getKeySet, getKeySetWithKidFallback } from './jwks-cache';
 import { extractLaunchToken } from './query';
 import { SDK_VERSION } from './version';
@@ -29,8 +30,10 @@ async function validateHandshakeToken(token: string): Promise<void> {
   }
 }
 
-export function handshakeRoute(): RequestHandler {
-  return async (req, res) => {
+export function handshakeRoute(): Router {
+  const router = Router();
+
+  router.get('/.well-known/mythos-handshake', async (req: Request, res: Response) => {
     const token = extractLaunchToken(req.query['lt']);
     if (!token) {
       res.status(401).json({ error: 'Missing launch token' });
@@ -47,5 +50,7 @@ export function handshakeRoute(): RequestHandler {
       return;
     }
     res.json({ ok: true, sdk_version: SDK_VERSION });
-  };
+  });
+
+  return router;
 }

@@ -149,6 +149,34 @@ test('consume network error → 503, never grants access', async () => {
   expect(next).not.toHaveBeenCalled();
 });
 
+test('resolveListingIds forwarded end-to-end: dynamic-only listing (no static env) succeeds', async () => {
+  // Regression for the live 401 bug: requireLaunchToken() must forward its
+  // options through to verifyLaunchToken, not just calculate.ts's direct call.
+  delete process.env.MYTHOS_LISTING_ID;
+  delete process.env.MYTHOS_LISTING_IDS;
+
+  const { requireLaunchToken } = await import('../src/middleware');
+  jest.spyOn(apiClient, 'consumeSession').mockResolvedValue({ status: 200 } as unknown as globalThis.Response);
+
+  const token = await new SignJWT({ sub: 'user-1', email: 'e@e.com', displayName: 'User', listingId: 'listing-dynamic' })
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setIssuedAt()
+    .setIssuer('mythos')
+    .setAudience('listing-dynamic')
+    .setJti('jti-dyn')
+    .setExpirationTime('5m')
+    .sign(privateKey);
+
+  const req = { query: { lt: token }, mythos: undefined } as unknown as Request;
+  const res = mockRes();
+  const next: NextFunction = jest.fn() as unknown as NextFunction;
+
+  await requireLaunchToken({ resolveListingIds: async () => ['listing-dynamic'] })(req, res, next);
+
+  expect(next).toHaveBeenCalled();
+  expect(req.mythos?.listingId).toBe('listing-dynamic');
+});
+
 test('iss mismatch → 401, token with wrong issuer rejected', async () => {
   const { requireLaunchToken } = await import('../src/middleware');
 

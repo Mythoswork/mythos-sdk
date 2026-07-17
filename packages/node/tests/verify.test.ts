@@ -120,6 +120,112 @@ test('wrong aud rejected', async () => {
   await expect(verifyLaunchToken(token)).rejects.toMatchObject({ code: 'INVALID_LAUNCH_TOKEN' });
 });
 
+test('resolveListingIds allows aud not in static list', async () => {
+  const { verifyLaunchToken } = await import('../src/verify');
+  const token = await new SignJWT({ sub: 'u', email: 'e', displayName: 'd', listingId: 'listing-dynamic' })
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setIssuedAt()
+    .setIssuer('mythos')
+    .setAudience('listing-dynamic')
+    .setJti('jti-dyn')
+    .setExpirationTime('5m')
+    .sign(privateKey);
+
+  const session = await verifyLaunchToken(token, {
+    resolveListingIds: async () => ['listing-dynamic'],
+  });
+  expect(session.listingId).toBe('listing-dynamic');
+});
+
+test('resolveListingIds miss + static miss → rejected', async () => {
+  const { verifyLaunchToken } = await import('../src/verify');
+  const token = await new SignJWT({ sub: 'u', email: 'e', displayName: 'd', listingId: 'other' })
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setIssuedAt()
+    .setIssuer('mythos')
+    .setAudience('other')
+    .setJti('jti-miss')
+    .setExpirationTime('5m')
+    .sign(privateKey);
+
+  await expect(
+    verifyLaunchToken(token, { resolveListingIds: async () => ['listing-xyz'] }),
+  ).rejects.toThrow('Token audience does not match configured listing ID');
+});
+
+test('resolveListingIds allows aud when no static listing IDs configured at all', async () => {
+  // Regression: producer relying purely on dynamic resolution (e.g. via the
+  // listing-registered callback), with no MYTHOS_LISTING_ID(S) env var set.
+  delete process.env.MYTHOS_LISTING_ID;
+  delete process.env.MYTHOS_LISTING_IDS;
+
+  const { verifyLaunchToken } = await import('../src/verify');
+  const token = await new SignJWT({ sub: 'u', email: 'e', displayName: 'd', listingId: 'listing-dynamic' })
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setIssuedAt()
+    .setIssuer('mythos')
+    .setAudience('listing-dynamic')
+    .setJti('jti-dyn-only')
+    .setExpirationTime('5m')
+    .sign(privateKey);
+
+  const session = await verifyLaunchToken(token, {
+    resolveListingIds: async () => ['listing-dynamic'],
+  });
+  expect(session.listingId).toBe('listing-dynamic');
+});
+
+test('no static and no dynamic listing IDs → clear config error', async () => {
+  delete process.env.MYTHOS_LISTING_ID;
+  delete process.env.MYTHOS_LISTING_IDS;
+
+  const { verifyLaunchToken } = await import('../src/verify');
+  const token = await mintToken();
+
+  await expect(verifyLaunchToken(token)).rejects.toThrow(
+    'MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required',
+  );
+});
+
+test('aud list with valid member at index 1 accepted', async () => {
+  const { verifyLaunchToken } = await import('../src/verify');
+  const token = await new SignJWT({
+    sub: 'user-123',
+    email: 'consumer@example.com',
+    displayName: 'Test User',
+    listingId: 'listing-abc',
+  })
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setIssuedAt()
+    .setIssuer('mythos')
+    .setAudience(['evil-other-service', 'listing-abc'])
+    .setJti('jti-001')
+    .setExpirationTime('5m')
+    .sign(privateKey);
+
+  const session = await verifyLaunchToken(token);
+  expect(session.listingId).toBe('listing-abc');
+});
+
+test('aud list with no matching member rejected', async () => {
+  const { verifyLaunchToken } = await import('../src/verify');
+  const token = await new SignJWT({
+    sub: 'u',
+    email: 'e',
+    displayName: 'd',
+    listingId: 'listing-abc',
+  })
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setIssuedAt()
+    .setIssuer('mythos')
+    .setAudience(['evil-a', 'evil-b'])
+    .setJti('jti-bad-aud')
+    .setExpirationTime('5m')
+    .sign(privateKey);
+
+  await expect(verifyLaunchToken(token)).rejects.toThrow();
+});
+
 test('alg:none rejected — hard block', async () => {
   const { verifyLaunchToken } = await import('../src/verify');
   const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');

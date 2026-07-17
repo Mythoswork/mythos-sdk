@@ -52,3 +52,16 @@ async def test_meter_session_url_encodes_jti():
 async def test_meter_session_rejects_invalid_credits():
     with pytest.raises(InvalidUsageError):
         await meter_session("jti-001", 0)
+
+        
+async def test_meter_session_reuses_caller_supplied_charge_id():
+    response = httpx.Response(200, json={}, request=httpx.Request("POST", "https://api.mythos.work/"))
+    mock_post = AsyncMock(return_value=response)
+    with patch("httpx.AsyncClient.post", mock_post):
+        await meter_session("jti-001", 5, "page-view", charge_id="stable-charge-key")
+        await meter_session("jti-001", 5, "page-view", charge_id="stable-charge-key")
+
+    bodies = [call.kwargs["json"] for call in mock_post.await_args_list]
+
+    assert bodies[0]["charge_id"] == "stable-charge-key"
+    assert bodies[1]["charge_id"] == "stable-charge-key"

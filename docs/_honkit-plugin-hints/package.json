@@ -1,0 +1,8 @@
+{
+  "name": "honkit-plugin-gitbook-hints",
+  "version": "1.0.0",
+  "main": "index.js",
+  "engines": {
+    "honkit": ">=3.0.0"
+  }
+}

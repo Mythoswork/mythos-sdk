@@ -1,0 +1,4 @@
+{
+  "title": "Mythos SDK",
+  "plugins": ["honkit-plugin-gitbook-hints"]
+}
