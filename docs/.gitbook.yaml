@@ -1,0 +1,9 @@
+root: ./
+
+structure:
+  readme: README.md
+  summary: SUMMARY.md
+
+redirects:
+  PRODUCER_INTEGRATION.md: guides/required-routes.md
+  PRODUCER_MASTER_PROMPT.md: guides/ai-integration-prompt.md

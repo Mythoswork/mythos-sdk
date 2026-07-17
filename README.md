@@ -16,6 +16,19 @@ Producers install the Mythos SDK to:
 1. **Verify launch tokens** — RS256 JWKS-backed verification of the `?lt=` token Mythos embeds in the redirect URL
 2. **Enforce single-use semantics** — the SDK middleware automatically calls `/consume` (per ADR-0003); Producers cannot skip this
 3. **Report usage** — `reportUsage()` / `report_usage()` debits the Consumer's Mythos wallet
+4. **Publish handshake** — `handshakeRoute()` / `handshake_router` for the Mythos publish gate
+5. **Listing callback** — `listingCallbackRoute()` / `create_listing_callback_handler` for dynamic listing ID registration
+
+## Documentation
+
+Full Producer documentation lives in [`docs/`](./docs/) (GitBook-ready):
+
+- **Docs home:** [docs/README.md](./docs/README.md)
+- **Quickstart (Node):** [docs/getting-started/quickstart-node.md](./docs/getting-started/quickstart-node.md)
+- **Quickstart (Python):** [docs/getting-started/quickstart-python.md](./docs/getting-started/quickstart-python.md)
+- **AI integration prompt:** [docs/guides/ai-integration-prompt.md](./docs/guides/ai-integration-prompt.md)
+- **Code examples:** [docs/examples/](./docs/examples/)
+- **Cursor skill:** copy [`.cursor/skills/integrate-mythos-sdk/`](./.cursor/skills/integrate-mythos-sdk/) into your project
 
 ## Quick start (Node.js)
 
@@ -44,7 +57,7 @@ app.get('/dashboard', requireLaunchToken(), async (req, res) => {
 ## Quick start (Python / FastAPI)
 
 ```bash
-pip install mythos-sdk
+pip install "mythos-sdk[fastapi]"
 ```
 
 ```python
@@ -55,10 +68,10 @@ app = FastAPI()
 app.include_router(handshake_router)
 
 @app.get("/dashboard")
-async def dashboard(session = Depends(require_launch_token)):
-    await report_usage(session.session_jti, credits=1, reason="page-view")
+async def dashboard(session=Depends(require_launch_token())):
+    await report_usage(session.sessionJti, credits=1, reason="page-view")
     # Optional idempotency key for retries / double-click protection:
-    # await report_usage(session.session_jti, credits=1, reason="page-view", charge_id="unique-action-id")
+    # await report_usage(session.sessionJti, credits=1, reason="page-view", charge_id="unique-action-id")
     return {"ok": True}
 ```
 
@@ -70,7 +83,7 @@ async def dashboard(session = Depends(require_launch_token)):
 | `MYTHOS_LISTING_IDS` | Yes* | — | Comma-separated listing IDs (overrides above) |
 | `MYTHOS_API_URL` | No | `https://api.mythos.work` | API base URL override |
 
-*One of `MYTHOS_LISTING_ID` or `MYTHOS_LISTING_IDS` is required.
+\*One of `MYTHOS_LISTING_ID` or `MYTHOS_LISTING_IDS` is required — unless using [dynamic listing IDs](./docs/concepts/dynamic-listing-ids.md).
 
 ## Security
 
