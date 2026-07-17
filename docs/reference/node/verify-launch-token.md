@@ -39,7 +39,7 @@ function verifyLaunchToken(
 ## Example
 
 ```typescript
-import { verifyLaunchToken, reportUsage } from '@mythos/sdk';
+import { verifyLaunchToken, reportUsage } from '@mythos-work/sdk';
 
 const session = await verifyLaunchToken(token, {
   resolveListingIds: async () => listingIds,

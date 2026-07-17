@@ -1,6 +1,6 @@
 # Next.js
 
-Run `@mythos/sdk` Express handlers inside Next.js App Router Route Handlers.
+Run `@mythos-work/sdk` Express handlers inside Next.js App Router Route Handlers.
 
 ## Why a shim?
 
@@ -12,9 +12,9 @@ Create `lib/mythos.ts` with this shim:
 
 ```typescript
 /**
- * Adapter that runs @mythos/sdk Express handlers inside Next.js Route Handlers.
+ * Adapter that runs @mythos-work/sdk Express handlers inside Next.js Route Handlers.
  */
-import { handshakeRoute, requireLaunchToken, type MythosSession } from '@mythos/sdk';
+import { handshakeRoute, requireLaunchToken, type MythosSession } from '@mythos-work/sdk';
 
 type ShimReq = { query: Record<string, string | undefined>; mythos?: MythosSession };
 type ShimRes = {
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
 
 ```typescript
 import { NextResponse } from 'next/server';
-import { reportUsage, MythosError } from '@mythos/sdk';
+import { reportUsage, MythosError } from '@mythos-work/sdk';
 
 export const runtime = 'nodejs';
 

@@ -27,7 +27,7 @@ The Mythos SDK is not a hosted service you call from the browser. It is a librar
 
 | Package | When to use |
 |---------|-------------|
-| `@mythos/sdk` | Node.js, Express, Next.js Route Handlers, Vercel serverless |
+| `@mythos-work/sdk` | Node.js, Express, Next.js Route Handlers, Vercel serverless |
 | `mythos-sdk` | Python, FastAPI, any async Python web framework |
 
 ## Prerequisites

@@ -5,7 +5,7 @@ Full Express integration guide for the Mythos SDK.
 ## Install
 
 ```bash
-npm install @mythos/sdk express
+npm install @mythos-work/sdk express
 ```
 
 ## Mount all routes
@@ -18,7 +18,7 @@ import {
   requireLaunchToken,
   reportUsage,
   MythosError,
-} from '@mythos/sdk';
+} from '@mythos-work/sdk';
 
 const app = express();
 app.use(express.json());

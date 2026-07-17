@@ -19,10 +19,16 @@ export async function meterSession(
   jti: string,
   credits: number,
   reason?: string,
+  chargeId?: string,
 ): Promise<void> {
   // charge_id is a per-call idempotency key required by the backend's SQS metering
-  // job dedup (see backend docs/migrations) — generated here, not caller-supplied.
-  const res = await post(`/api/apps/sessions/${jti}/meter`, { credits, reason, charge_id: randomUUID() });
+  // job dedup (see backend docs/migrations). Callers may pass chargeId to reuse
+  // the same key on retry; otherwise a fresh UUID is generated per call.
+  const res = await post(`/api/apps/sessions/${jti}/meter`, {
+    credits,
+    reason,
+    charge_id: chargeId ?? randomUUID(),
+  });
 
   if (res.status === 402) throw new InsufficientFundsError();
   if (res.status === 404) throw new SessionNotFoundError(jti);

@@ -9,7 +9,7 @@ Wire the Mythos SDK into an Express app in under 10 minutes.
 ## 1. Install
 
 ```bash
-npm install @mythos/sdk express
+npm install @mythos-work/sdk express
 ```
 
 ## 2. Server routes
@@ -21,7 +21,7 @@ import {
   requireLaunchToken,
   reportUsage,
   MythosError,
-} from '@mythos/sdk';
+} from '@mythos-work/sdk';
 
 const app = express();
 app.use(express.json());
@@ -97,5 +97,4 @@ More checks: [Verify your integration](verify-integration.md).
 
 - [Express guide](../guides/express.md) — production patterns and error handling
 - [Next.js](../guides/nextjs.md) — App Router shim
-- [What to watch out for](../guides/watch-out-for.md) — real gotchas before you ship
 - [AI integration prompt](../guides/ai-integration-prompt.md) — full agent brief

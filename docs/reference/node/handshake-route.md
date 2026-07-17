@@ -37,7 +37,7 @@ Express `Router` — mount with `app.use(handshakeRoute())`.
 
 ```typescript
 import express from 'express';
-import { handshakeRoute } from '@mythos/sdk';
+import { handshakeRoute } from '@mythos-work/sdk';
 
 const app = express();
 app.use(handshakeRoute());

@@ -5,7 +5,7 @@
  *   MYTHOS_LISTING_ID=<your-listing-id>
  */
 import express from 'express';
-import { handshakeRoute, requireLaunchToken, reportUsage, MythosError } from '@mythos/sdk';
+import { handshakeRoute, requireLaunchToken, reportUsage, MythosError } from '@mythos-work/sdk';
 
 export function mountMythosRoutes(app: express.Application): void {
   app.use(handshakeRoute());

@@ -6,7 +6,7 @@ Official SDK packages for integrating with the Mythos platform.
 
 | Package | Language | Registry |
 |---------|----------|----------|
-| [`@mythos/sdk`](./packages/node) | Node.js / TypeScript | npm |
+| [`@mythos-work/sdk`](./packages/node) | Node.js / TypeScript | npm |
 | [`mythos-sdk`](./packages/python) | Python | PyPI |
 
 ## Overview
@@ -33,11 +33,11 @@ Full Producer documentation lives in [`docs/`](./docs/) (GitBook-ready):
 ## Quick start (Node.js)
 
 ```bash
-npm install @mythos/sdk
+npm install @mythos-work/sdk
 ```
 
 ```typescript
-import { requireLaunchToken, reportUsage, handshakeRoute } from '@mythos/sdk';
+import { requireLaunchToken, reportUsage, handshakeRoute } from '@mythos-work/sdk';
 
 // Env vars required:
 // MYTHOS_LISTING_ID=<your-listing-id>
@@ -48,6 +48,8 @@ app.use(handshakeRoute());
 app.get('/dashboard', requireLaunchToken(), async (req, res) => {
   // req.mythos = { userId, email, displayName, listingId, sessionJti }
   await reportUsage(req.mythos.sessionJti, { credits: 1, reason: 'page-view' });
+  // Optional idempotency key for retries / double-click protection:
+  // await reportUsage(req.mythos.sessionJti, { credits: 1, reason: 'page-view', chargeId: 'unique-action-id' });
   res.json({ ok: true });
 });
 ```
@@ -68,6 +70,8 @@ app.include_router(handshake_router)
 @app.get("/dashboard")
 async def dashboard(session=Depends(require_launch_token())):
     await report_usage(session.sessionJti, credits=1, reason="page-view")
+    # Optional idempotency key for retries / double-click protection:
+    # await report_usage(session.sessionJti, credits=1, reason="page-view", charge_id="unique-action-id")
     return {"ok": True}
 ```
 

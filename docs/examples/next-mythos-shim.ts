@@ -1,8 +1,8 @@
 /**
- * Adapter that runs @mythos/sdk Express handlers inside Next.js Route Handlers.
+ * Adapter that runs @mythos-work/sdk Express handlers inside Next.js Route Handlers.
  * Copy to lib/mythos.ts in your Next.js app.
  */
-import { handshakeRoute, requireLaunchToken, type MythosSession } from "@mythos/sdk";
+import { handshakeRoute, requireLaunchToken, type MythosSession } from "@mythos-work/sdk";
 
 type ShimReq = { query: Record<string, string | undefined>; mythos?: MythosSession };
 type ShimRes = {

@@ -6,7 +6,7 @@ Official SDK packages for integrating Producer apps with the [Mythos](https://my
 
 | Package | Language | Registry |
 |---------|----------|----------|
-| `@mythos/sdk` | Node.js / TypeScript | npm |
+| `@mythos-work/sdk` | Node.js / TypeScript | npm |
 | `mythos-sdk` | Python | PyPI |
 
 ## What the SDK does

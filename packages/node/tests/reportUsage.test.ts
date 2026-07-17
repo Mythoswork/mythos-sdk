@@ -12,7 +12,16 @@ test('reportUsage calls /meter with correct body', async () => {
 
   await reportUsage('jti-001', { credits: 5, reason: 'page-view' });
 
-  expect(spy).toHaveBeenCalledWith('jti-001', 5, 'page-view');
+  expect(spy).toHaveBeenCalledWith('jti-001', 5, 'page-view', undefined);
+});
+
+test('reportUsage forwards chargeId to meterSession', async () => {
+  const { reportUsage } = await import('../src/reportUsage');
+  const spy = jest.spyOn(apiClient, 'meterSession').mockResolvedValue(undefined);
+
+  await reportUsage('jti-001', { credits: 5, reason: 'page-view', chargeId: 'stable-charge-key' });
+
+  expect(spy).toHaveBeenCalledWith('jti-001', 5, 'page-view', 'stable-charge-key');
 });
 
 test('reportUsage propagates InsufficientFundsError', async () => {

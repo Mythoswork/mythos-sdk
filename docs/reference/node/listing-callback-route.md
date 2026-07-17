@@ -39,7 +39,7 @@ GET|POST /.well-known/mythos-listing-registered?lt=<listing-registered-jwt>
 ## Example
 
 ```typescript
-import { listingCallbackRoute, requireLaunchToken } from '@mythos/sdk';
+import { listingCallbackRoute, requireLaunchToken } from '@mythos-work/sdk';
 
 const listingIds: string[] = [];
 
