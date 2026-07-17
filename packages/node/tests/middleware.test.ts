@@ -61,6 +61,49 @@ test('happy path: req.mythos populated and next() called', async () => {
   expect(req.mythos?.sessionJti).toBe('jti-001');
 });
 
+test('missing ?lt= → 401', async () => {
+  const { requireLaunchToken } = await import('../src/middleware');
+  const req = { query: {} } as unknown as Request;
+  const res = mockRes();
+  const next: NextFunction = jest.fn() as unknown as NextFunction;
+
+  await requireLaunchToken()(req, res, next);
+
+  expect(res.status).toHaveBeenCalledWith(401);
+  expect(res.json).toHaveBeenCalledWith({ error: 'Missing launch token' });
+  expect(next).not.toHaveBeenCalled();
+});
+
+test('duplicate ?lt= params → uses first value', async () => {
+  const { requireLaunchToken } = await import('../src/middleware');
+  jest.spyOn(apiClient, 'consumeSession').mockResolvedValue({ status: 200 } as unknown as globalThis.Response);
+
+  const token = await mintToken('jti-dup');
+  const req = { query: { lt: [token, 'garbage'] } } as unknown as Request;
+  const res = mockRes();
+  const next: NextFunction = jest.fn() as unknown as NextFunction;
+
+  await requireLaunchToken()(req, res, next);
+
+  expect(next).toHaveBeenCalled();
+  expect(req.mythos?.sessionJti).toBe('jti-dup');
+});
+
+test('missing listing config → 500', async () => {
+  delete process.env.MYTHOS_LISTING_ID;
+  const { requireLaunchToken } = await import('../src/middleware');
+
+  const token = await mintToken('jti-config');
+  const req = { query: { lt: token } } as unknown as Request;
+  const res = mockRes();
+  const next: NextFunction = jest.fn() as unknown as NextFunction;
+
+  await requireLaunchToken()(req, res, next);
+
+  expect(res.status).toHaveBeenCalledWith(500);
+  expect(next).not.toHaveBeenCalled();
+});
+
 test('replay: consume returns 409 → 401 to client', async () => {
   const { requireLaunchToken } = await import('../src/middleware');
   jest.spyOn(apiClient, 'consumeSession').mockResolvedValue({ status: 409 } as unknown as globalThis.Response);

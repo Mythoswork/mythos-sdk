@@ -1,6 +1,13 @@
 import { MythosError } from './errors';
 
-export { MythosError, InsufficientFundsError, SessionNotFoundError } from './errors';
+export {
+  MythosError,
+  MythosConfigError,
+  InvalidLaunchTokenError,
+  InsufficientFundsError,
+  SessionNotFoundError,
+  InvalidUsageError,
+} from './errors';
 export type { MythosSession } from './types';
 
 function notImplemented(name: string): never {

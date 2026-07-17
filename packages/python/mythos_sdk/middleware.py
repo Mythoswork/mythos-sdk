@@ -1,20 +1,28 @@
 from collections.abc import Awaitable, Callable
 
 from fastapi import HTTPException, Query
+from jose.exceptions import JOSEError
 
 from .api_client import consume_session
+from .errors import InvalidLaunchTokenError, MythosConfigError
 from .types import MythosSession
 from .verify import verify_launch_token
-
 
 def require_launch_token(
     resolve_listing_ids: Callable[[], Awaitable[list[str]]] | None = None,
 ) -> Callable[..., Awaitable[MythosSession]]:
     async def dependency(lt: str = Query(..., alias="lt")) -> MythosSession:
+        if not lt:
+            raise HTTPException(status_code=401, detail="Missing launch token")
+
         try:
             session = await verify_launch_token(lt, resolve_listing_ids)
-        except Exception:
+        except MythosConfigError as err:
+            raise HTTPException(status_code=500, detail=str(err)) from err
+        except (InvalidLaunchTokenError, JOSEError):
             raise HTTPException(status_code=401, detail="Invalid launch token")
+        except Exception:
+            raise HTTPException(status_code=503, detail="Could not verify session")
 
         try:
             resp = await consume_session(session.sessionJti)

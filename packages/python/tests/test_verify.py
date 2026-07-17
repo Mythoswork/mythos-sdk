@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, patch
 
 from mythos_sdk import verify_launch_token
 from mythos_sdk import MythosSession
+from mythos_sdk.errors import InvalidLaunchTokenError
 
 
 def mint_token(private_pem: bytes, overrides: dict | None = None) -> str:
@@ -82,7 +83,7 @@ async def test_expired_token_does_not_refetch(rsa_key_pair):
 
 async def test_wrong_aud_rejected(rsa_key_pair, mock_jwks):
     token = mint_token(rsa_key_pair["private"], {"aud": "evil-other-service"})
-    with pytest.raises(JWTClaimsError):
+    with pytest.raises(InvalidLaunchTokenError):
         await verify_launch_token(token)
 
 
@@ -94,7 +95,13 @@ async def test_aud_list_valid_member_accepted(rsa_key_pair, mock_jwks):
 
 async def test_aud_list_no_match_rejected(rsa_key_pair, mock_jwks):
     token = mint_token(rsa_key_pair["private"], {"aud": ["evil-a", "evil-b"]})
-    with pytest.raises(JWTClaimsError):
+    with pytest.raises(InvalidLaunchTokenError):
+        await verify_launch_token(token)
+
+
+async def test_missing_jti_rejected(rsa_key_pair, mock_jwks):
+    token = mint_token(rsa_key_pair["private"], {"jti": ""})
+    with pytest.raises(InvalidLaunchTokenError):
         await verify_launch_token(token)
 
 
@@ -136,7 +143,7 @@ async def test_bad_signature_does_not_refetch(rsa_key_pair):
         serialization.PrivateFormat.TraditionalOpenSSL,
         serialization.NoEncryption(),
     )
-    token = mint_token(other_pem)  # signed with a different key, same kid in JWKS
+    token = mint_token(other_pem)
     jwks = {"keys": [rsa_key_pair["jwk"]]}
     mock_refetch = AsyncMock(return_value=jwks)
     with patch("mythos_sdk.verify.get_jwks", new_callable=AsyncMock, return_value=jwks), \

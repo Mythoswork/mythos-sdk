@@ -26,9 +26,15 @@ describe('jwks-cache kid-miss fallback', () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
+  test('getKeySet caches separately per apiUrl', async () => {
+    await getKeySet('https://api-a.example');
+    await getKeySet('https://api-b.example');
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
   test('getKeySetWithKidFallback force-refreshes even when the cache is warm', async () => {
-    await getKeySet('https://api.example');                  // fetch #1 — primes the cache
-    await getKeySetWithKidFallback('https://api.example');   // must re-fetch (was: returned stale cache)
+    await getKeySet('https://api.example');
+    await getKeySetWithKidFallback('https://api.example');
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 });

@@ -27,6 +27,14 @@ async def test_happy_path_returns_session():
     assert session.sessionJti == "jti-001"
 
 
+async def test_missing_lt_raises_401():
+    with pytest.raises(HTTPException) as exc_info:
+        await require_launch_token()(lt=None)
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail == "Missing launch token"
+
+
 async def test_replay_consume_409_raises_401():
     consume_resp = MagicMock(spec=httpx.Response)
     consume_resp.status_code = 409
@@ -41,11 +49,25 @@ async def test_replay_consume_409_raises_401():
 
 
 async def test_invalid_token_raises_401():
-    with patch("mythos_sdk.middleware.verify_launch_token", new_callable=AsyncMock, side_effect=Exception("bad token")):
+    from mythos_sdk.errors import InvalidLaunchTokenError
+
+    with patch("mythos_sdk.middleware.verify_launch_token", new_callable=AsyncMock,
+               side_effect=InvalidLaunchTokenError()):
         with pytest.raises(HTTPException) as exc_info:
             await require_launch_token()(lt="bad.token")
 
     assert exc_info.value.status_code == 401
+
+
+async def test_missing_config_raises_500():
+    from mythos_sdk.errors import MythosConfigError
+
+    with patch("mythos_sdk.middleware.verify_launch_token", new_callable=AsyncMock,
+               side_effect=MythosConfigError("MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required")):
+        with pytest.raises(HTTPException) as exc_info:
+            await require_launch_token()(lt="valid.token")
+
+    assert exc_info.value.status_code == 500
 
 
 async def test_consume_500_raises_503():

@@ -2,7 +2,7 @@ import { meterSession } from './api-client';
 
 export async function reportUsage(
   jti: string,
-  opts: { credits: number; reason?: string; chargeId?: string },
+  opts: { credits: number; reason?: string; idempotencyKey?: string },
 ): Promise<void> {
-  await meterSession(jti, opts.credits, opts.reason, opts.chargeId);
+  await meterSession(jti, opts.credits, opts.reason, opts.idempotencyKey);
 }

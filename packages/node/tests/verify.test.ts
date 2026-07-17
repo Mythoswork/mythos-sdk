@@ -13,7 +13,6 @@ beforeAll(async () => {
   jwk.kid = 'test-kid';
   jwk.alg = 'RS256';
 
-  // Stub JWKS cache to return our test key set
   const { createLocalJWKSet } = await import('jose');
   const keySet = createLocalJWKSet({ keys: [jwk] });
   jest.spyOn(jwksCache, 'getKeySet').mockResolvedValue(keySet as never);
@@ -55,6 +54,44 @@ test('valid token accepted and claims mapped correctly', async () => {
   expect(session.sessionJti).toBe('jti-001');
 });
 
+test('aud array with valid member in second position accepted', async () => {
+  const { verifyLaunchToken } = await import('../src/verify');
+  const token = await new SignJWT({
+    sub: 'user-123',
+    email: 'consumer@example.com',
+    displayName: 'Test User',
+    listingId: 'listing-abc',
+  })
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setIssuedAt()
+    .setIssuer('mythos')
+    .setAudience(['other-service', 'listing-abc'])
+    .setJti('jti-001')
+    .setExpirationTime('5m')
+    .sign(privateKey);
+
+  const session = await verifyLaunchToken(token);
+  expect(session.listingId).toBe('listing-abc');
+});
+
+test('missing jti claim rejected', async () => {
+  const { verifyLaunchToken } = await import('../src/verify');
+  const token = await new SignJWT({
+    sub: 'user-123',
+    email: 'consumer@example.com',
+    displayName: 'Test User',
+    listingId: 'listing-abc',
+  })
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setIssuedAt()
+    .setIssuer('mythos')
+    .setAudience('listing-abc')
+    .setExpirationTime('5m')
+    .sign(privateKey);
+
+  await expect(verifyLaunchToken(token)).rejects.toMatchObject({ code: 'INVALID_LAUNCH_TOKEN' });
+});
+
 test('expired token rejected', async () => {
   const { verifyLaunchToken } = await import('../src/verify');
   const token = await new SignJWT({ sub: 'u', email: 'e', displayName: 'd', listingId: 'listing-abc' })
@@ -80,7 +117,7 @@ test('wrong aud rejected', async () => {
     .setExpirationTime('5m')
     .sign(privateKey);
 
-  await expect(verifyLaunchToken(token)).rejects.toThrow();
+  await expect(verifyLaunchToken(token)).rejects.toMatchObject({ code: 'INVALID_LAUNCH_TOKEN' });
 });
 
 test('resolveListingIds allows aud not in static list', async () => {
@@ -113,7 +150,7 @@ test('resolveListingIds miss + static miss → rejected', async () => {
 
   await expect(
     verifyLaunchToken(token, { resolveListingIds: async () => ['listing-xyz'] }),
-  ).rejects.toThrow('Token audience does not match configured listing ID');
+  ).rejects.toThrow('Invalid audience');
 });
 
 test('resolveListingIds allows aud when no static listing IDs configured at all', async () => {
@@ -191,7 +228,6 @@ test('aud list with no matching member rejected', async () => {
 
 test('alg:none rejected — hard block', async () => {
   const { verifyLaunchToken } = await import('../src/verify');
-  // Build a JWT with alg:none manually (jose won't sign with none — craft header manually)
   const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
   const body = Buffer.from(
     JSON.stringify({ sub: 'u', aud: 'listing-abc', exp: Math.floor(Date.now() / 1000) + 300, jti: 'jti-none' }),

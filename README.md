@@ -30,6 +30,8 @@ Full Producer documentation lives in [`docs/`](./docs/) (GitBook-ready):
 - **Code examples:** [docs/examples/](./docs/examples/)
 - **Cursor skill:** copy [`.cursor/skills/integrate-mythos-sdk/`](./.cursor/skills/integrate-mythos-sdk/) into your project
 
+See [docs/INTEGRATION.md](./docs/INTEGRATION.md) for the full launch → session → metering flow.
+
 ## Quick start (Node.js)
 
 ```bash
@@ -38,6 +40,8 @@ npm install @mythos-work/sdk
 
 ```typescript
 import { requireLaunchToken, reportUsage, handshakeRoute } from '@mythos-work/sdk';
+
+const app = express();
 
 // Env vars required:
 // MYTHOS_LISTING_ID=<your-listing-id>
@@ -53,6 +57,8 @@ app.get('/dashboard', requireLaunchToken(), async (req, res) => {
   res.json({ ok: true });
 });
 ```
+
+> **Important:** Use `requireLaunchToken()` for route protection. `verifyLaunchToken()` verifies the JWT only and does **not** call `/consume` — it must not be used alone for auth.
 
 ## Quick start (Python / FastAPI)
 
@@ -89,12 +95,22 @@ async def dashboard(session=Depends(require_launch_token())):
 
 - Tokens are verified using RS256 signatures from the Mythos JWKS endpoint
 - `alg: none` is rejected as a hard block — not just a warning
-- Single-use enforcement is non-skippable and non-configurable (ADR-0003)
-- JWKS public keys are cached for 10 minutes with automatic re-fetch on key rotation
+- Single-use enforcement is non-skippable and non-configurable (ADR-0003) — use `requireLaunchToken()`, not `verifyLaunchToken()` alone
+- JWKS public keys are cached for 10 minutes per API URL with automatic re-fetch on key rotation
+- All Mythos HTTP calls use a 5 second timeout
+- Strip `?lt=` from the URL after successful auth to avoid leaking tokens via Referer headers
 
 ## Development
 
-See [packages/node/](./packages/node) and [packages/python/](./packages/python) for package-specific development guides.
+```bash
+# Node
+cd packages/node && npm ci && npm test
+
+# Python
+cd packages/python && pip install -e ".[dev]" && pytest
+```
+
+See [packages/node/README.md](./packages/node/README.md) and [packages/python/README.md](./packages/python/README.md).
 
 ## License
 

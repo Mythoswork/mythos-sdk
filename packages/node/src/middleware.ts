@@ -1,12 +1,15 @@
 import type { RequestHandler } from 'express';
+import { errors } from 'jose';
 import { verifyLaunchToken } from './verify';
 import { consumeSession } from './api-client';
+import { extractLaunchToken } from './query';
+import { InvalidLaunchTokenError, MythosConfigError } from './errors';
 
 export function requireLaunchToken(options?: {
   resolveListingIds?: () => Promise<string[]>;
 }): RequestHandler {
   return async (req, res, next) => {
-    const token = req.query['lt'] as string | undefined;
+    const token = extractLaunchToken(req.query['lt']);
     if (!token) {
       res.status(401).json({ error: 'Missing launch token' });
       return;
@@ -15,8 +18,16 @@ export function requireLaunchToken(options?: {
     let session;
     try {
       session = await verifyLaunchToken(token, options);
-    } catch {
-      res.status(401).json({ error: 'Invalid launch token' });
+    } catch (err) {
+      if (err instanceof MythosConfigError) {
+        res.status(500).json({ error: err.message });
+        return;
+      }
+      if (err instanceof InvalidLaunchTokenError || err instanceof errors.JOSEError) {
+        res.status(401).json({ error: 'Invalid launch token' });
+        return;
+      }
+      res.status(503).json({ error: 'Could not verify session' });
       return;
     }
 
