@@ -1,5 +1,4 @@
 import { randomUUID } from 'crypto';
-import { loadConfig } from './config';
 import { mythosRequest } from './http';
 import { InsufficientFundsError, InvalidUsageError, SessionNotFoundError } from './errors';
 
@@ -14,8 +13,7 @@ function validateCredits(credits: number): void {
 }
 
 async function post(path: string, body: unknown): Promise<Response> {
-  const { apiUrl } = loadConfig();
-  return mythosRequest(`${apiUrl}${path}`, {
+  return mythosRequest(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

@@ -15,7 +15,7 @@ function isStale(entry: CacheEntry): boolean {
 }
 
 async function fetchJwks(apiUrl: string): Promise<ReturnType<typeof createLocalJWKSet>> {
-  const res = await mythosRequest(`${apiUrl}/.well-known/jwks.json`, { method: 'GET' });
+  const res = await mythosRequest('/.well-known/jwks.json', { method: 'GET' });
   if (!res.ok) {
     throw new Error(`JWKS fetch failed: ${res.status}`);
   }
