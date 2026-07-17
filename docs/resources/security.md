@@ -30,7 +30,7 @@ If Mythos `/consume` is unreachable (network error, 5xx), return **503** and do 
 ## Server-side only
 
 {% hint style="warning" %}
-**Never verify JWTs in browser code.** `@mythos/sdk` browser build throws `NOT_IMPLEMENTED` for server functions. All verification happens on your server.
+**Never verify JWTs in browser code.** `@mythos-work/sdk` browser build throws `NOT_IMPLEMENTED` for server functions. All verification happens on your server.
 {% endhint %}
 
 ## Token types

@@ -47,7 +47,7 @@ Later, when a Consumer launches:
 ## Node.js
 
 ```typescript
-import { listingCallbackRoute, requireLaunchToken } from '@mythos/sdk';
+import { listingCallbackRoute, requireLaunchToken } from '@mythos-work/sdk';
 
 const listingIds: string[] = [];
 

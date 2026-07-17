@@ -13,7 +13,7 @@ Place handlers under `api/`:
 **`api/mythos-handshake.js`:**
 
 ```javascript
-const { handshakeRoute } = require('@mythos/sdk');
+const { handshakeRoute } = require('@mythos-work/sdk');
 const router = handshakeRoute();
 // Export the handshake GET handler from the router stack
 module.exports = (req, res) => router(req, res, () => res.status(404).end());
@@ -24,7 +24,7 @@ For a cleaner setup, use the Next.js App Router pattern in [nextjs.md](nextjs.md
 **`api/mythos-session.js`:**
 
 ```javascript
-const { requireLaunchToken } = require('@mythos/sdk');
+const { requireLaunchToken } = require('@mythos-work/sdk');
 const middleware = requireLaunchToken();
 module.exports = (req, res) =>
   middleware(req, res, () => res.status(200).json({ ok: true, session: req.mythos }));

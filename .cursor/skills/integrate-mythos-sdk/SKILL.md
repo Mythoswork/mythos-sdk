@@ -39,7 +39,7 @@ Read these from the mythos-sdk repo (or ask user to provide):
 
 | Stack | Package | Git fallback |
 |-------|---------|--------------|
-| Node | `@mythos/sdk` | `npm install github:Mythoswork/mythos-sdk#main:packages/node` |
+| Node | `@mythos-work/sdk` | `npm install github:Mythoswork/mythos-sdk#main:packages/node` |
 | Python | `mythos-sdk[fastapi]` | `pip install "git+https://github.com/Mythoswork/mythos-sdk.git#subdirectory=packages/python"` |
 
 ### 2. Server routes (every entry point)

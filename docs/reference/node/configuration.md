@@ -1,6 +1,6 @@
 # Configuration (Node.js)
 
-Environment variables read by `@mythos/sdk`.
+Environment variables read by `@mythos-work/sdk`.
 
 ## Variables
 
