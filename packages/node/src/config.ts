@@ -1,4 +1,3 @@
-import { MythosConfigError } from './errors';
 import type { MythosConfig } from './types';
 
 const DEFAULT_API_URL = 'https://api.mythos.work';
@@ -13,10 +12,6 @@ export function loadConfig(): MythosConfig {
     : single
       ? [single]
       : [];
-
-  if (listingIds.length === 0) {
-    throw new MythosConfigError('MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required');
-  }
 
   return { listingIds, apiUrl };
 }

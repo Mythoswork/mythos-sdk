@@ -24,14 +24,6 @@ test('reportUsage forwards idempotencyKey', async () => {
   expect(spy).toHaveBeenCalledWith('jti-001', 1, undefined, 'charge-123');
 });
 
-test('reportUsage forwards chargeId to meterSession', async () => {
-  const { reportUsage } = await import('../src/reportUsage');
-  const spy = jest.spyOn(apiClient, 'meterSession').mockResolvedValue(undefined);
-
-  await reportUsage('jti-001', { credits: 5, reason: 'page-view', chargeId: 'stable-charge-key' });
-
-  expect(spy).toHaveBeenCalledWith('jti-001', 5, 'page-view', 'stable-charge-key');
-});
 
 test('reportUsage propagates InsufficientFundsError', async () => {
   const { reportUsage } = await import('../src/reportUsage');

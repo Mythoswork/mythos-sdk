@@ -17,7 +17,7 @@ export function requireLaunchToken(options?: {
 
     let session;
     try {
-      session = await verifyLaunchToken(token);
+      session = await verifyLaunchToken(token, options);
     } catch (err) {
       if (err instanceof MythosConfigError) {
         res.status(500).json({ error: err.message });

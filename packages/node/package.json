@@ -5,7 +5,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Mythoswork/mythos-sdk"
+    "url": "https://github.com/Mythoswork/mythos-sdk/tree/main/packages/node"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

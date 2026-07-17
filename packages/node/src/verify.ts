@@ -1,7 +1,7 @@
 import { jwtVerify, errors, type JWTPayload } from 'jose';
 import { getKeySet, getKeySetWithKidFallback } from './jwks-cache';
 import { loadConfig } from './config';
-import { InvalidLaunchTokenError } from './errors';
+import { InvalidLaunchTokenError, MythosConfigError } from './errors';
 import type { MythosSession } from './types';
 
 // Matches backend's HANDSHAKE_ISS_CLAIM constant — the platform issuer is a
@@ -70,7 +70,7 @@ export async function verifyLaunchToken(
 
   const dynamicIds = options?.resolveListingIds ? await options.resolveListingIds() : [];
   if (listingIds.length === 0 && dynamicIds.length === 0) {
-    throw new Error('MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required, or pass resolveListingIds');
+    throw new MythosConfigError('MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required');
   }
   const allListingIds = [...listingIds, ...dynamicIds];
   validateAudience(payload, allListingIds);

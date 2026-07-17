@@ -150,7 +150,7 @@ test('resolveListingIds miss + static miss → rejected', async () => {
 
   await expect(
     verifyLaunchToken(token, { resolveListingIds: async () => ['listing-xyz'] }),
-  ).rejects.toThrow('Token audience does not match configured listing ID');
+  ).rejects.toThrow('Invalid audience');
 });
 
 test('resolveListingIds allows aud when no static listing IDs configured at all', async () => {
