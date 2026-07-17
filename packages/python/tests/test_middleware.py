@@ -29,7 +29,7 @@ async def test_happy_path_returns_session():
 
 async def test_missing_lt_raises_401():
     with pytest.raises(HTTPException) as exc_info:
-        await require_launch_token(lt=None)
+        await require_launch_token()(lt=None)
 
     assert exc_info.value.status_code == 401
     assert exc_info.value.detail == "Missing launch token"
@@ -65,7 +65,7 @@ async def test_missing_config_raises_500():
     with patch("mythos_sdk.middleware.verify_launch_token", new_callable=AsyncMock,
                side_effect=MythosConfigError("MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required")):
         with pytest.raises(HTTPException) as exc_info:
-            await require_launch_token(lt="valid.token")
+            await require_launch_token()(lt="valid.token")
 
     assert exc_info.value.status_code == 500
 

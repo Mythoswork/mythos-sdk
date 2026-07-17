@@ -12,6 +12,9 @@ def require_launch_token(
     resolve_listing_ids: Callable[[], Awaitable[list[str]]] | None = None,
 ) -> Callable[..., Awaitable[MythosSession]]:
     async def dependency(lt: str = Query(..., alias="lt")) -> MythosSession:
+        if not lt:
+            raise HTTPException(status_code=401, detail="Missing launch token")
+
         try:
             session = await verify_launch_token(lt, resolve_listing_ids)
         except MythosConfigError as err:
