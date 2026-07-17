@@ -2,9 +2,8 @@
 
 Every item here was pulled from the SDK's actual source, its test suite, or a real commit in one of the reference mock apps — not guessed. Where a bug was hit and fixed in the wild, the commit is linked so you can see the real failure, not just an abstract warning.
 
-{% hint style="info" %}
-This page assumes you've already done the [Node](../getting-started/quickstart-node.md) or [Python](../getting-started/quickstart-python.md) quickstart. Come back here before you ship.
-{% endhint %}
+> **ℹ️ Info**
+> This page assumes you've already done the [Node](../getting-started/quickstart-node.md) or [Python](../getting-started/quickstart-python.md) quickstart. Come back here before you ship.
 
 ## Launch tokens are single-use
 
@@ -148,9 +147,8 @@ That's the entire Node quickstart with the TypeScript syntax stripped out — no
 
 ### Any other language: no official SDK — here's the manual path
 
-{% hint style="warning" %}
-**This path is unofficial and unsupported.** There's no spec beyond the Node/Python SDK source itself, no guaranteed stability, and no support commitment. If you need this, please [file a request for an official SDK](https://github.com/Mythoswork/mythos-sdk/issues) in your language — this section exists so you're not blocked while that happens, not as a long-term recommendation.
-{% endhint %}
+> **⚠️ Warning**
+> **This path is unofficial and unsupported.** There's no spec beyond the Node/Python SDK source itself, no guaranteed stability, and no support commitment. If you need this, please [file a request for an official SDK](https://github.com/Mythoswork/mythos-sdk/issues) in your language — this section exists so you're not blocked while that happens, not as a long-term recommendation.
 
 Everything below is reverse-engineered directly from `packages/node/src` and `packages/python/mythos_sdk`, since there is no other spec.
 
@@ -220,9 +218,8 @@ Content-Type: application/json
 | `409` on `/consume` | Token already consumed — treat as your own `401` |
 | Any other non-2xx, or unreachable/timeout | See "fail closed" below |
 
-{% hint style="warning" %}
-The exact JSON error-body shape for these statuses isn't verifiable from the SDK source or its tests — both SDKs' test suites only assert on status codes, not response bodies, for these paths. Treat status codes as the only guaranteed contract and confirm body shapes against a live/staging environment yourself before hardcoding a parser for them.
-{% endhint %}
+> **⚠️ Warning**
+> The exact JSON error-body shape for these statuses isn't verifiable from the SDK source or its tests — both SDKs' test suites only assert on status codes, not response bodies, for these paths. Treat status codes as the only guaranteed contract and confirm body shapes against a live/staging environment yourself before hardcoding a parser for them.
 
 **Fail closed on `/consume`.** This is a documented security property (see [Security](../resources/security.md#fail-closed)), not just SDK internals: if `/consume` is unreachable, times out, or returns a 5xx, do not grant access. Both SDKs return their own 503 in this case rather than falling back to "verified but not consumed." Replicate that — a network blip on `/consume` must never be treated as equivalent to a successful consume.
 
