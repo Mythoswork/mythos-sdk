@@ -1,6 +1,6 @@
 # What to watch out for
 
-Every item here was pulled from the SDK's actual source, its test suite, or a real commit in one of the reference mock apps — not guessed. Where a bug was hit and fixed in the wild, the commit is linked so you can see the real failure, not just an abstract warning.
+Every item here comes from the SDK's source, its test suite, or a real commit in one of the reference mock apps. Where a bug was hit and fixed in production, the commit is linked so you can see the actual failure.
 
 > **ℹ️ Info**
 > This page assumes you've already done the [Node](../getting-started/quickstart-node.md) or [Python](../getting-started/quickstart-python.md) quickstart. Come back here before you ship.
