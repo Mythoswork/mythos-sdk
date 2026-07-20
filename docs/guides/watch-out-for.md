@@ -145,7 +145,7 @@ app.get('/dashboard', requireLaunchToken(), async (req, res) => {
 
 That's the entire Node quickstart with the TypeScript syntax stripped out — nothing else changes.
 
-### Any other language: no official SDK — here's the manual path
+### Any other language (no official SDK)
 
 > **⚠️ Warning**
 > **This path is unofficial and unsupported.** There's no spec beyond the Node/Python SDK source itself, no guaranteed stability, and no support commitment. If you need this, please [file a request for an official SDK](https://github.com/Mythoswork/mythos-sdk/issues) in your language — this section exists so you're not blocked while that happens, not as a long-term recommendation.
