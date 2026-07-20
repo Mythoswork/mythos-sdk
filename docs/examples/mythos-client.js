@@ -34,8 +34,72 @@ window.MythosClient = (function () {
     return initPromise;
   }
 
-  async function reportUsage(credits, reason) {
+  const CONFIRM_REQUEST_TYPE = "mythos:confirm-charge";
+  const CONFIRM_RESPONSE_TYPE = "mythos:confirm-charge-response";
+  const CONFIRM_TIMEOUT_TYPE = "mythos:confirm-charge-timeout";
+  const DEFAULT_CONFIRM_TIMEOUT_MS = 10000;
+
+  // Posts a confirm-charge request to the dashboard parent frame and waits
+  // for a matching response. Resolves false (never rejects) on timeout, on
+  // explicit decline, or if the page isn't embedded — all fail-closed.
+  function confirmCharge(credits, reason, timeoutMs = DEFAULT_CONFIRM_TIMEOUT_MS) {
+    return new Promise((resolve) => {
+      if (window === window.parent) {
+        console.warn(
+          "[MythosClient] requireConfirmation set but page is not embedded in a Mythos dashboard frame — skipping charge.",
+        );
+        resolve(false);
+        return;
+      }
+
+      const requestId =
+        window.crypto && window.crypto.randomUUID
+          ? window.crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+      let settled = false;
+
+      const timer = setTimeout(() => {
+        if (settled) return;
+        console.warn("[MythosClient] confirm-charge timed out — skipping charge.");
+        window.parent.postMessage({ type: CONFIRM_TIMEOUT_TYPE, requestId }, "*");
+        cleanup();
+        resolve(false);
+      }, timeoutMs);
+
+      function onMessage(event) {
+        if (event.source !== window.parent) return;
+        const data = event.data;
+        if (!data || data.type !== CONFIRM_RESPONSE_TYPE) return;
+        if (typeof data.requestId !== "string" || data.requestId !== requestId) return;
+        cleanup();
+        resolve(Boolean(data.approved));
+      }
+
+      function cleanup() {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        window.removeEventListener("message", onMessage);
+      }
+
+      window.addEventListener("message", onMessage);
+      window.parent.postMessage(
+        { type: CONFIRM_REQUEST_TYPE, requestId, credits, reason },
+        "*",
+      );
+    });
+  }
+
+  async function reportUsage(credits, reason, opts) {
     if (!session) return;
+    const options = opts || {};
+
+    if (options.requireConfirmation) {
+      const approved = await confirmCharge(credits, reason, options.confirmTimeoutMs);
+      if (!approved) return;
+    }
+
     try {
       await fetch("/api/mythos/report-usage", {
         method: "POST",
