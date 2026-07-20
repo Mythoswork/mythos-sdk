@@ -91,5 +91,6 @@ More checks: [Verify your integration](verify-integration.md).
 ## Next steps
 
 - [FastAPI guide](../guides/fastapi.md) — router module, listing callback
+- [What to watch out for](../guides/watch-out-for.md) — real gotchas before you ship
 - [AI integration prompt](../guides/ai-integration-prompt.md) — full agent brief
 - [Mock Python app](../resources/mock-integration-apps.md) — end-to-end harness
