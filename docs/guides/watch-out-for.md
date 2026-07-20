@@ -96,7 +96,7 @@ This was hit and documented in the node mock app's own [commit `8255b17`](https:
 
 ## `MYTHOS_LISTING_IDS` silently overrides `MYTHOS_LISTING_ID`, even when it's garbage
 
-If `MYTHOS_LISTING_IDS` is set **at all**, `MYTHOS_LISTING_ID` is never consulted as a fallback — not merged, not compared, just ignored (`packages/node/src/config.ts`, `packages/python/mythos_sdk/config.py`). A stray leftover `MYTHOS_LISTING_IDS=" , "` from an old deploy config silently breaks an otherwise-correct single-listing setup, and the resulting error ("no listing IDs configured") won't point you at the actual cause. Check both env vars, not just the one you meant to set.
+If `MYTHOS_LISTING_IDS` is set **at all**, `MYTHOS_LISTING_ID` is never consulted as a fallback: it's ignored outright (`packages/node/src/config.ts`, `packages/python/mythos_sdk/config.py`). A stray leftover `MYTHOS_LISTING_IDS=" , "` from an old deploy config silently breaks an otherwise-correct single-listing setup, and the resulting error ("no listing IDs configured") won't point you at the actual cause. Check both env vars before assuming only one is in play.
 
 ## Importing the SDK in a client bundle fails only at runtime
 
