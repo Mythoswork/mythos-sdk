@@ -43,7 +43,7 @@ This is a real bug the Python mock app shipped and then fixed — [commit `c791b
 
 Always register with `add_api_route(..., methods=["GET", "POST"])`. Node's Express version doesn't have this footgun — `app.use(path, handler)` matches all methods by default.
 
-## Purpose-scoped JWTs — check the claim, not just the signature
+## Verifying purpose-scoped JWTs
 
 Mythos issues three different JWT "kinds" from the same key set, distinguished by a `purpose` claim: launch tokens (implicit/no purpose check), handshake-check tokens (`purpose: "handshake-check"`), and listing-registered tokens (`purpose: "listing_registered"`). A signature-valid token of the *wrong* purpose must still be rejected.
 
