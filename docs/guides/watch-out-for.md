@@ -94,7 +94,7 @@ window.parent.postMessage({ type: 'mythos:handshake' }, '*'); // scope the origi
 
 This was hit and documented in the node mock app's own [commit `8255b17`](https://github.com/Mythoswork/mythos-sdk-node-js-mock-integration-app/commit/8255b17): *"This step is not optional and is not obvious from the SDK types... it only shows up as a silent FE-side timeout."*
 
-## `MYTHOS_LISTING_IDS` silently overrides `MYTHOS_LISTING_ID` — even with garbage in it
+## `MYTHOS_LISTING_IDS` silently overrides `MYTHOS_LISTING_ID`, even when it's garbage
 
 If `MYTHOS_LISTING_IDS` is set **at all**, `MYTHOS_LISTING_ID` is never consulted as a fallback — not merged, not compared, just ignored (`packages/node/src/config.ts`, `packages/python/mythos_sdk/config.py`). A stray leftover `MYTHOS_LISTING_IDS=" , "` from an old deploy config silently breaks an otherwise-correct single-listing setup, and the resulting error ("no listing IDs configured") won't point you at the actual cause. Check both env vars, not just the one you meant to set.
 
