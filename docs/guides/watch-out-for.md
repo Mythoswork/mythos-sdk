@@ -83,7 +83,7 @@ If your app suddenly 401s on every request right after a deploy, check your env 
 
 Only `InsufficientFundsError` and `SessionNotFoundError` are typed subclasses you can reliably `instanceof`-check today. `verifyLaunchToken()` throws a plain `Error` for "no listing configured" and "audience mismatch" (`verify.ts`), and `meter_session()`/`meterSession()` only wraps HTTP `402`/`404` into typed errors — any other failure (`500`, `503`, connection errors) surfaces as a raw `httpx.HTTPStatusError` (Python) or generic `Error` (Node), not a `MythosError`. A broad `catch (e) { if (e instanceof MythosError) ... }` around your integration will silently miss these — add a fallback branch.
 
-## `postMessage` after launch — required, not enforced, fails silently
+## The required `postMessage` call after launch fails silently if skipped
 
 After your launch-token verification succeeds client-side, Mythos's frontend is waiting for your iframe to `postMessage` back before it'll show your app. Nothing in the SDK types or a compiler checks this. Skip it and the Mythos FE just times out after ~5s with a generic "app did not respond" — even though your auth worked perfectly.
 
