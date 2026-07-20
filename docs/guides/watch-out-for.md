@@ -7,7 +7,7 @@ Every item here comes from the SDK's source, its test suite, or a real commit in
 
 ## Launch tokens are single-use
 
-`requireLaunchToken()` / `require_launch_token()` calls the backend's `/consume` endpoint exactly once per token — that call is what makes the token single-use, not just JWT expiry. Call it a second time on the same `lt` and you get:
+`requireLaunchToken()` / `require_launch_token()` calls the backend's `/consume` endpoint exactly once per token. That call, not JWT expiry alone, is what makes the token single-use. Call it a second time on the same `lt` and you get:
 
 ```json
 401 { "error": "Token already consumed" }
