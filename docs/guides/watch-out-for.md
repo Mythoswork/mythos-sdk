@@ -47,7 +47,7 @@ Always register with `add_api_route(..., methods=["GET", "POST"])`. Node's Expre
 
 Mythos issues three different JWT "kinds" from the same key set, distinguished by a `purpose` claim: launch tokens (implicit/no purpose check), handshake-check tokens (`purpose: "handshake-check"`), and listing-registered tokens (`purpose: "listing_registered"`). A signature-valid token of the *wrong* purpose must still be rejected.
 
-This matters more than it looks like it should, because **issuer checking is asymmetric across token types** — a genuine surprise once you read the source closely:
+This matters because **issuer checking is asymmetric across token types**, which is easy to miss from the outside:
 
 - Launch tokens and listing-registered tokens check `iss == "mythos"` (`packages/node/src/verify.ts`, `packages/node/src/listing-callback.ts`, `packages/python/mythos_sdk/verify.py`, `packages/python/mythos_sdk/listing_callback.py`)
 - Handshake-check tokens check **no issuer at all** — `packages/node/src/handshake.ts` passes no `issuer` option to `jwtVerify`, and `packages/python/mythos_sdk/handshake.py` sets `_DECODE_OPTIONS = {"verify_aud": False, "verify_iss": False}` with the code comment *"Tokens in this SDK carry no aud/iss claims."*
