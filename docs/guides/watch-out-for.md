@@ -158,7 +158,7 @@ Everything below is reverse-engineered directly from `packages/node/src` and `pa
 GET {MYTHOS_API_URL}/.well-known/jwks.json
 ```
 
-Returns a standard JWK Set (RFC 7517) with multiple keys — you must match on the JWT header's `kid`, not just grab "the" key:
+Returns a standard JWK Set (RFC 7517) with multiple keys. Match on the JWT header's `kid` rather than assuming a single key:
 
 ```json
 {
