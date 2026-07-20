@@ -65,6 +65,36 @@ await report_usage(session.sessionJti, credits=1, reason="page-view")
 Never block the user's main flow because billing failed. Catch errors in frontend report calls, log them, and continue. The Consumer already received the service; billing failures are operational issues to retry or reconcile separately.
 {% endhint %}
 
+## Pre-charge confirmation (optional)
+
+For actions where the Consumer should explicitly confirm a charge before it
+fires — e.g. a large or unusual credit spend — the reference clients
+(`docs/examples/mythos-client.js`, `docs/examples/mythos-client.ts`) support
+an opt-in `requireConfirmation` flag:
+
+```typescript
+await reportMythosUsage(5, 'bulk-export', { requireConfirmation: true });
+```
+
+When set, the client posts a `mythos:confirm-charge` message to
+`window.parent` (the Mythos dashboard, which the producer app is embedded
+in) and waits up to `confirmTimeoutMs` (default `10000`) for a matching
+`mythos:confirm-charge-response`. The charge is skipped — `report-usage` is
+never called — unless the dashboard responds `approved: true` within the
+timeout. On timeout, the client also posts `mythos:confirm-charge-timeout`
+so the dashboard can close a stale confirmation prompt.
+
+{% hint style="warning" %}
+This depends on the Mythos dashboard implementing the
+`mythos:confirm-charge` listener and confirmation UI on its side. If your
+app isn't embedded in a Mythos dashboard frame, or the dashboard hasn't
+shipped this listener yet, the charge fails closed (skipped) rather than
+firing unconfirmed.
+{% endhint %}
+
+Without `requireConfirmation` (the default), behavior is unchanged from the
+rest of this page — fire-and-forget, non-blocking.
+
 ## Idempotency
 
 Each `reportUsage` call generates a fresh `charge_id` UUID internally. Double-clicking a billable button can produce two charges. See [Idempotency](../guides/idempotency.md) for dedup patterns.
