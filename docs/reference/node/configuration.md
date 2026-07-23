@@ -4,11 +4,11 @@ Environment variables read by `@mythos-work/sdk`.
 
 ## Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `MYTHOS_LISTING_ID` | Yes* | — | Single listing ID |
-| `MYTHOS_LISTING_IDS` | Yes* | — | Comma-separated IDs; overrides single ID |
-| `MYTHOS_API_URL` | No | `https://api.mythos.work` | Mythos API base URL |
+| Variable             | Required | Default                   | Description                              |
+| ----------------------| ----------| ---------------------------| ------------------------------------------|
+| `MYTHOS_LISTING_ID`  | No*      | —                         | Single listing ID                        |
+| `MYTHOS_LISTING_IDS` | No*      | —                         | Comma-separated IDs; overrides single ID |
+| `MYTHOS_API_URL`     | No       | `https://api.mythos.work` | Mythos API base URL                      |
 
 \*Not required if `resolveListingIds` returns at least one ID.
 
@@ -20,6 +20,7 @@ Internal function used by verify and API client:
 interface MythosConfig {
   listingIds: string[];
   apiUrl: string;
+  resolveListingIds?: () => Promise<string[]>;
 }
 ```
 

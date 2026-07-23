@@ -29,6 +29,33 @@ class SessionNotFoundError(MythosError):
     ...
 ```
 
+## MythosConfigError
+
+```python
+class MythosConfigError(MythosError):
+    ...
+```
+
+Exported for parity with the Node SDK and caught explicitly (mapped to a `500`) by the `require_launch_token` dependency. `verify_launch_token` currently raises a bare `RuntimeError` for the same missing-listing-config condition instead of `MythosConfigError`, so via `require_launch_token` that case actually falls through to the generic handler and returns `503`, not `500`.
+
+## InvalidLaunchTokenError
+
+```python
+class InvalidLaunchTokenError(MythosError):
+    ...
+```
+
+Raised by `verify_launch_token` for a structurally invalid token — missing required claims, missing/invalid `aud`, or a `listingId` claim that doesn't match a configured listing ID. If you use the `require_launch_token` dependency instead of calling `verify_launch_token` directly, this is caught internally (alongside `jose` JOSE errors) and mapped to a `401` response.
+
+## InvalidUsageError
+
+```python
+class InvalidUsageError(MythosError):
+    ...
+```
+
+Raised by `report_usage` when `credits` isn't a positive integer — a caller bug, not an API failure.
+
 ## HTTP mapping in route handlers
 
 ```python
