@@ -13,7 +13,7 @@ dev = [
 
 [project]
 name = "mythos-sdk"
-version = "0.0.5"
+version = "0.0.6"
 description = "Official Mythos SDK for Python — launch token verification, usage reporting, and handshake"
 readme = "README.md"
 license = { text = "Apache-2.0" }

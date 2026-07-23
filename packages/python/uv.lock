@@ -610,7 +610,7 @@ wheels = [
 
 [[package]]
 name = "mythos-sdk"
-version = "0.0.5"
+version = "0.0.6"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -642,7 +642,7 @@ dev = [
 requires-dist = [
     { name = "cryptography", marker = "extra == 'dev'", specifier = ">=42.0" },
     { name = "fastapi", marker = "extra == 'fastapi'", specifier = ">=0.100.0" },
-    { name = "fastapi", extras = ["standard"], marker = "extra == 'dev'", specifier = ">=0.100.0" },
+    { name = "fastapi", extras = ["standard"], marker = "extra == 'dev'", specifier = ">=0.115.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
@@ -654,7 +654,7 @@ provides-extras = ["fastapi", "dev"]
 [package.metadata.requires-dev]
 dev = [
     { name = "cryptography", specifier = ">=42.0" },
-    { name = "fastapi", extras = ["standard"], specifier = ">=0.100.0" },
+    { name = "fastapi", extras = ["standard"], specifier = ">=0.115.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-asyncio", specifier = ">=0.23" },
