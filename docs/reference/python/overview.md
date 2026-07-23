@@ -14,18 +14,21 @@ pip install "mythos-sdk[fastapi]"
 
 ## Exports
 
-| Export | Description |
-|--------|-------------|
-| `handshake_router` | Pre-built FastAPI router for publish handshake |
-| `create_handshake_router` | Factory for customizable handshake router |
-| `create_listing_callback_handler` | Handler for listing registration callback |
-| `require_launch_token` | FastAPI dependency factory — verify + consume |
-| `verify_launch_token` | Low-level JWT verify |
-| `report_usage` | Debit Consumer wallet |
-| `MythosSession` | Session dataclass |
-| `MythosError` | Base error |
-| `InsufficientFundsError` | Wallet has no credits |
-| `SessionNotFoundError` | Session JTI not found |
+| Export                            | Description                                    |
+| -----------------------------------| ------------------------------------------------|
+| `handshake_router`                | Pre-built FastAPI router for publish handshake |
+| `create_handshake_router`         | Factory for customizable handshake router      |
+| `create_listing_callback_handler` | Handler for listing registration callback      |
+| `require_launch_token`            | FastAPI dependency factory — verify + consume  |
+| `verify_launch_token`             | Low-level JWT verify                           |
+| `report_usage`                    | Debit Consumer wallet                          |
+| `MythosSession`                   | Session dataclass                              |
+| `MythosError`                     | Base error                                     |
+| `MythosConfigError`               | Missing/invalid SDK config                     |
+| `InvalidLaunchTokenError`         | Launch token failed claim validation           |
+| `InsufficientFundsError`          | Wallet has no credits                          |
+| `SessionNotFoundError`            | Session JTI not found                          |
+| `InvalidUsageError`               | Invalid arguments passed to an SDK function    |
 
 ## MythosSession
 

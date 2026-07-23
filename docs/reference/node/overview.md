@@ -22,8 +22,11 @@ npm install @mythos-work/sdk
 | `verifyLaunchToken` | function | Low-level JWT verify (prefer middleware) |
 | `reportUsage` | function | Debit Consumer wallet |
 | `MythosError` | class | Base error |
+| `MythosConfigError` | class | Missing/invalid SDK config |
+| `InvalidLaunchTokenError` | class | Launch token failed claim validation |
 | `InsufficientFundsError` | class | Wallet has no credits |
 | `SessionNotFoundError` | class | Session JTI not found |
+| `InvalidUsageError` | class | Invalid arguments passed to an SDK function |
 | `MythosSession` | type | Session object shape |
 
 ## MythosSession

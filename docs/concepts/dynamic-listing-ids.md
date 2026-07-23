@@ -31,11 +31,11 @@ sequenceDiagram
   participant Bootstrap as BootstrapScript
   participant MythosAPI as MythosAPI
   participant ProducerApp as ProducerApp
-  participant Store as ListingIdStore
+  participant DB as ProducerAppDB
 
   Bootstrap->>MythosAPI: POST /api/listings/web-app
   MythosAPI->>ProducerApp: /.well-known/mythos-listing-registered?lt=JWT
-  ProducerApp->>Store: save listingId
+  ProducerApp->>DB: save listingId
   ProducerApp-->>MythosAPI: 200 ok
 ```
 

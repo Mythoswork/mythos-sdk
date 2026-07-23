@@ -7,7 +7,7 @@ Debit the Consumer's Mythos wallet after a billable action.
 ```typescript
 function reportUsage(
   jti: string,
-  opts: { credits: number; reason?: string },
+  opts: { credits: number; reason?: string; idempotencyKey?: string },
 ): Promise<void>
 ```
 
@@ -18,6 +18,7 @@ function reportUsage(
 | `jti` | string | Yes | `sessionJti` from launch session |
 | `opts.credits` | number | Yes | Credits to debit |
 | `opts.reason` | string | No | Human-readable reason for analytics |
+| `opts.idempotencyKey` | string | No | Caller-supplied dedup key sent as `charge_id`. Same key on retry avoids double-billing. Defaults to a fresh UUID per call. See [Idempotency](../../guides/idempotency.md). |
 
 ## Returns
 
@@ -33,12 +34,15 @@ function reportUsage(
 
 ## Internal behavior
 
-Sends `POST /api/apps/sessions/{jti}/meter` with a fresh `charge_id` UUID per call. See [Idempotency](../../guides/idempotency.md).
+Sends `POST /api/apps/sessions/{jti}/meter` with `charge_id` set to `opts.idempotencyKey` if provided, otherwise a fresh UUID per call. See [Idempotency](../../guides/idempotency.md).
 
 ## Example
 
 ```typescript
 await reportUsage(req.mythos.sessionJti, { credits: 1, reason: 'page-view' });
+
+// Retry-safe: same idempotencyKey on retry won't double-charge.
+await reportUsage(req.mythos.sessionJti, { credits: 1, reason: 'page-view', idempotencyKey: postId });
 ```
 
 ## See also

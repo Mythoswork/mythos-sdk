@@ -8,7 +8,7 @@ Prevent double-billing when users retry or double-click billable actions.
 
 ## How charge_id works today
 
-Each `reportUsage` / `report_usage` call sends a `charge_id` to Mythos `/meter`. The SDK generates a **fresh UUID** on every call:
+Each `reportUsage` / `report_usage` call sends a `charge_id` to Mythos `/meter`. By default, the SDK generates a **fresh UUID** on every call (see [Caller-supplied idempotency key](#caller-supplied-idempotency-key) below to override this):
 
 ```typescript
 // Internal behavior — SDK generates charge_id automatically
@@ -38,18 +38,18 @@ async function onGeneratePost() {
 
 Disable the button after first click. Use a per-action ID (post ID, request ID) as a client-side dedup key.
 
-## Caller-supplied charge_id (upcoming)
+## Caller-supplied idempotency key
 
-A future SDK release will accept an optional idempotency key so retries send the same `charge_id`:
+Pass an optional idempotency key so retries send the same `charge_id`:
 
 ```typescript
-// Coming soon — same chargeId on retry dedupes at the backend
-await reportUsage(sessionJti, { credits: 1, reason: 'post', chargeId: postId });
+// Same idempotencyKey on retry dedupes at the backend
+await reportUsage(sessionJti, { credits: 1, reason: 'post', idempotencyKey: postId });
 ```
 
 ```python
-# Coming soon
-await report_usage(session.sessionJti, credits=1, reason="post", charge_id=post_id)
+# idempotency_key is keyword-only
+await report_usage(session.sessionJti, credits=1, reason="post", idempotency_key=post_id)
 ```
 
 Generate the key **once per billable action**, not per HTTP retry. Use a stable identifier tied to the action (e.g. generated post UUID), not a random value per click.

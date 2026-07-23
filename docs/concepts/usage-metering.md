@@ -97,7 +97,7 @@ rest of this page — fire-and-forget, non-blocking.
 
 ## Idempotency
 
-Each `reportUsage` call generates a fresh `charge_id` UUID internally. Double-clicking a billable button can produce two charges. See [Idempotency](../guides/idempotency.md) for dedup patterns.
+By default, each `reportUsage` call generates a fresh `charge_id` UUID internally, so double-clicking a billable button can produce two charges. Pass `idempotencyKey` / `idempotency_key` to reuse the same `charge_id` on retry. See [Idempotency](../guides/idempotency.md) for dedup patterns.
 
 ## Next steps
 
