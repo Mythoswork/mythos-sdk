@@ -33,6 +33,11 @@ const config = {
   themeConfig: {
     navbar: {
       title: 'Mythos SDK',
+      logo: {
+        alt: 'Mythos SDK Logo',
+        src: 'img/logo.svg',
+        href: '/getting-started/introduction',
+      },
       items: [
         {
           href: 'https://github.com/Mythoswork/mythos-sdk',
