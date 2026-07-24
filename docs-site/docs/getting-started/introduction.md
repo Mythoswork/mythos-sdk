@@ -1,3 +1,7 @@
+---
+slug: /
+---
+
 # Introduction
 
 Learn what the Mythos SDK is, who it is for, and what you need before integrating.

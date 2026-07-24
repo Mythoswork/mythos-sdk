@@ -36,7 +36,7 @@ const config = {
       logo: {
         alt: 'Mythos SDK Logo',
         src: 'img/logo.svg',
-        href: '/getting-started/introduction',
+        href: '/',
       },
       items: [
         {
