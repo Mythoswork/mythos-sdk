@@ -21,11 +21,11 @@ Official SDK packages for integrating Producer apps with the [Mythos](https://my
 
 | Goal | Start here |
 |------|------------|
-| Integrate in 10 minutes (Node) | [Quickstart: Node.js](getting-started/quickstart-node.md) |
-| Integrate in 10 minutes (Python) | [Quickstart: Python](getting-started/quickstart-python.md) |
-| Wire up with an AI agent | [AI integration prompt](guides/ai-integration-prompt.md) |
-| Understand the full flow | [How it works](getting-started/how-it-works.md) |
-| Look up an API symbol | [Node.js reference](reference/node/overview.md) · [Python reference](reference/python/overview.md) |
+| Integrate in 10 minutes (Node) | [Quickstart: Node.js](../docs-site/docs/getting-started/quickstart-node.md) |
+| Integrate in 10 minutes (Python) | [Quickstart: Python](../docs-site/docs/getting-started/quickstart-python.md) |
+| Wire up with an AI agent | [AI integration prompt](../docs-site/docs/guides/ai-integration-prompt.md) |
+| Understand the full flow | [How it works](../docs-site/docs/getting-started/how-it-works.md) |
+| Look up an API symbol | [Node.js reference](../docs-site/docs/reference/node/overview.md) · [Python reference](../docs-site/docs/reference/python/overview.md) |
 
 ## Configuration
 
@@ -35,12 +35,12 @@ Official SDK packages for integrating Producer apps with the [Mythos](https://my
 | `MYTHOS_LISTING_IDS` | Yes* | — | Comma-separated listing IDs (overrides single ID) |
 | `MYTHOS_API_URL` | No | `https://api.mythos.work` | API base URL override |
 
-\*One of `MYTHOS_LISTING_ID` or `MYTHOS_LISTING_IDS` is required — unless you use [dynamic listing IDs](concepts/dynamic-listing-ids.md) via the listing callback.
+\*One of `MYTHOS_LISTING_ID` or `MYTHOS_LISTING_IDS` is required — unless you use [dynamic listing IDs](../docs-site/docs/concepts/dynamic-listing-ids.md) via the listing callback.
 
 ## Mock apps and examples
 
-- [Mock integration apps](resources/mock-integration-apps.md) — end-to-end dev/QA harnesses
-- [Code examples](resources/code-examples.md) — copy-paste stubs for Express, FastAPI, Next.js, and frontend clients
+- [Mock integration apps](../docs-site/docs/resources/mock-integration-apps.md) — end-to-end dev/QA harnesses
+- [Code examples](../docs-site/docs/resources/code-examples.md) — copy-paste stubs for Express, FastAPI, Next.js, and frontend clients
 
 ## Repository
 

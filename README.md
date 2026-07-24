@@ -24,9 +24,9 @@ Producers install the Mythos SDK to:
 Full Producer documentation lives in [`docs/`](./docs/) (GitBook-ready):
 
 - **Docs home:** [docs/README.md](./docs/README.md)
-- **Quickstart (Node):** [docs/getting-started/quickstart-node.md](./docs/getting-started/quickstart-node.md)
-- **Quickstart (Python):** [docs/getting-started/quickstart-python.md](./docs/getting-started/quickstart-python.md)
-- **AI integration prompt:** [docs/guides/ai-integration-prompt.md](./docs/guides/ai-integration-prompt.md)
+- **Quickstart (Node):** [docs-site/docs/getting-started/quickstart-node.md](./docs-site/docs/getting-started/quickstart-node.md)
+- **Quickstart (Python):** [docs-site/docs/getting-started/quickstart-python.md](./docs-site/docs/getting-started/quickstart-python.md)
+- **AI integration prompt:** [docs-site/docs/guides/ai-integration-prompt.md](./docs-site/docs/guides/ai-integration-prompt.md)
 - **Code examples:** [docs/examples/](./docs/examples/)
 - **Cursor skill:** copy [`.cursor/skills/integrate-mythos-sdk/`](./.cursor/skills/integrate-mythos-sdk/) into your project
 
@@ -89,7 +89,7 @@ async def dashboard(session=Depends(require_launch_token())):
 | `MYTHOS_LISTING_IDS` | Yes* | — | Comma-separated listing IDs (overrides above) |
 | `MYTHOS_API_URL` | No | `https://api.mythos.work` | API base URL override |
 
-\*One of `MYTHOS_LISTING_ID` or `MYTHOS_LISTING_IDS` is required — unless using [dynamic listing IDs](./docs/concepts/dynamic-listing-ids.md).
+\*One of `MYTHOS_LISTING_ID` or `MYTHOS_LISTING_IDS` is required — unless using [dynamic listing IDs](./docs-site/docs/concepts/dynamic-listing-ids.md).
 
 ## Security
 
