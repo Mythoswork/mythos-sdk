@@ -10,7 +10,7 @@
 
 `docs-site/` is a stock Docusaurus `classic` preset — default Infima green theme, default logo/social-card placeholders, default Prism code theme (`docusaurus.config.js`, `src/css/custom.css`). It's on-brand in structure but not in look.
 
-`D:/frontend-main` is the real product (Next.js 16 + React 19 app router). Its brand is defined in two places:
+`frontend-main` is the real product (Next.js 16 + React 19 app router). Its brand is defined in two places:
 - `src/theme/theme.ts` — MUI theme: dark mode, primary orange `#ff9710` (hover `#d97f0a`), background `#1a1a1a`, card `#232323`, foreground `#f7f5f1`, muted `#9e978f`, `Inter` body font, `12px` border radius.
 - `src/app/globals.css` — Tailwind v4 `@theme` tokens (dozens of scoped `--color-profile-*`, `--color-surface-*` vars) plus `Space Grotesk` / `JetBrains Mono` display/mono fonts loaded via `next/font`.
 - Component layer: MUI + Radix primitives wrapped as shadcn-style components (`src/components/ui/*`, `src/shared/ui/*`) — `button.tsx`, `card.tsx`, `dialog.tsx`, etc.
