@@ -18,10 +18,10 @@ Wire this Producer app so it can be launched from Mythos, verify launch tokens s
 Read these from the mythos-sdk repo (or ask user to provide):
 
 - **Docs home:** `docs/README.md`
-- **Copy-paste agent brief:** `docs/guides/ai-integration-prompt.md`
-- **Required routes:** `docs/guides/required-routes.md`
-- **Dynamic listing IDs:** `docs/concepts/dynamic-listing-ids.md`
-- **Verify checklist:** `docs/getting-started/verify-integration.md`
+- **Copy-paste agent brief:** `docs-site/docs/guides/ai-integration-prompt.md`
+- **Required routes:** `docs-site/docs/guides/required-routes.md`
+- **Dynamic listing IDs:** `docs-site/docs/concepts/dynamic-listing-ids.md`
+- **Verify checklist:** `docs-site/docs/getting-started/verify-integration.md`
 - **Code stubs:** `docs/examples/`
 - **Mock app:** https://github.com/Mythoswork/mythos-sdk-python-mock-integration-app
 
