@@ -21,7 +21,7 @@ Producers install the Mythos SDK to:
 
 ## Documentation
 
-Full Producer documentation lives in [`docs/`](./docs/) (GitBook-ready):
+Full Producer documentation lives in [`docs-site/`](./docs-site/) (Docusaurus):
 
 - **Docs home:** [docs/README.md](./docs/README.md)
 - **Quickstart (Node):** [docs-site/docs/getting-started/quickstart-node.md](./docs-site/docs/getting-started/quickstart-node.md)

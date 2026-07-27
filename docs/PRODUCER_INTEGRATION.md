@@ -1,6 +1,6 @@
 # Mythos SDK — Producer Integration Guide
 
-This guide has moved to the GitBook documentation site.
+This guide has moved to the Docusaurus documentation site.
 
 **Start here:** [docs/README.md](./README.md)
 
