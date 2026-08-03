@@ -2,7 +2,7 @@ import time
 import base64
 import json
 import pytest
-from cryptography.hazmat.primitives.asymmetric import rsa as _rsa
+from cryptography.hazmat.primitives.asymmetric import ec as _ec
 from cryptography.hazmat.primitives import serialization
 from jose import jwt, JWTError
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError
@@ -27,7 +27,7 @@ def mint_token(private_pem: bytes, overrides: dict | None = None) -> str:
     }
     if overrides:
         payload.update(overrides)
-    return jwt.encode(payload, private_pem, algorithm="RS256")
+    return jwt.encode(payload, private_pem, algorithm="ES256")
 
 
 @pytest.fixture
@@ -137,7 +137,7 @@ async def test_no_static_and_no_dynamic_listing_ids_raises_config_error(rsa_key_
 
 
 async def test_bad_signature_does_not_refetch(rsa_key_pair):
-    other_key = _rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    other_key = _ec.generate_private_key(_ec.SECP256R1())
     other_pem = other_key.private_bytes(
         serialization.Encoding.PEM,
         serialization.PrivateFormat.TraditionalOpenSSL,

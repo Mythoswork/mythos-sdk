@@ -14,13 +14,13 @@ function mockRes(): ExpressResponse {
 }
 
 beforeAll(async () => {
-  const kp = await generateKeyPair('RS256', { modulusLength: 2048 });
+  const kp = await generateKeyPair('ES256');
   privateKey = kp.privateKey;
   const publicKey = kp.publicKey;
 
   const jwk = await exportJWK(publicKey);
   jwk.kid = 'test-kid';
-  jwk.alg = 'RS256';
+  jwk.alg = 'ES256';
 
   const { createLocalJWKSet } = await import('jose');
   const keySet = createLocalJWKSet({ keys: [jwk] });
@@ -36,7 +36,7 @@ beforeEach(() => {
 
 async function mintToken(jti = 'jti-001'): Promise<string> {
   return new SignJWT({ sub: 'user-1', email: 'e@e.com', displayName: 'User', listingId: 'listing-abc' })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
     .setIssuedAt()
     .setIssuer('mythos')
     .setAudience('listing-abc')
@@ -159,7 +159,7 @@ test('resolveListingIds forwarded end-to-end: dynamic-only listing (no static en
   jest.spyOn(apiClient, 'consumeSession').mockResolvedValue({ status: 200 } as unknown as globalThis.Response);
 
   const token = await new SignJWT({ sub: 'user-1', email: 'e@e.com', displayName: 'User', listingId: 'listing-dynamic' })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
     .setIssuedAt()
     .setIssuer('mythos')
     .setAudience('listing-dynamic')
@@ -181,7 +181,7 @@ test('iss mismatch → 401, token with wrong issuer rejected', async () => {
   const { requireLaunchToken } = await import('../src/middleware');
 
   const badToken = await new SignJWT({ sub: 'user-evil', email: 'e@e.com', displayName: 'Evil', listingId: 'listing-abc' })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
     .setIssuedAt()
     .setIssuer('https://evil.example')
     .setAudience('listing-abc')

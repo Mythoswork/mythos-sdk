@@ -163,15 +163,15 @@ Returns a standard JWK Set (RFC 7517) with multiple keys. Match on the JWT heade
 ```json
 {
   "keys": [
-    { "kty": "RSA", "kid": "06abef38-...", "use": "sig", "alg": "RS256", "n": "...", "e": "AQAB" },
-    { "kty": "RSA", "kid": "b53b98b2-...", "use": "sig", "alg": "RS256", "n": "...", "e": "AQAB" }
+    { "kty": "EC", "kid": "06abef38-...", "use": "sig", "alg": "ES256", "crv": "P-256", "x": "...", "y": "..." },
+    { "kty": "EC", "kid": "b53b98b2-...", "use": "sig", "alg": "ES256", "crv": "P-256", "x": "...", "y": "..." }
   ]
 }
 ```
 
 **2. Verify the JWT**
 
-- **Algorithm: `RS256` only.** Both SDKs hardcode `algorithms: ['RS256']` / `algorithms=["RS256"]` at every verification call site. There is no HMAC/shared-secret fallback anywhere in the codebase. Reject any other `alg`, including `none`, explicitly. Don't rely on a library default.
+- **Algorithm: `ES256` only.** Both SDKs hardcode `algorithms: ['ES256']` / `algorithms=["ES256"]` at every verification call site. There is no HMAC/shared-secret fallback anywhere in the codebase. Reject any other `alg`, including `none`, explicitly. Don't rely on a library default.
 - **Clock skew: none configured.** Neither SDK passes any leeway/tolerance option to its JWT library. Both rely on the library's default (effectively zero-tolerance) `exp` validation. Match that unless you have a specific reason not to.
 - **Token TTLs are backend-controlled**, not SDK constants (by convention, from test fixtures): launch tokens ≈5 minutes, handshake-check and listing-registered tokens ≈2 minutes. `exp` is enforced purely by JWT library validation, not a manual re-check in application code.
 

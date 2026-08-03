@@ -62,7 +62,7 @@ async def dashboard(session=Depends(require_launch_token(resolve_listing_ids=get
 
 ### `require_launch_token(resolve_listing_ids=None)`
 
-FastAPI dependency. Verifies the RS256 launch token from `?lt=`, enforces single-use semantics, and returns a `MythosSession`. Listing IDs are read from `MYTHOS_LISTING_ID(S)` by default; pass `resolve_listing_ids` to supply them dynamically (e.g. from storage populated by `create_listing_callback_handler`). Returns `401` if the token is missing, invalid, or already consumed.
+FastAPI dependency. Verifies the ES256 launch token from `?lt=`, enforces single-use semantics, and returns a `MythosSession`. Listing IDs are read from `MYTHOS_LISTING_ID(S)` by default; pass `resolve_listing_ids` to supply them dynamically (e.g. from storage populated by `create_listing_callback_handler`). Returns `401` if the token is missing, invalid, or already consumed.
 
 ### `report_usage(session_jti, *, credits, reason=None)`
 
@@ -82,7 +82,7 @@ Low-level token verifier. Validates the launch token and returns the decoded `My
 
 ## Security
 
-- Tokens verified via RS256 against the Mythos JWKS endpoint
+- Tokens verified via ES256 against the Mythos JWKS endpoint
 - `alg: none` rejected as a hard block
 - Single-use enforcement is non-skippable (ADR-0003)
 - JWKS keys cached 10 minutes with automatic re-fetch on key rotation

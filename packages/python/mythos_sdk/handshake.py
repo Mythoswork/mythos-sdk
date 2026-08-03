@@ -20,12 +20,12 @@ async def _validate_handshake_token(token: str) -> None:
     api_url = os.environ.get("MYTHOS_API_URL", _DEFAULT_API_URL)
     jwks = await get_jwks(api_url)
     try:
-        payload = jwt.decode(token, jwks, algorithms=["RS256"], options=_DECODE_OPTIONS)
+        payload = jwt.decode(token, jwks, algorithms=["ES256"], options=_DECODE_OPTIONS)
     except ExpiredSignatureError:
         raise
     except JWTError:
         jwks = await get_jwks_with_kid_fallback(api_url)
-        payload = jwt.decode(token, jwks, algorithms=["RS256"], options=_DECODE_OPTIONS)
+        payload = jwt.decode(token, jwks, algorithms=["ES256"], options=_DECODE_OPTIONS)
 
     if payload.get("purpose") != "handshake-check":
         raise JWTError("Token purpose is not handshake-check")

@@ -19,7 +19,7 @@ def mint_callback_token(private_pem: bytes, overrides: dict | None = None) -> st
     }
     if overrides:
         payload.update(overrides)
-    return jwt.encode(payload, private_pem, algorithm="RS256")
+    return jwt.encode(payload, private_pem, algorithm="ES256")
 
 
 @pytest.fixture
@@ -111,7 +111,7 @@ def test_no_purpose_claim_returns_401(rsa_key_pair, mock_jwks):
         "exp": int(time.time()) + 120,
         "iat": int(time.time()),
     }
-    token = jwt.encode(payload, rsa_key_pair["private"], algorithm="RS256")
+    token = jwt.encode(payload, rsa_key_pair["private"], algorithm="ES256")
 
     resp = client.get("/.well-known/mythos-listing-registered", params={"lt": token})
 
@@ -122,17 +122,17 @@ def test_no_purpose_claim_returns_401(rsa_key_pair, mock_jwks):
 
 def test_kid_fallback_succeeds_with_fresh_jwks(rsa_key_pair):
     import base64
-    from cryptography.hazmat.primitives.asymmetric import rsa as _rsa
+    from cryptography.hazmat.primitives.asymmetric import ec as _ec
 
-    stale_priv = _rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    stale_priv = _ec.generate_private_key(_ec.SECP256R1())
     stale_nums = stale_priv.public_key().public_numbers()
 
     def _b64(n: int) -> str:
         length = (n.bit_length() + 7) // 8
         return base64.urlsafe_b64encode(n.to_bytes(length, "big")).rstrip(b"=").decode()
 
-    stale_jwks = {"keys": [{"kty": "RSA", "alg": "RS256", "kid": "stale-kid",
-                             "n": _b64(stale_nums.n), "e": _b64(stale_nums.e)}]}
+    stale_jwks = {"keys": [{"kty": "EC", "alg": "ES256", "kid": "stale-kid", "crv": "P-256",
+                             "x": _b64(stale_nums.x), "y": _b64(stale_nums.y)}]}
     valid_jwks = {"keys": [rsa_key_pair["jwk"]]}
 
     on_registered = AsyncMock()

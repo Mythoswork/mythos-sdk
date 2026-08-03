@@ -4,7 +4,7 @@ Security properties and requirements for Mythos SDK integrations.
 
 ## Token verification
 
-- Launch tokens verified with **RS256** via Mythos JWKS endpoint
+- Launch tokens verified with **ES256** via Mythos JWKS endpoint
 - Issuer claim: `mythos` (fixed identifier, not the API URL)
 - Audience must match configured listing ID(s)
 - `alg: none` rejected as a hard block

@@ -24,7 +24,7 @@ This documentation is written for **Producers** integrating the SDK into their s
 
 The Mythos SDK is not a hosted service you call from the browser. It is a library that runs on **your server** and:
 
-- Verifies RS256-signed JWTs from Mythos
+- Verifies ES256-signed JWTs from Mythos
 - Calls Mythos `/consume` to enforce single-use launch tokens
 - Calls Mythos `/meter` to debit the Consumer's wallet after billable actions
 - Exposes well-known routes for publish handshake and listing registration

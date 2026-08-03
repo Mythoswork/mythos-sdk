@@ -24,7 +24,7 @@ function verifyLaunchToken(
 
 ## Validation
 
-- RS256 signature via Mythos JWKS (cached 10 min, re-fetch on kid miss)
+- ES256 signature via Mythos JWKS (cached 10 min, re-fetch on kid miss)
 - Issuer: `mythos`
 - Audience matches `MYTHOS_LISTING_ID` / `MYTHOS_LISTING_IDS` or `resolveListingIds` results
 

@@ -11,11 +11,11 @@ async function validateListingCallbackToken(token: string): Promise<string> {
 
   let payload;
   try {
-    ({ payload } = await jwtVerify(token, keySet, { algorithms: ['RS256'], issuer: MYTHOS_ISSUER }));
+    ({ payload } = await jwtVerify(token, keySet, { algorithms: ['ES256'], issuer: MYTHOS_ISSUER }));
   } catch (err: unknown) {
     if (!(err instanceof errors.JWKSNoMatchingKey)) throw err;
     keySet = await getKeySetWithKidFallback(apiUrl);
-    ({ payload } = await jwtVerify(token, keySet, { algorithms: ['RS256'], issuer: MYTHOS_ISSUER }));
+    ({ payload } = await jwtVerify(token, keySet, { algorithms: ['ES256'], issuer: MYTHOS_ISSUER }));
   }
 
   if (payload['purpose'] !== 'listing_registered') {

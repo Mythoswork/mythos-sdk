@@ -24,7 +24,7 @@ async def verify_launch_token(
 
 ## Validation
 
-- RS256 via Mythos JWKS (cached 10 min, re-fetch on kid miss)
+- ES256 via Mythos JWKS (cached 10 min, re-fetch on kid miss)
 - Issuer: `mythos`
 - Audience: checks **all** `aud` elements when `aud` is a list
 

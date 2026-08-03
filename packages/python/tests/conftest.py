@@ -1,6 +1,6 @@
 import base64
 import pytest
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import serialization
 
 
@@ -18,7 +18,7 @@ def set_env(monkeypatch):
 
 @pytest.fixture(scope="session")
 def rsa_key_pair():
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_key = ec.generate_private_key(ec.SECP256R1())
     private_pem = private_key.private_bytes(
         serialization.Encoding.PEM,
         serialization.PrivateFormat.TraditionalOpenSSL,
@@ -31,11 +31,12 @@ def rsa_key_pair():
     )
     pub_numbers = public_key.public_numbers()
     jwk = {
-        "kty": "RSA",
+        "kty": "EC",
         "use": "sig",
-        "alg": "RS256",
+        "alg": "ES256",
         "kid": "test-kid",
-        "n": _int_to_base64url(pub_numbers.n),
-        "e": _int_to_base64url(pub_numbers.e),
+        "crv": "P-256",
+        "x": _int_to_base64url(pub_numbers.x),
+        "y": _int_to_base64url(pub_numbers.y),
     }
     return {"private": private_pem, "public": public_pem, "private_key": private_key, "jwk": jwk}
