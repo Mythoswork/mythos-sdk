@@ -51,7 +51,7 @@ app.get(
 
 ### `requireLaunchToken({ resolveListingIds? })`
 
-Express middleware. Verifies the RS256 launch token from `?lt=`, enforces single-use semantics, and attaches `req.mythos` to the request. Listing IDs are read from `MYTHOS_LISTING_ID(S)` by default; pass `resolveListingIds` to supply them dynamically (e.g. from storage populated by `listingCallbackRoute`). Returns `401` if the token is missing, invalid, or already consumed.
+Express middleware. Verifies the ES256 launch token from `?lt=`, enforces single-use semantics, and attaches `req.mythos` to the request. Listing IDs are read from `MYTHOS_LISTING_ID(S)` by default; pass `resolveListingIds` to supply them dynamically (e.g. from storage populated by `listingCallbackRoute`). Returns `401` if the token is missing, invalid, or already consumed.
 
 ### `reportUsage(sessionJti, { credits, reason? })`
 
@@ -71,7 +71,7 @@ Low-level token verifier. Validates the launch token and returns the decoded `My
 
 ## Security
 
-- Tokens verified via RS256 against the Mythos JWKS endpoint
+- Tokens verified via ES256 against the Mythos JWKS endpoint
 - `alg: none` rejected as a hard block
 - Single-use enforcement is non-skippable (ADR-0003)
 - JWKS keys cached 10 minutes with automatic re-fetch on key rotation

@@ -11,7 +11,7 @@ Official SDK packages for integrating Producer apps with the [Mythos](https://my
 
 ## What the SDK does
 
-1. **Verify launch tokens** — RS256 JWKS-backed verification of the `?lt=` token Mythos embeds in the redirect URL
+1. **Verify launch tokens** — ES256 JWKS-backed verification of the `?lt=` token Mythos embeds in the redirect URL
 2. **Enforce single-use semantics** — middleware automatically calls `/consume` (ADR-0003); Producers cannot skip this
 3. **Report usage** — `reportUsage()` / `report_usage()` debits the Consumer's Mythos wallet after billable actions
 4. **Publish handshake** — `handshakeRoute()` / `handshake_router` for the Mythos publish gate

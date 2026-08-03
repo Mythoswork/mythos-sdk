@@ -55,7 +55,7 @@ export async function verifyLaunchToken(
   let payload: JWTPayload;
   try {
     ({ payload } = await jwtVerify(token, keySet, {
-      algorithms: ['RS256'],
+      algorithms: ['ES256'],
       issuer: MYTHOS_ISSUER,
     }));
   } catch (err: unknown) {
@@ -63,7 +63,7 @@ export async function verifyLaunchToken(
 
     keySet = await getKeySetWithKidFallback(apiUrl);
     ({ payload } = await jwtVerify(token, keySet, {
-      algorithms: ['RS256'],
+      algorithms: ['ES256'],
       issuer: MYTHOS_ISSUER,
     }));
   }

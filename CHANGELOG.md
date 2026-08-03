@@ -3,7 +3,7 @@
 ## 0.1.0
 
 ### Added
-- Launch token verification (RS256 + JWKS)
+- Launch token verification (ES256 + JWKS)
 - `requireLaunchToken` / `require_launch_token` with mandatory `/consume`
 - `reportUsage` / `report_usage` metering with optional idempotency key
 - Handshake endpoint for platform health checks

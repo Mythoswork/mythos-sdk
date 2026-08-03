@@ -9,7 +9,7 @@ from .errors import InvalidLaunchTokenError
 from .jwks_cache import get_jwks, get_jwks_with_kid_fallback
 from .types import MythosSession
 
-ALGORITHMS = ["RS256"]
+ALGORITHMS = ["ES256"]
 _DECODE_OPTIONS = {"verify_aud": False}
 
 # Matches backend's HANDSHAKE_ISS_CLAIM constant — the platform issuer is a

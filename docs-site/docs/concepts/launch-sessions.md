@@ -10,7 +10,7 @@ Learn how launch tokens are verified, consumed, and enforced as single-use.
 
 1. Consumer arrives with `?lt=<launch-jwt>`
 2. Your server calls `verifyLaunchToken` (or uses `requireLaunchToken` middleware)
-3. SDK fetches Mythos JWKS, verifies RS256 signature and issuer `mythos`
+3. SDK fetches Mythos JWKS, verifies ES256 signature and issuer `mythos`
 4. SDK validates audience (`aud`) against configured listing ID(s)
 5. SDK calls `POST /api/apps/sessions/{jti}/consume` on Mythos
 6. On success, session is returned to your app / frontend

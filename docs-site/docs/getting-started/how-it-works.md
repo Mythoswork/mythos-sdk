@@ -54,7 +54,7 @@ If this fails (404, 401, timeout), your listing cannot go live. See [handshakeRo
 1. Consumer clicks your listing on Mythos
 2. Mythos redirects to `https://your-app/?lt=<launch-jwt>`
 3. Your frontend reads `lt` and calls your session endpoint
-4. Your server verifies the JWT (RS256, audience, issuer), calls `/consume`, returns session
+4. Your server verifies the JWT (ES256, audience, issuer), calls `/consume`, returns session
 5. Frontend strips `?lt=` from the URL and stores `sessionJti`
 
 See [Launch sessions](../concepts/launch-sessions.md) and [Token types](../concepts/token-types.md).

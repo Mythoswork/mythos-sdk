@@ -13,11 +13,11 @@ async function validateHandshakeToken(token: string): Promise<void> {
 
   let payload;
   try {
-    ({ payload } = await jwtVerify(token, keySet, { algorithms: ['RS256'] }));
+    ({ payload } = await jwtVerify(token, keySet, { algorithms: ['ES256'] }));
   } catch (err: unknown) {
     if (!(err instanceof errors.JWKSNoMatchingKey)) throw err;
     keySet = await getKeySetWithKidFallback(apiUrl);
-    ({ payload } = await jwtVerify(token, keySet, { algorithms: ['RS256'] }));
+    ({ payload } = await jwtVerify(token, keySet, { algorithms: ['ES256'] }));
   }
 
   if (payload['purpose'] !== 'handshake-check') {
