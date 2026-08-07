@@ -280,7 +280,12 @@ html:root {
 }
 
 /* ---------------------------------------------------------------------------
-   Admonitions — tinted surface, leading icon, no label bar
+   Admonitions — solid saturated fill, leading icon, no label bar
+   ---------------------------------------------------------------------------
+   Both Figma frames (9526-996 and 9852-9287) render these as fully opaque
+   colour banners with white text, not tinted surfaces. An earlier pass here
+   used a 9%-opacity tint with a matching border, which reads as a different,
+   quieter component — corrected to match what the mock actually shows.
 --------------------------------------------------------------------------- */
 
 .mythos-admonition {
@@ -288,11 +293,12 @@ html:root {
   grid-template-columns: auto 1fr;
   gap: 0.7rem;
   align-items: start;
-  padding: 0.95rem 1.1rem;
-  border-radius: var(--radius);
-  border: 1px solid;
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius-lg);
+  border: none;
   font-size: 0.9rem;
   margin-bottom: 1.5rem;
+  color: oklch(0.99 0 0);
 }
 
 .mythos-admonition__body > :last-child {
@@ -307,40 +313,39 @@ html:root {
 .mythos-admonition__icon {
   display: flex;
   padding-top: 0.1rem;
-  color: var(--mythos-accent);
+  color: oklch(0.99 0 0);
+  opacity: 0.92;
 }
 
+/* Fill colours are chosen for solid-white-text contrast (WCAG AA, >= 4.5:1
+   at this font size) rather than lifted directly from the mock's swatch —
+   the mock's own amber in particular reads under ~3:1 against white. */
 .alert--info,
 .alert--secondary {
-  --mythos-accent: oklch(0.68 0.15 240);
-  background-color: oklch(0.68 0.15 240 / 9%);
-  border-color: oklch(0.68 0.15 240 / 28%);
-  color: var(--foreground);
+  background-color: oklch(0.5 0.17 258);
 }
 
 .alert--warning {
-  --mythos-accent: oklch(0.79 0.16 78);
-  background-color: oklch(0.79 0.16 78 / 9%);
-  border-color: oklch(0.79 0.16 78 / 28%);
-  color: var(--foreground);
+  background-color: oklch(0.52 0.16 55);
 }
 
 .alert--success {
-  --mythos-accent: oklch(0.75 0.18 152);
-  background-color: oklch(0.75 0.18 152 / 9%);
-  border-color: oklch(0.75 0.18 152 / 28%);
-  color: var(--foreground);
+  background-color: oklch(0.48 0.13 155);
 }
 
 .alert--danger {
-  --mythos-accent: oklch(0.65 0.22 25);
-  background-color: oklch(0.65 0.22 25 / 9%);
-  border-color: oklch(0.65 0.22 25 / 28%);
-  color: var(--foreground);
+  background-color: oklch(0.5 0.2 25);
 }
 
 .mythos-admonition a {
-  color: var(--mythos-accent);
+  color: inherit;
+  text-decoration-color: oklch(0.99 0 0 / 55%);
+  font-weight: 600;
+}
+
+.mythos-admonition code {
+  background-color: oklch(0 0 0 / 22%);
+  color: inherit;
 }
 
 /* ---------------------------------------------------------------------------
