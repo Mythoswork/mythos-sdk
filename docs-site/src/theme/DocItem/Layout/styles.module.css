@@ -1,0 +1,12 @@
+.docItemContainer header + *,
+.docItemContainer article > *:first-child {
+  margin-top: 0;
+}
+
+/*
+ * Docusaurus ships `.docItemCol { max-width: 75% !important }` here to reserve
+ * room for the TOC inside Infima's 12-column row. Our layout uses an explicit
+ * grid whose columns already account for the TOC, so that cap only shrinks the
+ * content column to 75% of its intended width. Removed rather than overridden
+ * — the !important would otherwise have to be fought from custom.css.
+ */

@@ -1,115 +1,113 @@
 # Docs Site: Custom UI/Branding + Deployment — Spec
 
-**Status:** Draft, for review
-**Scope:** `docs-site/` (Docusaurus), branding source `D:/frontend-main`
-**Non-goals:** No code in this doc. This is the design/decision spec; implementation gets its own PR(s) once this is approved.
+**Status:** Implemented — this PR now carries both the spec and the implementation.
+**Scope:** `docs-site/` (Docusaurus 3.10.2), branding source `frontend-main`, visual target the MVP wireframe Figma frame.
+**Non-goals:** No changes to docs content or information architecture. The 42 existing pages and the six sidebar sections are untouched.
 
 ---
 
 ## 1. Background
 
-`docs-site/` is a stock Docusaurus `classic` preset — default Infima green theme, default logo/social-card placeholders, default Prism code theme (`docusaurus.config.js`, `src/css/custom.css`). It's on-brand in structure but not in look.
+`docs-site/` was a stock Docusaurus `classic` preset — default Infima green, placeholder Docusaurus logos, default Prism theme. `frontend-main` is the product (Next.js 16 + React 19).
 
-`frontend-main` is the real product (Next.js 16 + React 19 app router). Its brand is defined in two places:
-- `src/theme/theme.ts` — MUI theme: dark mode, primary orange `#ff9710` (hover `#d97f0a`), background `#1a1a1a`, card `#232323`, foreground `#f7f5f1`, muted `#9e978f`, `Inter` body font, `12px` border radius.
-- `src/app/globals.css` — Tailwind v4 `@theme` tokens (dozens of scoped `--color-profile-*`, `--color-surface-*` vars) plus `Space Grotesk` / `JetBrains Mono` display/mono fonts loaded via `next/font`.
-- Component layer: MUI + Radix primitives wrapped as shadcn-style components (`src/components/ui/*`, `src/shared/ui/*`) — `button.tsx`, `card.tsx`, `dialog.tsx`, etc.
+Facts about `frontend-main` that this spec previously got wrong, corrected against the source:
 
-The docs site currently shares none of this.
-
----
-
-## 2. Part A — Custom UI/Design for docs-site (Tailwind + shadcn/ui)
-
-**Decision (per stakeholder direction): build the docs UI on Tailwind CSS + shadcn/ui, not a CSS-variable-only Infima reskin.**
-
-### 2.1 Why this is feasible here (unlike MUI)
-
-Docusaurus is a separate React app with its own build (webpack/Rspack, MDX, SSG) — not the same runtime as the Next.js app, so nothing is literally shared/imported across repos. That rules out pulling `frontend-main`'s MUI + Emotion layer into Docusaurus wholesale (a second CSS-in-JS runtime, heavy bundle, independent upgrade treadmill).
-
-Tailwind + shadcn/ui don't have that problem:
-
-- **Tailwind** is a build-time PostCSS plugin, not a runtime library — it compiles to plain CSS. Docusaurus officially supports adding Tailwind via its PostCSS plugin hook (`docusaurus.config.js` → `plugins` → a small custom plugin that extends `postcssOptions`, or the community `docusaurus-plugin-tailwindcss`).
-- **shadcn/ui** isn't an npm dependency — it's copy-in source (Radix primitives + `class-variance-authority` + `clsx`/`tailwind-merge`), the same pattern already used in `frontend-main` (`src/components/ui/*`). Only the specific components docs actually needs get copied into `docs-site/src/components/ui/`, so the cost scales with what's used, not an all-or-nothing install.
-- Net result: same component *pattern* as `frontend-main`'s Tailwind-based UI layer (not its MUI layer), portable with modest, boundable dependency weight (Radix + CVA + clsx, no Emotion).
-
-### 2.2 Options considered
-
-**Option A — Tailwind token integration.**
-Wire Tailwind into the Docusaurus PostCSS pipeline, define a `tailwind.config.js` whose theme colors/radius/fonts mirror `frontend-main`'s `@theme` block in `globals.css` (primary orange `#ff9710`, dark bg/card/fg `#1a1a1a` / `#232323` / `#f7f5f1`, `12px` radius, `Inter`), and map the same values onto Infima's CSS vars in `custom.css` so built-in Docusaurus chrome (sidebar, admonitions, pagination) stays visually consistent with Tailwind-styled content. No shadcn components yet — just the token layer + utility classes available for MDX authoring.
-
-- Effort: small–medium (PostCSS wiring + config + font/asset swap).
-- Risk: low — additive build step, no component rewrites.
-- Ceiling: MDX content can use Tailwind utilities, but navbar/footer/homepage still Infima-default in structure.
-
-**Option B — Tailwind + shadcn swizzled layout.**
-On top of A: copy the shadcn primitives docs actually needs (`button`, `card`, `badge`, `separator`, `dialog` as a starting set) into `docs-site/src/components/ui/`, then swizzle `Navbar`, `Footer`, and the homepage/`Layout` component to rebuild them with those primitives instead of Infima's default markup. Also unlocks using the same `Card`/`Badge` components *inside* MDX docs content (e.g. callouts, feature grids) for visual parity with the product.
-
-- Effort: medium — swizzling is Docusaurus's supported override mechanism, but each swizzled "unsafe" component is a maintenance surface that can drift on Docusaurus version bumps.
-- Risk: medium, scoped to the swizzled files only (Tailwind/shadcn part itself is low-risk since it doesn't touch Docusaurus internals).
-- Ceiling: full bespoke layout, shared visual language and reusable components with `frontend-main`.
-
-**Option C — Shared design-tokens package.**
-Extract the token layer (colors, fonts, radii) from `frontend-main`'s `globals.css` `@theme` block into a small standalone package/file (e.g. `@mythos/design-tokens`) that both `frontend-main`'s Tailwind config and `docs-site`'s `tailwind.config.js` consume, instead of each maintaining its own copy of the same hex values.
-
-- Effort: medium — one-time extraction + wiring both consumers, plus picking a distribution method (npm workspace package vs. copied file vs. git submodule).
-- Risk: low once set up; ongoing risk is process drift (a token edited in one repo, forgotten in the other) unless it's a real published/workspace package.
-- Ceiling: consistency mechanism, not a visual-fidelity mechanism — same ceiling as A/B.
-
-### 2.3 Recommendation
-
-Do **A + B together as one implementation PR, C as fast-follow.**
-
-- Splitting A and B into separate PRs made sense under the old Infima-only plan (B was optional bespoke work with real swizzle-maintenance risk). Under Tailwind + shadcn, B's marginal cost over A is low — once Tailwind is wired up, adding a handful of copy-in shadcn primitives and swizzling Navbar/Footer to use them is the natural finish, not a speculative extra. Landing them together also avoids a half-state where Tailwind utilities exist but the actual chrome (navbar/footer) still looks stock.
-- **C** stays a fast-follow, not day-one: worth doing once the token set has stabilized, so the extraction captures the real final values instead of ones still being iterated on in the first implementation PR.
-
-### 2.4 Concrete integration points (for the follow-up implementation PR)
-
-- `docs-site/`: add Tailwind + PostCSS wiring (Docusaurus PostCSS plugin hook or `docusaurus-plugin-tailwindcss`), `tailwind.config.js` with theme tokens mirrored from `frontend-main`'s `globals.css` `@theme` block, `components.json` if following the same shadcn CLI convention `frontend-main` uses.
-- `docs-site/src/components/ui/`: copy in the specific shadcn primitives needed (start with `button`, `card`, `badge`, `separator` — expand only as MDX content or swizzled layout actually needs more, mirroring how `frontend-main/src/components/ui` only has what's used).
-- Swizzle `Navbar`, `Footer`, homepage `Layout` to use the shadcn primitives; keep Infima var overrides in `custom.css` for the parts of Docusaurus (sidebar, admonitions, search) not being swizzled, so they stay visually consistent without a full rewrite.
-- `docs-site/docusaurus.config.js`: `prism.theme` (light) and `prism.darkTheme` both set — dark tuned to `frontend-main`'s surface tokens, light authored fresh (see above, no product source to mirror); `themeConfig.navbar.logo` and `static/img/*` swapped for real Mythos SDK marks (current files are still the Docusaurus placeholder mountain/tree/logo — `static/img/docusaurus.png`, `undraw_docusaurus_*.svg` — need replacing regardless of approach).
-- **Color mode: keep Docusaurus's light/dark toggle** (resolved — see §2.5.1). `frontend-main` only defines a dark palette (`palette.mode: 'dark'`), so a light palette has no source to mirror and needs to be authored for docs specifically — treat it as a new deliverable, not a mirror of the product. Default `colorMode.defaultMode` to `dark` (matches the product's only mode and the current MDX content's likely code-block contrast) with the toggle left enabled.
-- Social card (`docusaurus-social-card.jpg`) and favicon regenerated from real branding.
-
-### 2.5 Open questions (need answers before implementation PR)
-
-1. ~~Does docs stay dark-only, or keep the light/dark toggle?~~ **Resolved: keep the toggle.** Default mode `dark`. A light palette needs authoring from scratch since `frontend-main` defines none — added as new scope, see §2.4.
-2. Is `Inter` self-hosted (static font files checked into `static/`) or loaded from Google Fonts at runtime? Self-hosting avoids an external request per page load and matches how `frontend-main` loads fonts via `next/font` (which self-hosts by default).
-3. Who owns the actual logo/wordmark asset export for the docs navbar — reuse `frontend-main`'s `src/assets/logo+wordmark.png` / `logo-white.png` as source, or is there a dedicated brand-asset source?
-4. Tailwind version: match `frontend-main`'s Tailwind v4 (`@theme` syntax, CSS-first config) for consistency, or v3 (`tailwind.config.js`-first) if that's simpler to wire into Docusaurus's current PostCSS setup? Affects which docs/tooling apply.
-5. Initial shadcn primitive set — is `button`/`card`/`badge`/`separator` the right starting scope for Option B, or does the swizzled navbar/footer need more (e.g. `dropdown-menu`, `sheet` for mobile nav) from day one?
-6. Is Option C (shared tokens package) worth a real npm workspace, or is "copy the token values, leave a comment pointing at `globals.css`" good enough given `docs-site` and `frontend-main` are separate repos/deploy targets today?
+- **Token source is `src/styles/index.css`**, not `src/app/globals.css`. `components.json` points at it. It is Tailwind v4 (`@import "tailwindcss"`, `@theme inline`, `@custom-variant dark`).
+- **A light palette does exist.** `:root` in that file is a complete light theme (`--background: oklch(1 0 0)`). Only the *MUI* theme is dark-only. An earlier draft claimed a light palette had to be authored from scratch; it did not.
+- **Primary is `oklch(0.7788 0.17265 66.5653)` light / `oklch(0.76 0.19 58)` dark**, not the hex `#ff9710`. The oklch values are canonical; hex loses gamut.
+- **`src/components/ui/*` contains no MUI.** All 25 components are Radix + CVA + lucide + `cn`. Portability was never in question for that layer.
+- **Fonts** are Inter, Space Grotesk, JetBrains Mono and Unbounded via `next/font/google`.
 
 ---
 
-## 3. Part B — Deployment
+## 2. Decisions
 
-This part is largely already built (merged in PR 21/22) — this section documents what exists and what's left to flip on, not new design.
-
-### 3.1 Current state
-
-- `.github/workflows/deploy-docs.yml`: builds `docs-site/` with `npm ci && npm run build` on every push to `main` that touches `docs-site/**`, uploads `docs-site/build` as a Pages artifact, deploys via `actions/deploy-pages`. Also supports manual `workflow_dispatch`.
-- `docs-site/docusaurus.config.js`: `url: https://mythoswork.github.io`, `baseUrl: /mythos-sdk/` — site is scoped to GitHub Pages project-site hosting under the `mythos-sdk` repo.
-- Not yet confirmed: whether repo Settings → Pages → Source is actually switched to "GitHub Actions" (required for `deploy-pages` to have anywhere to publish to — if Source is still "Deploy from a branch" or unset, the workflow's deploy job will fail even though build succeeds).
-
-### 3.2 Deployment plan
-
-1. **One-time repo setting:** confirm/set Settings → Pages → Build and deployment → Source = **GitHub Actions**.
-2. **Merge to `main`:** any push touching `docs-site/**` auto-builds and deploys. No separate deploy step needed post-merge.
-3. **Manual trigger:** Actions tab → "Deploy docs" → Run workflow, for deploys that don't come from a `docs-site/` diff (e.g. after only changing the workflow file itself, or a manual re-deploy).
-4. **Verification:** after the Actions run completes, hit `https://mythoswork.github.io/mythos-sdk/` and confirm the deployed content matches the latest merged commit (check footer/build metadata or a known recently-changed page).
-5. **Custom domain (if wanted later):** would need a `docs-site/static/CNAME` file plus a DNS CNAME record, and updating `url`/`baseUrl` in `docusaurus.config.js` accordingly (baseUrl would become `/` instead of `/mythos-sdk/`). Not required for launch — flagged as a future option, not a decision needed now.
-
-### 3.3 Interaction with Part A
-
-None of the Part A branding work changes the deployment mechanism — it's all within `docs-site/`, so it ships through the same `deploy-docs.yml` pipeline once merged to `main`. Sequencing recommendation: land Part A (Options A+B, Tailwind + shadcn) as one PR, verify it deploys correctly via the existing pipeline, *then* decide on Option C as a follow-up. Keeps the implementation PR independently reviewable and rollback-able from the deploy pipeline.
+| Question | Decision |
+|---|---|
+| Platform | **Stay on Docusaurus**, swizzle deeply. Not a Next.js re-platform. |
+| Tailwind version | **v4**, matching the product. |
+| Auth chrome (bell, avatar) | **Dropped.** Avatar replaced by a "Sign in" button to the studio. A bell that never fires and an avatar that is not the reader are dead UI on a public static site. |
+| Search | **`@easyops-cn/docusaurus-search-local`** — offline index, no crawler, no account, works on GitHub Pages. |
+| Information architecture | **Unchanged.** The Figma is a visual spec only; its section names (AI Agents, Marketplace, SDKs) have no pages behind them in this repo. |
+| Heading font | **Inter.** The Figma sets headings in the body face; matching the mock beat matching `frontend-main`'s Space Grotesk. |
+| Token sharing | **Vendored copy** with a provenance header in `src/css/tokens.css`. A shared package stays a fast-follow. |
+| PR split | **One PR**, with one commit per area for bisectability. |
 
 ---
 
-## 4. Rollout
+## 3. Implementation
 
-1. This spec (review/approve the options in §2.3 and answer §2.5).
-2. PR 1: Tailwind + shadcn integration (Options A+B) — token config, copy-in shadcn primitives, swizzled Navbar/Footer/Layout, real logo/favicon/social-card assets, Prism dark theme.
-3. Confirm Pages Source setting (§3.2 step 1) if not already done, merge PR 1, verify live site.
-4. PR 2 (optional, later): Option C shared tokens package, if §2.5.6 lands on "yes, worth a real package."
+### 3.1 Build layer
+
+- Tailwind v4 through Docusaurus's `configurePostCss` hook (`plugins/tailwind.js`), which also registers the `@/` → `src/` alias the vendored components expect.
+- TypeScript added (`tsconfig.json` extending `@docusaurus/tsconfig`). The site stays mixed JS/TS.
+- **Preflight is deliberately excluded.** `@import "tailwindcss"` pulls in a reset that flattens Infima's typography across all 42 pages. Only the `theme` and `utilities` layers are imported. Verified absent from the built CSS.
+- `src/css/tokens.css` vendors the product's `@theme inline` / `:root` / dark blocks verbatim, with two required deviations: the dark selector becomes `[data-theme='dark']` (Docusaurus's convention, not `.dark`), and Preflight is not imported.
+- `src/css/custom.css` bridges `--ifm-*` onto those tokens so unswizzled chrome inherits the brand without being rewritten.
+- Fonts self-hosted via `@fontsource`, latin subsets only. No runtime Google Fonts request.
+
+Note: Docusaurus's PostCSS chain downlevels every `oklch()` to a hex fallback plus a `color(display-p3 …)` progressive upgrade, so browser support is broader than the source.
+
+### 3.2 Accessibility deviation
+
+Light-mode `--ifm-color-primary` is deliberately **darker** than the brand token. The product's orange is a dark-surface accent; as link colour on white it lands near 2.1:1 and fails WCAG AA. The light ramp keeps the hue and drops lightness until body-text contrast passes. Dark mode uses the brand value unmodified.
+
+### 3.3 Swizzled components
+
+Safety levels below were read from `swizzle --list --danger` against 3.10.2, not assumed.
+
+| Component | Safety | Change |
+|---|---|---|
+| `CodeBlock/Layout` | Safe | Persistent header: language chip (shadcn `Badge`) + Copy, replacing hover-reveal floating buttons |
+| `CodeBlock/Buttons/CopyButton` | Safe | Adds the Figma's visible "Copy" label |
+| `Admonition/Layout` | Safe | Tinted surface + lucide icon, no label bar |
+| `DocSidebarItem/Category` | Unsafe | Per-category lucide icon from `customProps.icon` |
+| `DocItem/TOC/Desktop` | Unsafe | Adds the "On this page" eyebrow |
+| `DocItem/Layout` | Unsafe | Explicit CSS grid (766 / 183 px) replacing Infima's percentage row |
+| `DocItem/Content` | Unsafe | Hosts the meta row inside the markdown flex context |
+| `DocItem/Paginator` | Unsafe | Prev/next rebuilt on shadcn `Card` |
+| `Navbar/Content` | Unsafe | Three zones — brand, centred search, actions |
+
+Three components are **Forbidden** to swizzle and the design routes around all of them: `DocItem/TOC` (reached via its `Desktop`/`Mobile` children), `NavbarItem/ComponentTypes`, `DocBreadcrumbs/Items`.
+
+`DocItem/Layout/styles.module.css` had its `.docItemCol { max-width: 75% !important }` rule removed — it capped the content column at 75% of the grid width, which is why content measured 575px against a 766px column.
+
+### 3.4 Vendored components
+
+Only `badge` and `card` are vendored, copied verbatim from `frontend-main/src/components/ui/`. Nine others were copied during implementation and removed once the swizzles landed without needing them, along with the Radix packages only they pulled in. This mirrors how `frontend-main/src/components/ui` carries only what it uses.
+
+### 3.5 Measured against the Figma
+
+Figma frame is 2846px at 2x → 1423 CSS px. Measured in a headless browser at that exact width:
+
+| Metric | Figma | Built |
+|---|---|---|
+| Sidebar rail | ~256px | 256px |
+| Content column | ~766px | 766px |
+| TOC column | ~183px | 183px |
+| Navbar height | ~56px | 56px |
+
+Root font size is 15px so the whole rem-based Infima ramp rescales proportionally, rather than patching individual sizes.
+
+---
+
+## 4. Deployment
+
+Unchanged from PR #21/#22 and unaffected by this work — it is all inside `docs-site/`, shipping through the existing `deploy-docs.yml`.
+
+**One manual step remains:** repo Settings → Pages → Build and deployment → Source must be **GitHub Actions**. If it is still "Deploy from a branch", the build succeeds and the deploy job fails.
+
+After merge, verify at `https://mythoswork.github.io/mythos-sdk/`.
+
+A custom domain would need `static/CNAME`, a DNS record, and `baseUrl` changed to `/`. Not required for launch.
+
+---
+
+## 5. Known gaps
+
+1. **`og:image` is unset.** The Docusaurus placeholder social card was deleted rather than left pointing at non-Mythos artwork. A real card needs exporting.
+2. **`STUDIO_URL` is inferred.** `https://mythos.work`, derived from the `api.mythos.work` host used throughout the docs. Unverified — one constant at the top of `docusaurus.config.js`.
+3. **No desktop hamburger.** The Figma shows one left of the wordmark; Docusaurus only renders the sidebar toggle on mobile. Would need a `DocSidebar` collapse control.
+4. **HTTP endpoint cards not built.** The Figma has POST/GET endpoint cards, but `reference/node/*` and `reference/python/*` document SDK functions, not REST endpoints. Nothing to put in them.
+5. **Nine unsafe swizzles pin us to Docusaurus 3.10.2.** Recommend pinning `@docusaurus/*` to exact versions; `deploy-docs.yml` is the tripwire.
+6. **`npm audit` reports 25 vulnerabilities** (21 moderate, 4 high) in the docs-site tree. Not assessed as part of this work; how many predate it is unknown.
