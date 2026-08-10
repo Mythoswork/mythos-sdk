@@ -29,7 +29,7 @@ Facts about `frontend-main` that this spec previously got wrong, corrected again
 | Auth chrome (bell, avatar) | **Dropped.** Avatar replaced by a "Sign in" button to the studio. A bell that never fires and an avatar that is not the reader are dead UI on a public static site. |
 | Search | **`@easyops-cn/docusaurus-search-local`** — offline index, no crawler, no account, works on GitHub Pages. |
 | Information architecture | **Unchanged.** The Figma is a visual spec only; its section names (AI Agents, Marketplace, SDKs) have no pages behind them in this repo. |
-| Heading font | **Inter.** The Figma sets headings in the body face; matching the mock beat matching `frontend-main`'s Space Grotesk. |
+| Heading font | **Space Grotesk** (revised 2026-08-10). Matches `frontend-main`'s `font-space` utility (globals.css), the product's display face across nav/headings/buttons. Body copy stays Inter. Supersedes the earlier "Inter, matching the mock's body face" call. |
 | Token sharing | **Vendored copy** with a provenance header in `src/css/tokens.css`. A shared package stays a fast-follow. |
 | PR split | **One PR**, with one commit per area for bisectability. |
 

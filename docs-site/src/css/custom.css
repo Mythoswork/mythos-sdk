@@ -74,12 +74,12 @@
   --ifm-code-font-size: 87.5%;
   --ifm-code-border-radius: var(--radius-sm);
 
-  /* Headings use Inter, not frontend-main's Space Grotesk. The Figma sets
-     headings in the body face; matching the mock wins over matching the
-     product's display font. Space Grotesk is still loaded and available via
-     --font-display if a display treatment is wanted later. */
+  /* Headings use Space Grotesk to match frontend-main's `font-space` utility
+     (globals.css: --font-space: var(--font-space-grotesk), sans-serif),
+     which is the product's primary display face across nav, headings and
+     buttons. Body copy stays on Inter for paragraph readability. */
   --ifm-font-family-base: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --ifm-heading-font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --ifm-heading-font-family: 'Space Grotesk', 'Inter', ui-sans-serif, system-ui, sans-serif;
   --ifm-font-family-monospace: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
 
   /* Figma measures ~14.6px body text against Infima's 16px default. Setting
