@@ -39,7 +39,14 @@ const config = {
         searchBarShortcutHint: true,
       },
     ],
+    // Mermaid diagram rendering for ```mermaid fenced blocks. Version must
+    // match @docusaurus/core; see `markdown.mermaid` below to enable parsing.
+    require.resolve('@docusaurus/theme-mermaid'),
   ],
+
+  markdown: {
+    mermaid: true,
+  },
 
   presets: [
     [
@@ -101,12 +108,6 @@ const config = {
           href: 'https://github.com/Mythoswork/mythos-sdk',
           label: 'GitHub',
           position: 'right',
-        },
-        {
-          href: STUDIO_URL,
-          label: 'Sign in',
-          position: 'right',
-          className: 'navbar-cta',
         },
       ],
     },

@@ -12,12 +12,6 @@ Install `@mythos-work/sdk` or `mythos-sdk` and configure environment variables.
 npm install @mythos-work/sdk
 ```
 
-If the package is not yet on the npm registry:
-
-```bash
-npm install github:Mythoswork/mythos-sdk#main:packages/node
-```
-
 **Peer dependency:** Express 4+ (for `handshakeRoute`, `requireLaunchToken`, `listingCallbackRoute`).
 
 **Runtime:** Node.js 18+ (uses native `fetch` and `crypto`).
@@ -29,18 +23,6 @@ pip install "mythos-sdk[fastapi]"
 ```
 
 The `fastapi` extra installs FastAPI for router helpers. Core verify/report functions work without it.
-
-If the package is not yet on PyPI:
-
-```bash
-pip install "git+https://github.com/Mythoswork/mythos-sdk.git#subdirectory=packages/python"
-```
-
-For local SDK development:
-
-```bash
-pip install -e "/path/to/mythos-sdk/packages/python[fastapi]"
-```
 
 **Runtime:** Python 3.11+.
 

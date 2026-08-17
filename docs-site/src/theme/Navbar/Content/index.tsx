@@ -10,12 +10,9 @@ import {
   useNavbarMobileSidebar,
 } from '@docusaurus/theme-common/internal';
 import NavbarItem, {type Props as NavbarItemConfig} from '@theme/NavbarItem';
-import NavbarColorModeToggle from '@theme/Navbar/ColorModeToggle';
 import SearchBar from '@theme/SearchBar';
 import NavbarMobileSidebarToggle from '@theme/Navbar/MobileSidebar/Toggle';
 import NavbarLogo from '@theme/Navbar/Logo';
-
-import styles from './styles.module.css';
 
 function useNavbarItems() {
   // TODO temporary casting until ThemeConfig type is improved
@@ -64,9 +61,6 @@ export default function NavbarContent(): ReactNode {
         )}>
         {!mobileSidebar.disabled && <NavbarMobileSidebarToggle />}
         <NavbarLogo />
-        <span className="mythos-navbar__eyebrow" aria-hidden>
-          Creator Studio
-        </span>
         <NavbarItems items={leftItems} />
       </div>
 
@@ -81,7 +75,6 @@ export default function NavbarContent(): ReactNode {
           'mythos-navbar__right',
         )}>
         <NavbarItems items={rightItems} />
-        <NavbarColorModeToggle className={styles.colorModeToggle} />
       </div>
     </div>
   );
