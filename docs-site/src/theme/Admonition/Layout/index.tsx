@@ -29,7 +29,7 @@ function AdmonitionIcon({type}: {type: string}) {
 }
 
 export default function AdmonitionLayout(props: Props): ReactNode {
-  const {type, children, className, id} = props;
+  const {type, title, children, className, id} = props;
   return (
     <div
       className={clsx(
@@ -44,13 +44,17 @@ export default function AdmonitionLayout(props: Props): ReactNode {
         <AdmonitionIcon type={type} />
       </span>
       {/*
-        The title is dropped entirely. Docusaurus's Admonition/Type/*
-        components always pass one — defaulting to the type name — so there is
-        no way to tell an authored title from "info" at this layer. The Figma
-        has no label bar, and no page in docs/ authors a custom title, so
-        rendering none is both correct for the mock and lossless today. If a
-        custom title is ever needed, swizzle Admonition/Type/* to pass a flag.
+        The title is rendered visually-hidden rather than dropped. The Figma
+        has no visible label bar, but screen readers need the type label
+        (e.g. "danger") to distinguish admonition kinds — the lucide icon is
+        decorative (aria-hidden). Docusaurus's Admonition/Type/* components
+        always pass a title (defaulting to the type name), and an authored
+        `:::warning[Custom Title]` title reaches AT here too. If a visible
+        title is ever needed, swizzle Admonition/Type/* to pass a flag.
       */}
+      {title ? (
+        <span className={styles.visuallyHidden}>{title}</span>
+      ) : null}
       <div className="mythos-admonition__body">{children}</div>
     </div>
   );

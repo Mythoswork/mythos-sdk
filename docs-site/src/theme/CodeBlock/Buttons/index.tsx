@@ -15,7 +15,7 @@ export default function CodeBlockButtons({className}: Props): ReactNode {
   return (
     <BrowserOnly>
       {() => (
-        <div className={clsx(className, styles.buttonGroup)}>
+        <div className={clsx(className, styles.buttonGroup, 'mythos-code__buttons')}>
           <WordWrapButton />
           <CopyButton />
         </div>

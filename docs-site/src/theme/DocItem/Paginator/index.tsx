@@ -1,6 +1,7 @@
 import React, {type ReactNode} from 'react';
 import Link from '@docusaurus/Link';
 import {useDoc} from '@docusaurus/plugin-content-docs/client';
+import {translate} from '@docusaurus/Translate';
 import {ArrowLeft, ArrowRight} from 'lucide-react';
 import {Card} from '@site/src/components/ui/card';
 
@@ -14,6 +15,17 @@ function PaginatorCard({
   direction: 'previous' | 'next';
 }) {
   const isNext = direction === 'next';
+  const label = isNext
+    ? translate({
+        id: 'theme.docs.paginator.next',
+        message: 'Next',
+        description: 'The label used to navigate to the next doc',
+      })
+    : translate({
+        id: 'theme.docs.paginator.previous',
+        message: 'Previous',
+        description: 'The label used to navigate to the previous doc',
+      });
   return (
     <Link
       to={item.permalink}
@@ -22,11 +34,11 @@ function PaginatorCard({
         <span className="mythos-paginator__label">
           {isNext ? (
             <>
-              Next <ArrowRight size={13} aria-hidden />
+              {label} <ArrowRight size={13} aria-hidden />
             </>
           ) : (
             <>
-              <ArrowLeft size={13} aria-hidden /> Previous
+              <ArrowLeft size={13} aria-hidden /> {label}
             </>
           )}
         </span>
@@ -51,7 +63,13 @@ export default function DocItemPaginator(): ReactNode {
   }
 
   return (
-    <nav className="mythos-paginator" aria-label="Docs pages">
+    <nav
+      className="mythos-paginator"
+      aria-label={translate({
+        id: 'theme.docs.paginator.navAriaLabel',
+        message: 'Docs pages',
+        description: 'The ARIA label for the docs pagination',
+      })}>
       {previous ? <PaginatorCard item={previous} direction="previous" /> : <span />}
       {next ? <PaginatorCard item={next} direction="next" /> : <span />}
     </nav>

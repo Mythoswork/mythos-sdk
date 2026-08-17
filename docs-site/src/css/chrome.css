@@ -240,8 +240,11 @@ html:root {
 }
 
 /* Docusaurus hides the copy/wrap buttons until hover and floats them over the
-   code. In the header they are always visible, so the positioning is undone. */
-.mythos-code__header [class*="buttonGroup"] {
+   code. In the header they are always visible, so the positioning is undone.
+   Targets the stable `mythos-code__buttons` class forwarded by the swizzled
+   Buttons component rather than a brittle `[class*="buttonGroup"]` substring
+   match on the hashed CSS-module class. */
+.mythos-code__header .mythos-code__buttons {
   position: static;
   opacity: 1;
   display: flex;
@@ -251,7 +254,7 @@ html:root {
 /* The stock buttons start at opacity 0 and only fade in on code-block hover.
    In a persistent header that reads as a missing control, so they are pinned
    visible. */
-.mythos-code__header [class*="buttonGroup"] button {
+.mythos-code__header .mythos-code__buttons button {
   background: transparent;
   border: none;
   color: var(--muted-foreground);
@@ -260,12 +263,12 @@ html:root {
   opacity: 1;
 }
 
-.mythos-code__header [class*="buttonGroup"] button:hover {
+.mythos-code__header .mythos-code__buttons button:hover {
   background: var(--accent);
   color: var(--foreground);
 }
 
-.mythos-code__header [class*="buttonGroup"] button {
+.mythos-code__header .mythos-code__buttons button {
   gap: 0.35rem;
 }
 

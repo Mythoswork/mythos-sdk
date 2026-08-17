@@ -14,10 +14,6 @@
 
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
-/* Supplies the enter/exit, accordion and collapsible keyframes that the
-   vendored Radix components reference (animate-in, slide-in-from-*,
-   animate-accordion-down, ...). Same dependency frontend-main uses. */
-@import 'tw-animate-css';
 @import './tokens.css';
 @import './chrome.css';
 
@@ -298,8 +294,13 @@ body {
    Prose rhythm
 --------------------------------------------------------------------------- */
 
-.markdown h1:first-child {
-  --ifm-h1-font-size: 2.9rem;
+/* The page H1 — either a synthetic <header><h1> (when the doc has no inline
+   heading) or an inline # Heading that follows DocMetaRow's div. :first-child
+   can't be used because DocMetaRow precedes the inline h1; :first-of-type
+   matches the first h1 among direct children regardless of preceding siblings.
+   chrome.css uses the same selector for `order`. */
+.markdown > header > h1,
+.markdown > h1:first-of-type {
   font-weight: 700;
   letter-spacing: -0.025em;
   margin-bottom: 0.5rem;

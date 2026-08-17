@@ -51,6 +51,11 @@ export default function NavbarContent(): ReactNode {
   const items = useNavbarItems();
   const [leftItems, rightItems] = splitNavbarItems(items);
 
+  // Suppress the centred SearchBar when a `type: 'search'` navbar item is
+  // configured — otherwise both render side by side with no error. Mirrors
+  // the guard the stock theme uses for its default search slot.
+  const searchBarItem = items.find((item) => item.type === 'search');
+
   return (
     <div className={clsx('navbar__inner', 'mythos-navbar')}>
       <div
@@ -65,7 +70,7 @@ export default function NavbarContent(): ReactNode {
       </div>
 
       <div className="mythos-navbar__center">
-        <SearchBar />
+        {!searchBarItem && <SearchBar />}
       </div>
 
       <div
