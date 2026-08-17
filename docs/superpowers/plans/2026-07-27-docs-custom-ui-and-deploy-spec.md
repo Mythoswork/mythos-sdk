@@ -83,11 +83,45 @@ Figma frame is 2846px at 2x → 1423 CSS px. Measured in a headless browser at t
 | Metric | Figma | Built |
 |---|---|---|
 | Sidebar rail | ~256px | 256px |
+| Rail → content gutter | ~87px | 87px |
 | Content column | ~766px | 766px |
+| Content → TOC gutter | ~101px | 101px |
 | TOC column | ~183px | 183px |
+| TOC → right edge | ~30px | 30px |
 | Navbar height | ~56px | 56px |
 
-Root font size is 15px so the whole rem-based Infima ramp rescales proportionally, rather than patching individual sizes.
+Those six horizontal values sum to the 1423px frame, which is the check that the
+row is self-consistent rather than six independent guesses.
+
+The two gutters were roughly half these values until 2026-08-17. The cause was
+`--ifm-container-width`: Infima caps the `.container` wrapping `DocItem` at
+1140px and pads it 1rem, leaving the grid 1110px where the frame spends 1167px.
+The cap is now lifted for `.docs-wrapper .container` only — raising the variable
+globally would stretch the navbar and footer too. All six values are tokens
+(`--mythos-doc-gutter`, `--mythos-toc-gap`, `--mythos-doc-edge`, ...) with
+narrower tiers below 1423px, because they were read off a PNG export rather than
+Figma dev mode and carry a few px of measurement error.
+
+TOC internals, also corrected on 2026-08-17: row pitch is 28px (Infima adds a
+`li` margin on top of the link padding, which had it at 35px); the "ON THIS PAGE"
+label and the entry labels share one left edge with the active dot hanging in a
+12px gutter outside it (the dot had been inside the link's padding, pushing every
+label right of the eyebrow); and the dot sits on an entry's first line rather
+than the centre of a box that may be three lines tall.
+
+Two content-robustness fixes fell out of that work, neither visible in the mock:
+a heading containing inline code carries the code into the TOC, where Infima's
+chip treatment broke tokens mid-word, and h3 entries needed a legible step down
+since Infima's nested indent is 0.5rem.
+
+Root font size is 15px so the whole rem-based Infima ramp rescales proportionally,
+rather than patching individual sizes.
+
+**Known divergence:** the mock's page has h3 sections but its TOC lists only h2s.
+h3 entries are kept, stepped down in size and indent. `guides/ai-integration-prompt`
+alone has eight of them and is mostly h3, so an h2-only TOC would cost real
+navigation. Reverting to match the mock exactly is
+`themeConfig.tableOfContents.maxHeadingLevel: 2`.
 
 ---
 

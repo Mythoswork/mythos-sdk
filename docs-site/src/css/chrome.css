@@ -97,16 +97,39 @@ html:root {
    Doc grid — fixed columns, not Infima percentages
 --------------------------------------------------------------------------- */
 
+/* Infima caps the `.container` that wraps DocItem at --ifm-container-width
+   (1140px) and pads it 1rem, so the doc grid only ever had 1110px to lay out
+   in. The Figma spends the full width right of the rail — 1167px at its own
+   1423px frame — which is where the missing 57px of gutter went. The cap is
+   lifted for doc pages only; raising --ifm-container-width globally would
+   stretch the navbar and footer with it. */
+.docs-wrapper .container {
+  max-width: none;
+  padding-inline: 0;
+}
+
 .mythos-doc-grid {
   display: grid;
   grid-template-columns: minmax(0, var(--mythos-content-width)) var(--mythos-toc-width);
-  gap: 3.5rem;
+  gap: var(--mythos-toc-gap);
   justify-content: start;
-  padding: 0 2rem;
+  padding-left: var(--mythos-doc-gutter);
+  padding-right: var(--mythos-doc-edge);
+  /* Derived from the tracks rather than hardcoded, so the one place the
+     measurements live is the token block. Past this width the block centres in
+     the leftover space instead of hugging the rail. */
+  max-width: calc(
+    var(--mythos-doc-gutter) + var(--mythos-content-width) + var(--mythos-toc-gap) +
+      var(--mythos-toc-width) + var(--mythos-doc-edge)
+  );
+  margin-inline: auto;
 }
 
 .mythos-doc-grid--no-toc {
   grid-template-columns: minmax(0, var(--mythos-content-width));
+  max-width: calc(
+    var(--mythos-doc-gutter) + var(--mythos-content-width) + var(--mythos-doc-edge)
+  );
 }
 
 .mythos-doc-main {
@@ -119,21 +142,30 @@ html:root {
   align-self: start;
   max-height: calc(100vh - var(--mythos-navbar-height) - 4rem);
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
+/* Indented by the marker gutter so the label lines up with the entry labels
+   below it rather than with the dot that hangs to their left. The entries get
+   the same offset as their own padding (see custom.css); this heading sits
+   outside Docusaurus's TOC wrapper, so it has to be given the offset here. */
 .mythos-toc-heading {
   font-size: 0.66rem;
   font-weight: 600;
   letter-spacing: 0.11em;
   text-transform: uppercase;
   color: var(--muted-foreground);
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.8rem;
+  padding-left: var(--mythos-toc-marker-gutter);
 }
 
+/* Below the content column's own width the gutters are what give way, not the
+   measure — so the tracks change here and the gutter tokens change in
+   custom.css, where every other breakpoint value for them already lives. */
 @media (max-width: 1200px) {
   .mythos-doc-grid {
     grid-template-columns: minmax(0, 1fr) var(--mythos-toc-width);
-    padding: 0 1.5rem;
   }
 }
 
@@ -141,7 +173,6 @@ html:root {
   .mythos-doc-grid,
   .mythos-doc-grid--no-toc {
     grid-template-columns: minmax(0, 1fr);
-    padding: 0 1rem;
   }
 
   .mythos-doc-toc {

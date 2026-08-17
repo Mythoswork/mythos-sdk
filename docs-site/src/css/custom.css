@@ -90,12 +90,30 @@
 
   --ifm-global-radius: var(--radius);
 
-  /* Measured off the Figma frame at 1423px: 256 rail / 766 content / 183 toc. */
+  /* Measured off the Figma frame at 1423px:
+     256 rail | 87 gutter | 766 content | 101 gutter | 183 toc | 30 edge.
+     The two gutters sum to 188px, which is roughly double what an earlier pass
+     used — the shortfall is why the TOC read as tucked against the prose
+     instead of standing off in its own column. Both are tokens because they
+     came off a PNG export rather than Figma dev mode, so they carry a few px
+     of measurement error and want to be adjustable in one place. */
   --doc-sidebar-width: 256px;
   --mythos-content-width: 766px;
   --mythos-toc-width: 183px;
   --mythos-navbar-height: 56px;
   --ifm-navbar-height: 56px;
+
+  /* Narrow defaults. The Figma values below only fit once the viewport is wide
+     enough to spend them; under that the gutters give way to the content
+     column, which is the one that has to keep its measure. */
+  --mythos-doc-gutter: 2.5rem;
+  --mythos-doc-edge: 2rem;
+  --mythos-toc-gap: 3.5rem;
+
+  /* Hanging indent for the active-heading dot. The dot sits in this gutter, to
+     the left of the shared text edge that the TOC label and its entries both
+     align to. */
+  --mythos-toc-marker-gutter: 0.8rem;
 
   --docusaurus-highlighted-code-line-bg: oklch(0 0 0 / 8%);
 }
@@ -112,6 +130,36 @@
   --ifm-color-primary-lightest: oklch(0.9 0.11 66);
 
   --docusaurus-highlighted-code-line-bg: oklch(1 0 0 / 10%);
+}
+
+/* Gutter tiers. Kept next to the tokens they override rather than beside the
+   grid rules in chrome.css: that file is imported before this `:root`, so a
+   `:root` override living there would lose the cascade tie-break to the
+   defaults above.
+
+   At and above the Figma's own 1423px the full 87/101 gutters fit exactly and
+   the TOC lands 30px off the right edge as drawn: 87 + 766 + 101 + 183 + 30
+   is the 1167px available beside the 256px rail. */
+@media (min-width: 1423px) {
+  :root {
+    --mythos-doc-gutter: 87px;
+    --mythos-toc-gap: 101px;
+    --mythos-doc-edge: 30px;
+  }
+}
+
+@media (max-width: 1200px) {
+  :root {
+    --mythos-doc-gutter: 1.5rem;
+    --mythos-doc-edge: 1.5rem;
+  }
+}
+
+@media (max-width: 996px) {
+  :root {
+    --mythos-doc-gutter: 1rem;
+    --mythos-doc-edge: 1rem;
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -229,18 +277,42 @@ body {
 
 /* ---------------------------------------------------------------------------
    Table of contents
+   ---------------------------------------------------------------------------
+   Three things were off against the Figma frame:
+
+     1. Row pitch. Infima puts a 0.5rem margin on every `li` on top of the
+        link's own padding, which put rows ~35px apart against the mock's ~28.
+        At that looseness a wrapped entry's internal line gap equals the gap
+        between entries, so the list stops reading as discrete rows — visible
+        on guides/ai-integration-prompt, where most entries wrap.
+     2. Alignment. The active dot lived inside the link's left padding, which
+        pushed every label 13.5px right of the "ON THIS PAGE" label above it.
+        The mock aligns label with label and hangs the dot outside that edge.
+     3. Dot position on wrapped entries. Centring it on the link box drops it
+        into the gap between lines; it belongs on the first line.
 --------------------------------------------------------------------------- */
 
 .table-of-contents {
   font-size: 0.86rem;
   border-left: none;
-  padding-left: 0;
+  padding: 0;
+  margin: 0;
 }
 
+.table-of-contents li {
+  margin: 0;
+}
+
+/* The marker gutter is the link's own left padding, so the dot is drawn inside
+   the link's box. It must not be a negative offset on anything: Docusaurus
+   wraps this list in a `div.tableOfContents` carrying `overflow-y: auto`, which
+   computes overflow-x to `auto` as well, and in LTR anything left of that
+   container's inline-start content edge is unreachable by scrolling and so is
+   clipped. Everything here stays inside it. */
 .table-of-contents__link {
   display: block;
-  padding: 0.2rem 0 0.2rem 0.9rem;
-  position: relative;
+  padding: 0.28rem 0 0.28rem var(--mythos-toc-marker-gutter);
+  line-height: 1.5;
   color: var(--muted-foreground);
 }
 
@@ -248,21 +320,54 @@ body {
   color: var(--foreground);
 }
 
-/* Figma marks the active heading with a small orange dot rather than a rule. */
-.table-of-contents__link--active {
-  color: var(--primary);
+/* h3 entries. The mock's page has h3 sections but its TOC lists only h2s;
+   keeping them is a deliberate departure — guides/ai-integration-prompt alone
+   has eight, and dropping them costs real navigation on a page that is mostly
+   h3. They step down instead, so the h2 spine still reads first. Infima's own
+   nested indent is 0.5rem, which at this row pitch is too small to register as
+   a level. */
+.table-of-contents ul {
+  padding-left: 0.9rem;
 }
 
-.table-of-contents__link--active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--primary);
+.table-of-contents ul .table-of-contents__link {
+  font-size: 0.8rem;
+}
+
+/* A heading containing inline code carries that code into the TOC, where
+   Infima's chip treatment (background, border, padding) breaks mid-token and
+   inflates the row. Flattened to plain mono text, keeping the same 87.5% ratio
+   to its surroundings that inline code uses everywhere else — at the entry's
+   full size a 24-character token such as `USE_LISTING_CALLBACK=yes` does not
+   fit the column and wraps mid-word. `overflow-wrap` stays as the backstop for
+   tokens longer still. */
+.table-of-contents code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--ifm-code-font-size);
+  color: inherit;
+  overflow-wrap: break-word;
+}
+
+/* Figma marks the active heading with a small orange dot rather than a rule.
+   Drawn as a background rather than a positioned `::before` so it needs no
+   stacking context and cannot escape the link's box into the clipped region.
+
+   Vertical position is padding-top plus half a line, less half the dot, so it
+   sits on the first line of an entry that may wrap to three — the old
+   `top: 50%` centred it on the box and dropped it into the gap between lines
+   two and three. */
+.table-of-contents__link--active {
+  color: var(--primary);
+  background-image: radial-gradient(
+    circle at 2.5px 2.5px,
+    var(--primary) 0 2.5px,
+    transparent 2.5px
+  );
+  background-repeat: no-repeat;
+  background-size: 5px 5px;
+  background-position: 0 calc(0.28rem + 0.75em - 2.5px);
 }
 
 /* ---------------------------------------------------------------------------
