@@ -13,7 +13,7 @@ Official SDK packages for integrating with the Mythos platform.
 
 Producers install the Mythos SDK to:
 
-1. **Verify launch tokens** — RS256 JWKS-backed verification of the `?lt=` token Mythos embeds in the redirect URL
+1. **Verify launch tokens** — ES256 JWKS-backed verification of the `?lt=` token Mythos embeds in the redirect URL
 2. **Enforce single-use semantics** — the SDK middleware automatically calls `/consume` (per ADR-0003); Producers cannot skip this
 3. **Report usage** — `reportUsage()` / `report_usage()` debits the Consumer's Mythos wallet
 4. **Publish handshake** — `handshakeRoute()` / `handshake_router` for the Mythos publish gate
@@ -83,17 +83,17 @@ async def dashboard(session=Depends(require_launch_token())):
 
 ## Configuration
 
-| Env var | Required | Default | Description |
-|---------|----------|---------|-------------|
-| `MYTHOS_LISTING_ID` | Yes* | — | Your listing ID |
-| `MYTHOS_LISTING_IDS` | Yes* | — | Comma-separated listing IDs (overrides above) |
-| `MYTHOS_API_URL` | No | `https://api.mythos.work` | API base URL override |
+| Env var              | Required | Default                   | Description                                   |
+| ----------------------| ----------| ---------------------------| -----------------------------------------------|
+| `MYTHOS_LISTING_ID`  | Yes*     | —                         | Your listing ID                               |
+| `MYTHOS_LISTING_IDS` | Yes*     | —                         | Comma-separated listing IDs (overrides above) |
+| `MYTHOS_API_URL`     | No       | `https://api.mythos.work` | API base URL override                         |
 
 \*One of `MYTHOS_LISTING_ID` or `MYTHOS_LISTING_IDS` is required — unless using [dynamic listing IDs](./docs-site/docs/concepts/dynamic-listing-ids.md).
 
 ## Security
 
-- Tokens are verified using RS256 signatures from the Mythos JWKS endpoint
+- Tokens are verified using ES256 signatures from the Mythos JWKS endpoint
 - `alg: none` is rejected as a hard block — not just a warning
 - Single-use enforcement is non-skippable and non-configurable (ADR-0003) — use `requireLaunchToken()`, not `verifyLaunchToken()` alone
 - JWKS public keys are cached for 10 minutes per API URL with automatic re-fetch on key rotation

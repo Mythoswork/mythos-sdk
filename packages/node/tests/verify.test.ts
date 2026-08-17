@@ -5,13 +5,13 @@ let privateKey: KeyLike;
 let publicKey: KeyLike;
 
 beforeAll(async () => {
-  const kp = await generateKeyPair('RS256', { modulusLength: 2048 });
+  const kp = await generateKeyPair('ES256');
   privateKey = kp.privateKey;
   publicKey = kp.publicKey;
 
   const jwk = await exportJWK(publicKey);
   jwk.kid = 'test-kid';
-  jwk.alg = 'RS256';
+  jwk.alg = 'ES256';
 
   const { createLocalJWKSet } = await import('jose');
   const keySet = createLocalJWKSet({ keys: [jwk] });
@@ -33,7 +33,7 @@ async function mintToken(overrides: Record<string, unknown> = {}): Promise<strin
     listingId: 'listing-abc',
   };
   return new SignJWT({ ...base, ...overrides })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
     .setIssuedAt()
     .setIssuer('mythos')
     .setAudience('listing-abc')
@@ -62,7 +62,7 @@ test('aud array with valid member in second position accepted', async () => {
     displayName: 'Test User',
     listingId: 'listing-abc',
   })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
     .setIssuedAt()
     .setIssuer('mythos')
     .setAudience(['other-service', 'listing-abc'])
@@ -82,7 +82,7 @@ test('missing jti claim rejected', async () => {
     displayName: 'Test User',
     listingId: 'listing-abc',
   })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
     .setIssuedAt()
     .setIssuer('mythos')
     .setAudience('listing-abc')
@@ -95,7 +95,7 @@ test('missing jti claim rejected', async () => {
 test('expired token rejected', async () => {
   const { verifyLaunchToken } = await import('../src/verify');
   const token = await new SignJWT({ sub: 'u', email: 'e', displayName: 'd', listingId: 'listing-abc' })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
     .setIssuedAt()
     .setIssuer('mythos')
     .setAudience('listing-abc')
@@ -109,7 +109,7 @@ test('expired token rejected', async () => {
 test('wrong aud rejected', async () => {
   const { verifyLaunchToken } = await import('../src/verify');
   const token = await new SignJWT({ sub: 'u', email: 'e', displayName: 'd', listingId: 'wrong-listing' })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
     .setIssuedAt()
     .setIssuer('mythos')
     .setAudience('wrong-listing')
@@ -123,7 +123,7 @@ test('wrong aud rejected', async () => {
 test('resolveListingIds allows aud not in static list', async () => {
   const { verifyLaunchToken } = await import('../src/verify');
   const token = await new SignJWT({ sub: 'u', email: 'e', displayName: 'd', listingId: 'listing-dynamic' })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
     .setIssuedAt()
     .setIssuer('mythos')
     .setAudience('listing-dynamic')
@@ -140,7 +140,7 @@ test('resolveListingIds allows aud not in static list', async () => {
 test('resolveListingIds miss + static miss → rejected', async () => {
   const { verifyLaunchToken } = await import('../src/verify');
   const token = await new SignJWT({ sub: 'u', email: 'e', displayName: 'd', listingId: 'other' })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
     .setIssuedAt()
     .setIssuer('mythos')
     .setAudience('other')
@@ -161,7 +161,7 @@ test('resolveListingIds allows aud when no static listing IDs configured at all'
 
   const { verifyLaunchToken } = await import('../src/verify');
   const token = await new SignJWT({ sub: 'u', email: 'e', displayName: 'd', listingId: 'listing-dynamic' })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
     .setIssuedAt()
     .setIssuer('mythos')
     .setAudience('listing-dynamic')
@@ -195,7 +195,7 @@ test('aud list with valid member at index 1 accepted', async () => {
     displayName: 'Test User',
     listingId: 'listing-abc',
   })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
     .setIssuedAt()
     .setIssuer('mythos')
     .setAudience(['evil-other-service', 'listing-abc'])
@@ -215,7 +215,7 @@ test('aud list with no matching member rejected', async () => {
     displayName: 'd',
     listingId: 'listing-abc',
   })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
     .setIssuedAt()
     .setIssuer('mythos')
     .setAudience(['evil-a', 'evil-b'])

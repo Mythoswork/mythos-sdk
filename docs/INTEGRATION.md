@@ -7,7 +7,7 @@ This guide describes the end-to-end flow for Mythos producers.
 1. A consumer launches your app from the Mythos marketplace.
 2. Mythos redirects the browser to your app with `?lt=<JWT>` on the URL.
 3. Your protected route uses `requireLaunchToken()` / `require_launch_token`.
-4. The SDK verifies the JWT (RS256 + JWKS), then calls `POST /api/apps/sessions/{jti}/consume`.
+4. The SDK verifies the JWT (ES256 + JWKS), then calls `POST /api/apps/sessions/{jti}/consume`.
 5. On success, establish your own app session (cookie, server session, etc.) using `sessionJti` and user fields.
 6. Redirect to a clean URL **without** `?lt=` so the token is not leaked via Referer or logs.
 

@@ -21,14 +21,14 @@ async def _validate_listing_callback_token(token: str) -> str:
     jwks = await get_jwks(api_url)
     try:
         payload = jwt.decode(
-            token, jwks, algorithms=["RS256"], issuer=_MYTHOS_ISSUER, options=_DECODE_OPTIONS
+            token, jwks, algorithms=["ES256"], issuer=_MYTHOS_ISSUER, options=_DECODE_OPTIONS
         )
     except ExpiredSignatureError:
         raise
     except JWTError:
         jwks = await get_jwks_with_kid_fallback(api_url)
         payload = jwt.decode(
-            token, jwks, algorithms=["RS256"], issuer=_MYTHOS_ISSUER, options=_DECODE_OPTIONS
+            token, jwks, algorithms=["ES256"], issuer=_MYTHOS_ISSUER, options=_DECODE_OPTIONS
         )
 
     if payload.get("purpose") != "listing_registered":

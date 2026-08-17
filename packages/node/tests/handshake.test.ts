@@ -33,13 +33,13 @@ function mockReq(lt?: string | string[]): Request {
 }
 
 beforeAll(async () => {
-  const kp = await generateKeyPair('RS256', { modulusLength: 2048 });
+  const kp = await generateKeyPair('ES256');
   privateKey = kp.privateKey;
   const publicKey = kp.publicKey;
 
   const jwk = await exportJWK(publicKey);
   jwk.kid = 'test-kid';
-  jwk.alg = 'RS256';
+  jwk.alg = 'ES256';
 
   const { createLocalJWKSet } = await import('jose');
   const keySet = createLocalJWKSet({ keys: [jwk] });
@@ -53,7 +53,7 @@ beforeEach(() => {
 
 async function mintHandshakeToken(overrides: Record<string, unknown> = {}): Promise<string> {
   return new SignJWT({ purpose: 'handshake-check', sub: 'listing-abc', ...overrides })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
     .setIssuedAt()
     .setExpirationTime('2m')
     .sign(privateKey);
@@ -91,7 +91,7 @@ test('missing ?lt= → 401', async () => {
 test('expired token → 401', async () => {
   const { handshakeRoute } = await import('../src/handshake');
   const token = await new SignJWT({ purpose: 'handshake-check', sub: 'listing-abc' })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
     .setIssuedAt()
     .setExpirationTime('-1s')
     .sign(privateKey);
@@ -123,7 +123,7 @@ test('wrong purpose → 401', async () => {
 test('no purpose claim → 401', async () => {
   const { handshakeRoute } = await import('../src/handshake');
   const token = await new SignJWT({ sub: 'listing-abc' })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-kid' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'test-kid' })
     .setIssuedAt()
     .setExpirationTime('2m')
     .sign(privateKey);
@@ -142,10 +142,10 @@ test('stale JWKS kid triggers fallback → 200', async () => {
   const { handshakeRoute } = await import('../src/handshake');
   const { createLocalJWKSet, generateKeyPair, exportJWK } = await import('jose');
 
-  const staleKp = await generateKeyPair('RS256', { modulusLength: 2048 });
+  const staleKp = await generateKeyPair('ES256');
   const staleJwk = await exportJWK(staleKp.publicKey);
   staleJwk.kid = 'stale-kid';
-  staleJwk.alg = 'RS256';
+  staleJwk.alg = 'ES256';
   const staleKeySet = createLocalJWKSet({ keys: [staleJwk] });
   (jwksCache.getKeySet as jest.Mock).mockResolvedValueOnce(staleKeySet);
 

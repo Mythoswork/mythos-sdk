@@ -23,7 +23,7 @@ All three use the `lt` query parameter name, but they are **not interchangeable*
 **Purpose:** Prove your Producer app has the SDK installed and is reachable before Mythos publishes your listing.
 
 - **Endpoint:** `GET /.well-known/mythos-handshake?lt=<token>`
-- **Validation:** RS256 signature, `purpose === "handshake-check"`
+- **Validation:** ES256 signature, `purpose === "handshake-check"`
 - **Success:** `200 { "ok": true, "sdk_version": "0.1.0" }`
 - **Issuer:** Not validated on handshake (launch tokens use issuer `mythos`)
 
@@ -45,7 +45,7 @@ See [Launch sessions](launch-sessions.md).
 **Purpose:** Tell your app its `listingId` when a listing is created programmatically — without manual env vars or redeploy.
 
 - **Endpoint:** `GET|POST /.well-known/mythos-listing-registered?lt=<token>`
-- **Validation:** RS256 signature, issuer `mythos`, `purpose === "listing_registered"`
+- **Validation:** ES256 signature, issuer `mythos`, `purpose === "listing_registered"`
 - **Callback:** SDK calls your `onRegistered(listingId)` handler to persist the ID
 - **Used with:** `resolveListingIds` / `resolve_listing_ids` on verify/middleware
 
@@ -55,4 +55,4 @@ See [Dynamic listing IDs](dynamic-listing-ids.md).
 
 - [Launch sessions](launch-sessions.md) — verify, consume, fail-closed
 - [Required routes](../guides/required-routes.md) — HTTP status tables
-- [Security](../resources/security.md) — RS256 and alg:none rejection
+- [Security](../resources/security.md) — ES256 and alg:none rejection

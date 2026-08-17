@@ -5,10 +5,10 @@ describe('jwks-cache kid-miss fallback', () => {
   let jwks: { keys: unknown[] };
 
   beforeAll(async () => {
-    const { publicKey } = await generateKeyPair('RS256', { modulusLength: 2048 });
+    const { publicKey } = await generateKeyPair('ES256');
     const jwk = await exportJWK(publicKey);
     jwk.kid = 'k1';
-    jwk.alg = 'RS256';
+    jwk.alg = 'ES256';
     jwk.use = 'sig';
     jwks = { keys: [jwk] };
   });
