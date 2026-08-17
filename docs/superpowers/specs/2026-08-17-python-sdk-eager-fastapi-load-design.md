@@ -155,6 +155,9 @@ standard library since Python 3.7) that resolves fastapi-backed names only
 when actually accessed:
 
 ```python
+import importlib
+from typing import TYPE_CHECKING
+
 from .errors import (
     InsufficientFundsError,
     InvalidLaunchTokenError,
@@ -166,6 +169,25 @@ from .errors import (
 from .report_usage import report_usage
 from .types import MythosSession
 from .verify import verify_launch_token
+
+if TYPE_CHECKING:
+    # False at runtime, so this costs nothing and never imports fastapi — but it
+    # makes the lazily-resolved names visible to mypy/pyright. The package ships
+    # a py.typed marker, so without this block every consumer type-checking
+    # `from mythos_sdk import require_launch_token` would get an attr-defined
+    # error.
+    from fastapi import APIRouter
+
+    from .listing_callback import (
+        create_listing_callback_handler as create_listing_callback_handler,
+    )
+    from .middleware import require_launch_token as require_launch_token
+
+    # Declared, not imported: handshake.py deliberately no longer defines a
+    # module-level `handshake_router`, so importing the name would be an error.
+    handshake_router: APIRouter
+
+    from .handshake import create_handshake_router as create_handshake_router
 
 __all__ = [
     "verify_launch_token",
@@ -184,40 +206,65 @@ __all__ = [
 ]
 
 _LAZY_ATTRS = {
-    "handshake_router": ("handshake", "handshake_router"),
     "create_handshake_router": ("handshake", "create_handshake_router"),
-    "create_listing_callback_handler": ("listing_callback", "create_listing_callback_handler"),
+    "create_listing_callback_handler": (
+        "listing_callback",
+        "create_listing_callback_handler",
+    ),
     "require_launch_token": ("middleware", "require_launch_token"),
 }
 
 
 def __getattr__(name: str):
-    target = _LAZY_ATTRS.get(name)
-    if target is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    module_name, attr_name = target
-    import importlib
+    if name == "handshake_router":
+        # handshake.py deliberately no longer builds this at import time — that
+        # eager construction is the bug. Build it on first access instead; the
+        # cache below keeps it the same singleton object the old module-level
+        # assignment produced.
+        from .handshake import create_handshake_router
 
-    module = importlib.import_module(f".{module_name}", __name__)
-    value = getattr(module, attr_name)
-    globals()[name] = value  # cache on the package module so repeat access skips __getattr__
+        value = create_handshake_router()
+    else:
+        target = _LAZY_ATTRS.get(name)
+        if target is None:
+            raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+        module_name, attr_name = target
+        value = getattr(importlib.import_module(f".{module_name}", __name__), attr_name)
+
+    globals()[name] = value  # cache, so repeat access skips __getattr__ entirely
     return value
+
+
+def __dir__() -> list[str]:
+    # Without this, dir(mythos_sdk) omits the lazy names until they're accessed.
+    return sorted(__all__)
 ```
 
 `errors`, `report_usage`, `types`, `verify` stay eager imports (zero
 `fastapi` dependency, cheap, no reason to defer — matches this spec's
 principle of only deferring what's actually expensive/optional). `__all__`
-is unchanged, so `from mythos_sdk import *`, `dir(mythos_sdk)` expectations,
-and every documented `from mythos_sdk import handshake_router` /
-`from mythos_sdk import create_handshake_router` / etc. call site keep
+is unchanged, so `from mythos_sdk import *` and every documented
+`from mythos_sdk import handshake_router` /
+`from mythos_sdk import create_handshake_router` / etc. call site keeps
 working exactly as before — the only observable difference is *when*
 `fastapi` gets imported: on first access to one of the four lazy names,
 instead of on `import mythos_sdk`.
 
-The `globals()[name] = value` caching line means `__getattr__` only fires
-once per process per name — subsequent access hits the now-real module
-global directly (standard PEP 562 caching idiom), so there's no repeated
-`importlib.import_module` overhead on hot paths.
+Three details that make this a drop-in rather than a behavior change:
+
+- **`globals()[name] = value`** means `__getattr__` fires only once per
+  process per name — subsequent access hits the now-real module global
+  directly (the standard PEP 562 caching idiom), so there's no repeated
+  `importlib.import_module` overhead on hot paths, and `handshake_router`
+  stays a true singleton (`mythos_sdk.handshake_router is
+  mythos_sdk.handshake_router` holds, exactly as with the old eager
+  assignment).
+- **The `TYPE_CHECKING` block** preserves static-analysis behavior. This is
+  not optional polish: `packages/python/mythos_sdk/py.typed` exists, so the
+  package advertises inline types, and a bare `__getattr__` would make every
+  lazy name invisible to mypy/pyright and break type-checking consumers.
+- **`__dir__`** keeps `dir(mythos_sdk)` and REPL autocomplete complete,
+  which `__getattr__` alone does not.
 
 ## Backward compatibility
 
@@ -227,6 +274,13 @@ global directly (standard PEP 562 caching idiom), so there's no repeated
   `require_launch_token` are still the same callables with the same
   signatures.
 - `__all__` unchanged.
+- Static typing unchanged for consumers: the package ships
+  `mythos_sdk/py.typed`, and the `TYPE_CHECKING` block keeps all four lazy
+  names visible to mypy/pyright with their real types.
+- `dir(mythos_sdk)` unchanged, via `__dir__`.
+- `mythos_sdk.handshake_router is mythos_sdk.handshake_router` still holds —
+  it remains a per-process singleton, just built on first access rather than
+  at import.
 - Every documented usage in `docs-site/docs/getting-started/quickstart-python.md`,
   `docs-site/docs/guides/fastapi.md`,
   `docs-site/docs/reference/python/handshake-router.md`, and
@@ -239,16 +293,31 @@ global directly (standard PEP 562 caching idiom), so there's no repeated
 New regression coverage in `packages/python/tests/`:
 
 1. **`test_lazy_import.py`** — simulates `fastapi` genuinely not being
-   installed via `monkeypatch.setitem(sys.modules, "fastapi", None)`
-   (Python's documented mechanism for "this import fails" — assigning
-   `None` in `sys.modules` makes any subsequent `import fastapi` raise
-   `ImportError`), after purging any cached `mythos_sdk*` entries from
-   `sys.modules` so the import is genuinely fresh:
-   - `import mythos_sdk` (fresh) does not raise; `verify_launch_token` and
-     `report_usage` are both accessible and callable-typed.
-   - Accessing `mythos_sdk.handshake_router` under the same patched
-     `sys.modules` **does** raise `ImportError` — proving the dependency is
-     real when the feature is actually used, not silently broken.
+   installed by setting `sys.modules["fastapi"] = None`, Python's documented
+   mechanism for making a subsequent `import fastapi` fail (verified: it
+   raises `ModuleNotFoundError: import of fastapi halted; None in
+   sys.modules`, and `ModuleNotFoundError` subclasses `ImportError`). Two
+   cases:
+   - `import mythos_sdk` does not raise, and `verify_launch_token` /
+     `report_usage` are both reachable and callable.
+   - Accessing `mythos_sdk.handshake_router` under the same conditions
+     **does** raise `ImportError` — proving the dependency is real when the
+     feature is actually used, rather than silently broken.
+
+   **Each case must run in a subprocess, not by mutating `sys.modules`
+   inside the pytest session.** This is a correctness requirement, not a
+   style preference. The in-process version would have to purge cached
+   `mythos_sdk*` entries from `sys.modules` to force a fresh import, and
+   that re-import creates a *second* set of submodule objects. The existing
+   suite patches by string —
+   `patch("mythos_sdk.handshake.get_jwks", ...)` in
+   `tests/test_handshake.py:28,98,108` — which resolves the module fresh at
+   patch time, while `test_handshake.py:9`'s already-imported
+   `create_handshake_router` closes over the *original* module's globals.
+   The patch would land on one module object and the code under test would
+   read the other, silently disabling those mocks in a test-order-dependent
+   way. A subprocess sidesteps the whole hazard: nothing in the parent
+   interpreter is touched.
 
 2. **Existing `test_handshake.py`, `test_middleware.py`,
    `test_listing_callback.py`** (unmodified) must continue to pass — they
@@ -256,6 +325,8 @@ New regression coverage in `packages/python/tests/`:
    `create_listing_callback_handler` from `mythos_sdk` and exercise them
    with real `fastapi`/`httpx`, proving the lazy path still resolves
    correctly and behaves identically when the feature is actually used.
+   `tests/test_handshake.py:10` also imports `SDK_VERSION` from
+   `mythos_sdk.version` directly, which stays eager and unaffected.
 
 Full command: `cd packages/python && pip install -e ".[dev]" && pytest -q`
 (matches `.github/workflows/ci.yml`'s existing `python` job — no CI config
