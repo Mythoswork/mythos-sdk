@@ -10,8 +10,8 @@ const config = {
   tagline: 'Launch token verification, session enforcement, and usage metering for Mythos Producer apps',
   favicon: 'img/mythos-mark-black.png',
 
-  url: 'https://mythoswork.github.io',
-  baseUrl: '/mythos-sdk/',
+  url: 'https://docs.mythos.work',
+  baseUrl: '/',
 
   organizationName: 'Mythoswork',
   projectName: 'mythos-sdk',
