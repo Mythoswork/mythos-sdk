@@ -1,0 +1,476 @@
+/**
+ * Styling for the swizzled chrome: navbar, doc grid, meta row, code blocks,
+ * admonitions, paginator.
+ *
+ * Split out from custom.css because that file's job is tokens and the Infima
+ * bridge — the rules here belong to specific components in src/theme and
+ * change whenever those do.
+ */
+
+/* Docusaurus also declares --doc-sidebar-width on :root, and its stylesheet
+   loads after ours, so a plain :root declaration loses the tie-break.
+   html:root raises specificity enough to win without !important. */
+html:root {
+  --doc-sidebar-width: 256px;
+}
+
+/* ---------------------------------------------------------------------------
+   Navbar — three zones (brand / centred search / actions)
+--------------------------------------------------------------------------- */
+
+.mythos-navbar {
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 440px) 1fr;
+  align-items: center;
+  gap: 1rem;
+}
+
+.mythos-navbar__left {
+  gap: 0.5rem;
+  flex: 0 1 auto;
+}
+
+.mythos-navbar__eyebrow {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  margin-left: -0.35rem;
+}
+
+.mythos-navbar__center {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.mythos-navbar__right {
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex: 0 1 auto;
+}
+
+.navbar__logo {
+  height: 1.35rem;
+}
+
+/* The search plugin renders a plain input; the Figma wants a full-width pill
+   with a leading magnifier and a trailing shortcut chip. */
+.mythos-navbar__center .navbar__search {
+  width: 100%;
+  padding-left: 0;
+}
+
+.mythos-navbar__center .navbar__search-input {
+  width: 100%;
+  height: 34px;
+  background-color: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.83rem;
+  color: var(--foreground);
+  padding-left: 2.1rem;
+}
+
+.mythos-navbar__center .navbar__search-input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.mythos-navbar__center .navbar__search-input:focus {
+  outline: none;
+  border-color: var(--ring);
+}
+
+@media (max-width: 996px) {
+  .mythos-navbar {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .mythos-navbar__eyebrow {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Doc grid — fixed columns, not Infima percentages
+--------------------------------------------------------------------------- */
+
+/* Infima caps the `.container` that wraps DocItem at --ifm-container-width
+   (1140px) and pads it 1rem, so the doc grid only ever had 1110px to lay out
+   in. The Figma spends the full width right of the rail — 1167px at its own
+   1423px frame — which is where the missing 57px of gutter went. The cap is
+   lifted for doc pages only; raising --ifm-container-width globally would
+   stretch the navbar and footer with it. */
+.docs-wrapper .container {
+  max-width: none;
+  padding-inline: 0;
+}
+
+.mythos-doc-grid {
+  display: grid;
+  grid-template-columns: minmax(0, var(--mythos-content-width)) var(--mythos-toc-width);
+  gap: var(--mythos-toc-gap);
+  justify-content: start;
+  padding-left: var(--mythos-doc-gutter);
+  padding-right: var(--mythos-doc-edge);
+  /* Derived from the tracks rather than hardcoded, so the one place the
+     measurements live is the token block. Past this width the block centres in
+     the leftover space instead of hugging the rail. */
+  max-width: calc(
+    var(--mythos-doc-gutter) + var(--mythos-content-width) + var(--mythos-toc-gap) +
+      var(--mythos-toc-width) + var(--mythos-doc-edge)
+  );
+  margin-inline: auto;
+}
+
+.mythos-doc-grid--no-toc {
+  grid-template-columns: minmax(0, var(--mythos-content-width));
+  max-width: calc(
+    var(--mythos-doc-gutter) + var(--mythos-content-width) + var(--mythos-doc-edge)
+  );
+}
+
+.mythos-doc-main {
+  min-width: 0;
+}
+
+.mythos-doc-toc {
+  position: sticky;
+  top: calc(var(--mythos-navbar-height) + 2rem);
+  align-self: start;
+  max-height: calc(100vh - var(--mythos-navbar-height) - 4rem);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Indented by the marker gutter so the label lines up with the entry labels
+   below it rather than with the dot that hangs to their left. The entries get
+   the same offset as their own padding (see custom.css); this heading sits
+   outside Docusaurus's TOC wrapper, so it has to be given the offset here. */
+.mythos-toc-heading {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  margin-bottom: 0.8rem;
+  padding-left: var(--mythos-toc-marker-gutter);
+}
+
+/* Below the content column's own width the gutters are what give way, not the
+   measure — so the tracks change here and the gutter tokens change in
+   custom.css, where every other breakpoint value for them already lives. */
+@media (max-width: 1200px) {
+  .mythos-doc-grid {
+    grid-template-columns: minmax(0, 1fr) var(--mythos-toc-width);
+  }
+}
+
+@media (max-width: 996px) {
+  .mythos-doc-grid,
+  .mythos-doc-grid--no-toc {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mythos-doc-toc {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Doc meta row
+   ---------------------------------------------------------------------------
+   Emitted as the first child of .markdown but displayed after the title and
+   its lead paragraph. Flex `order` does the move: everything defaults to 3,
+   and the three leading elements are pulled ahead of it.
+--------------------------------------------------------------------------- */
+
+.markdown {
+  display: flex;
+  flex-direction: column;
+}
+
+.markdown > * {
+  order: 3;
+}
+
+.markdown > header,
+.markdown > h1:first-of-type {
+  order: 0;
+}
+
+.markdown > h1:first-of-type + p {
+  order: 1;
+  color: var(--muted-foreground);
+  font-size: 1.02rem;
+}
+
+.mythos-doc-meta {
+  order: 2;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.76rem;
+  color: var(--muted-foreground);
+  margin-bottom: 2.5rem;
+}
+
+.mythos-doc-meta__copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: var(--muted-foreground);
+}
+
+.mythos-doc-meta__copy:hover {
+  color: var(--primary);
+}
+
+/* The same timestamp now appears under the title, so Docusaurus's footer
+   edition of it is redundant. The "Edit this page" link is kept. */
+.theme-doc-footer .theme-last-updated {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Code blocks
+--------------------------------------------------------------------------- */
+
+.mythos-code {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: none;
+}
+
+.mythos-code__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.5rem 0.4rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+  min-height: 2.4rem;
+}
+
+.mythos-code__lang {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* Docusaurus hides the copy/wrap buttons until hover and floats them over the
+   code. In the header they are always visible, so the positioning is undone.
+   Targets the stable `mythos-code__buttons` class forwarded by the swizzled
+   Buttons component rather than a brittle `[class*="buttonGroup"]` substring
+   match on the hashed CSS-module class. */
+.mythos-code__header .mythos-code__buttons {
+  position: static;
+  opacity: 1;
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* The stock buttons start at opacity 0 and only fade in on code-block hover.
+   In a persistent header that reads as a missing control, so they are pinned
+   visible. */
+.mythos-code__header .mythos-code__buttons button {
+  background: transparent;
+  border: none;
+  color: var(--muted-foreground);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  opacity: 1;
+}
+
+.mythos-code__header .mythos-code__buttons button:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.mythos-code__header .mythos-code__buttons button {
+  gap: 0.35rem;
+}
+
+.mythos-code__copy-label {
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.mythos-code pre {
+  background: transparent !important;
+  font-size: 0.82rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Admonitions — solid saturated fill, leading icon, no label bar
+   ---------------------------------------------------------------------------
+   Both Figma frames (9526-996 and 9852-9287) render these as fully opaque
+   colour banners with white text, not tinted surfaces. An earlier pass here
+   used a 9%-opacity tint with a matching border, which reads as a different,
+   quieter component — corrected to match what the mock actually shows.
+--------------------------------------------------------------------------- */
+
+.mythos-admonition {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.7rem;
+  align-items: start;
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius-lg);
+  border: none;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+  color: oklch(0.99 0 0);
+}
+
+.mythos-admonition__body > :last-child {
+  margin-bottom: 0;
+}
+
+.mythos-admonition__title {
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+
+.mythos-admonition__icon {
+  display: flex;
+  padding-top: 0.1rem;
+  color: oklch(0.99 0 0);
+  opacity: 0.92;
+}
+
+/* Fill colours are chosen for solid-white-text contrast (WCAG AA, >= 4.5:1
+   at this font size) rather than lifted directly from the mock's swatch —
+   the mock's own amber in particular reads under ~3:1 against white. */
+.alert--info,
+.alert--secondary {
+  background-color: oklch(0.5 0.17 258);
+}
+
+.alert--warning {
+  background-color: oklch(0.52 0.16 55);
+}
+
+.alert--success {
+  background-color: oklch(0.48 0.13 155);
+}
+
+.alert--danger {
+  background-color: oklch(0.5 0.2 25);
+}
+
+.mythos-admonition a {
+  color: inherit;
+  text-decoration-color: oklch(0.99 0 0 / 55%);
+  font-weight: 600;
+}
+
+.mythos-admonition code {
+  background-color: oklch(0 0 0 / 22%);
+  color: inherit;
+}
+
+/* ---------------------------------------------------------------------------
+   Paginator
+--------------------------------------------------------------------------- */
+
+.mythos-paginator {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 3.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+}
+
+.mythos-paginator__link,
+.mythos-paginator__link:hover {
+  text-decoration: none;
+}
+
+.mythos-paginator__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--card);
+  border-color: var(--border);
+  transition: border-color 120ms ease;
+}
+
+.mythos-paginator__link:hover .mythos-paginator__card {
+  border-color: var(--primary);
+}
+
+.mythos-paginator__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+}
+
+.mythos-paginator__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.mythos-paginator__link--next .mythos-paginator__card {
+  align-items: flex-end;
+  text-align: right;
+}
+
+/* ---------------------------------------------------------------------------
+   Footer — `.footer--dark` hardcodes Infima's slate, which reads as a
+   different product against our near-black surfaces.
+--------------------------------------------------------------------------- */
+
+.footer--dark {
+  --ifm-footer-background-color: var(--sidebar);
+  --ifm-footer-color: var(--muted-foreground);
+  --ifm-footer-link-color: var(--muted-foreground);
+  --ifm-footer-title-color: var(--foreground);
+  border-top: 1px solid var(--sidebar-border);
+}
+
+.footer__link-item:hover {
+  color: var(--primary);
+}
+
+.footer__title {
+  font-size: 0.72rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.footer__copyright {
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+}
+
+/* Sidebar category label needs to align its icon with the text baseline.
+   Doubled selector beats the ejected styles.module.css rule on the same
+   element without reaching for !important. */
+.mythos-category-label.mythos-category-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.mythos-category-label svg {
+  flex: none;
+  opacity: 0.85;
+}

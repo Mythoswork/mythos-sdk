@@ -1,30 +1,444 @@
 /**
- * Any CSS included here will be global. The classic template
- * bundles Infima by default. Infima is a CSS framework designed to
- * work well for content-centric websites.
+ * Global stylesheet for the Mythos SDK docs.
+ *
+ * Layer order is declared up front so Tailwind utilities always win over
+ * Infima's component styles without needing `!important` on every override.
+ *
+ * Tailwind is imported layer-by-layer rather than as `@import "tailwindcss"`.
+ * The full bundle includes Preflight, whose reset strips Infima's typography
+ * (headings, lists, tables) across all docs pages. Theme and utilities are the
+ * only layers we want.
  */
 
-/* You can override the default Infima variables here. */
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@import './tokens.css';
+@import './chrome.css';
+
+/* Tailwind v4 infers content sources from this file's location. The vendored
+   components and any swizzled theme code live outside src/css, so declare the
+   source root explicitly. */
+@source '../';
+
+/* ---------------------------------------------------------------------------
+   Infima bridge
+   ---------------------------------------------------------------------------
+   Docusaurus chrome that we do not swizzle (sidebar, admonitions, pagination,
+   breadcrumbs) is styled by Infima via `--ifm-*` variables. Pointing those at
+   the Mythos tokens keeps unswizzled surfaces on-brand for free, so swizzling
+   stays a layout decision rather than a prerequisite for correct colour.
+--------------------------------------------------------------------------- */
+
 :root {
-  --ifm-color-primary: #2e8555;
-  --ifm-color-primary-dark: #29784c;
-  --ifm-color-primary-darker: #277148;
-  --ifm-color-primary-darkest: #205d3b;
-  --ifm-color-primary-light: #33925d;
-  --ifm-color-primary-lighter: #359962;
-  --ifm-color-primary-lightest: #3cad6e;
-  --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  /* Light-mode primary is intentionally darker than the brand token. The
+     product's orange (oklch(0.7788 0.17265 66.5653)) is a dark-surface accent;
+     used as link colour on white it lands around 2.1:1 and fails WCAG AA.
+     This ramp keeps the hue and drops lightness until body-text contrast
+     passes. Dark mode below uses the brand value unmodified. */
+  --ifm-color-primary: oklch(0.62 0.16 55);
+  --ifm-color-primary-dark: oklch(0.58 0.16 54);
+  --ifm-color-primary-darker: oklch(0.55 0.15 53);
+  --ifm-color-primary-darkest: oklch(0.48 0.13 52);
+  --ifm-color-primary-light: oklch(0.67 0.16 57);
+  --ifm-color-primary-lighter: oklch(0.71 0.17 58);
+  --ifm-color-primary-lightest: oklch(0.78 0.16 62);
+
+  --ifm-background-color: var(--background);
+  --ifm-background-surface-color: var(--card);
+  --ifm-font-color-base: var(--foreground);
+  --ifm-heading-color: var(--foreground);
+
+  --ifm-navbar-background-color: var(--sidebar);
+  --ifm-navbar-link-color: var(--muted-foreground);
+  --ifm-navbar-link-hover-color: var(--foreground);
+
+  --ifm-footer-background-color: var(--sidebar);
+
+  --ifm-menu-color: var(--muted-foreground);
+  --ifm-menu-color-active: var(--primary);
+  --ifm-menu-color-background-active: var(--sidebar-accent);
+  --ifm-menu-color-background-hover: var(--sidebar-accent);
+
+  --ifm-toc-border-color: var(--border);
+  --ifm-hr-border-color: var(--border);
+  --ifm-table-border-color: var(--border);
+  --ifm-blockquote-border-color: var(--border);
+
+  --ifm-code-background: var(--muted);
+  --ifm-code-font-size: 87.5%;
+  --ifm-code-border-radius: var(--radius-sm);
+
+  /* Headings use Space Grotesk to match frontend-main's `font-space` utility
+     (globals.css: --font-space: var(--font-space-grotesk), sans-serif),
+     which is the product's primary display face across nav, headings and
+     buttons. Body copy stays on Inter for paragraph readability. */
+  --ifm-font-family-base: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --ifm-heading-font-family: 'Space Grotesk', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* Figma measures ~14.6px body text against Infima's 16px default. Setting
+     the root size rescales every rem-based Infima value at once, which keeps
+     the whole type ramp proportional instead of patching sizes one by one. */
+  --ifm-font-size-base: 15px;
+  --ifm-line-height-base: 1.7;
+
+  --ifm-h1-font-size: 2.9rem;
+  --ifm-h2-font-size: 1.85rem;
+  --ifm-h3-font-size: 1.35rem;
+
+  --ifm-global-radius: var(--radius);
+
+  /* Measured off the Figma frame at 1423px:
+     256 rail | 87 gutter | 766 content | 101 gutter | 183 toc | 30 edge.
+     The two gutters sum to 188px, which is roughly double what an earlier pass
+     used — the shortfall is why the TOC read as tucked against the prose
+     instead of standing off in its own column. Both are tokens because they
+     came off a PNG export rather than Figma dev mode, so they carry a few px
+     of measurement error and want to be adjustable in one place. */
+  --doc-sidebar-width: 256px;
+  --mythos-content-width: 766px;
+  --mythos-toc-width: 183px;
+  --mythos-navbar-height: 56px;
+  --ifm-navbar-height: 56px;
+
+  /* Narrow defaults. The Figma values below only fit once the viewport is wide
+     enough to spend them; under that the gutters give way to the content
+     column, which is the one that has to keep its measure. */
+  --mythos-doc-gutter: 2.5rem;
+  --mythos-doc-edge: 2rem;
+  --mythos-toc-gap: 3.5rem;
+
+  /* Hanging indent for the active-heading dot. The dot sits in this gutter, to
+     the left of the shared text edge that the TOC label and its entries both
+     align to. */
+  --mythos-toc-marker-gutter: 0.8rem;
+
+  --docusaurus-highlighted-code-line-bg: oklch(0 0 0 / 8%);
 }
 
-/* For readability concerns, you should choose a lighter palette in dark mode. */
 [data-theme='dark'] {
-  --ifm-color-primary: #25c2a0;
-  --ifm-color-primary-dark: #21af90;
-  --ifm-color-primary-darker: #1fa588;
-  --ifm-color-primary-darkest: #1a8870;
-  --ifm-color-primary-light: #29d5b0;
-  --ifm-color-primary-lighter: #32d8b4;
-  --ifm-color-primary-lightest: #4fddbf;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  /* Dark mode is the product's native surface, so the brand orange is used
+     as-is here. */
+  --ifm-color-primary: oklch(0.76 0.19 58);
+  --ifm-color-primary-dark: oklch(0.71 0.19 57);
+  --ifm-color-primary-darker: oklch(0.68 0.19 55);
+  --ifm-color-primary-darkest: oklch(0.6 0.17 54);
+  --ifm-color-primary-light: oklch(0.81 0.17 60);
+  --ifm-color-primary-lighter: oklch(0.85 0.15 62);
+  --ifm-color-primary-lightest: oklch(0.9 0.11 66);
+
+  --docusaurus-highlighted-code-line-bg: oklch(1 0 0 / 10%);
+}
+
+/* Gutter tiers. Kept next to the tokens they override rather than beside the
+   grid rules in chrome.css: that file is imported before this `:root`, so a
+   `:root` override living there would lose the cascade tie-break to the
+   defaults above.
+
+   At and above the Figma's own 1423px the full 87/101 gutters fit exactly and
+   the TOC lands 30px off the right edge as drawn: 87 + 766 + 101 + 183 + 30
+   is the 1167px available beside the 256px rail. */
+@media (min-width: 1423px) {
+  :root {
+    --mythos-doc-gutter: 87px;
+    --mythos-toc-gap: 101px;
+    --mythos-doc-edge: 30px;
+  }
+}
+
+@media (max-width: 1200px) {
+  :root {
+    --mythos-doc-gutter: 1.5rem;
+    --mythos-doc-edge: 1.5rem;
+  }
+}
+
+@media (max-width: 996px) {
+  :root {
+    --mythos-doc-gutter: 1rem;
+    --mythos-doc-edge: 1rem;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Base surfaces
+--------------------------------------------------------------------------- */
+
+html {
+  background-color: var(--background);
+}
+
+body {
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The Figma splits the shell into a darker sidebar rail against a lighter
+   content column. Infima paints both from --ifm-background-color, so the
+   sidebar and navbar are re-pointed at the dedicated --sidebar token. */
+.theme-doc-sidebar-container {
+  background-color: var(--sidebar);
+  border-right: 1px solid var(--sidebar-border) !important;
+}
+
+.navbar {
+  border-bottom: 1px solid var(--sidebar-border);
+  box-shadow: none;
+}
+
+/* The Figma's top-right action. */
+.navbar-cta {
+  background-color: var(--primary);
+  color: var(--primary-foreground) !important;
+  border-radius: var(--radius-md);
+  padding: 0.3rem 0.8rem;
+  font-weight: 600;
+  font-size: 0.86rem;
+}
+
+.navbar-cta:hover {
+  background-color: var(--primary-hover);
+}
+
+.navbar__items > .navbar__link,
+.navbar__items--right > .navbar__link {
+  font-size: 0.86rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Sidebar
+   ---------------------------------------------------------------------------
+   The Figma treats category labels as section headers — small, uppercase,
+   tracked out, muted — not as links. Infima styles them as regular menu links
+   at body size, so the whole rail reads one step too loud without this.
+--------------------------------------------------------------------------- */
+
+.menu {
+  padding: 1rem 0.75rem 2rem;
+  font-size: 0.86rem;
+}
+
+.theme-doc-sidebar-item-category-level-1 > .menu__list-item-collapsible > .menu__link {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  padding: 0.5rem 0.5rem;
+}
+
+.theme-doc-sidebar-item-category-level-1 > .menu__list-item-collapsible > .menu__link:hover,
+.theme-doc-sidebar-item-category-level-1
+  > .menu__list-item-collapsible
+  > .menu__link.menu__link--active {
+  color: var(--foreground);
+  background: transparent;
+}
+
+.theme-doc-sidebar-item-category-level-1 + .theme-doc-sidebar-item-category-level-1 {
+  margin-top: 0.6rem;
+}
+
+/* Nested pages: the Figma marks the current page with an orange rule on the
+   leading edge and orange label, over a transparent row — Infima's default is
+   a filled pill with no rule. */
+.menu__list .menu__list {
+  padding-left: 0.35rem;
+}
+
+.menu__list .menu__list .menu__link {
+  font-size: 0.86rem;
+  font-weight: 400;
+  padding: 0.34rem 0.6rem;
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--muted-foreground);
+}
+
+.menu__list .menu__list .menu__link:hover {
+  background: var(--sidebar-accent);
+  color: var(--foreground);
+}
+
+.menu__list .menu__list .menu__link--active {
+  background: transparent;
+  border-left-color: var(--primary);
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.menu__caret::before,
+.menu__link--sublist-caret::after {
+  opacity: 0.5;
+  min-width: 1rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Table of contents
+   ---------------------------------------------------------------------------
+   Three things were off against the Figma frame:
+
+     1. Row pitch. Infima puts a 0.5rem margin on every `li` on top of the
+        link's own padding, which put rows ~35px apart against the mock's ~28.
+        At that looseness a wrapped entry's internal line gap equals the gap
+        between entries, so the list stops reading as discrete rows — visible
+        on guides/ai-integration-prompt, where most entries wrap.
+     2. Alignment. The active dot lived inside the link's left padding, which
+        pushed every label 13.5px right of the "ON THIS PAGE" label above it.
+        The mock aligns label with label and hangs the dot outside that edge.
+     3. Dot position on wrapped entries. Centring it on the link box drops it
+        into the gap between lines; it belongs on the first line.
+--------------------------------------------------------------------------- */
+
+.table-of-contents {
+  font-size: 0.86rem;
+  border-left: none;
+  padding: 0;
+  margin: 0;
+}
+
+.table-of-contents li {
+  margin: 0;
+}
+
+/* The marker gutter is the link's own left padding, so the dot is drawn inside
+   the link's box. It must not be a negative offset on anything: Docusaurus
+   wraps this list in a `div.tableOfContents` carrying `overflow-y: auto`, which
+   computes overflow-x to `auto` as well, and in LTR anything left of that
+   container's inline-start content edge is unreachable by scrolling and so is
+   clipped. Everything here stays inside it. */
+.table-of-contents__link {
+  display: block;
+  padding: 0.28rem 0 0.28rem var(--mythos-toc-marker-gutter);
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
+.table-of-contents__link:hover {
+  color: var(--foreground);
+}
+
+/* h3 entries. The mock's page has h3 sections but its TOC lists only h2s;
+   keeping them is a deliberate departure — guides/ai-integration-prompt alone
+   has eight, and dropping them costs real navigation on a page that is mostly
+   h3. They step down instead, so the h2 spine still reads first. Infima's own
+   nested indent is 0.5rem, which at this row pitch is too small to register as
+   a level. */
+.table-of-contents ul {
+  padding-left: 0.9rem;
+}
+
+.table-of-contents ul .table-of-contents__link {
+  font-size: 0.8rem;
+}
+
+/* A heading containing inline code carries that code into the TOC, where
+   Infima's chip treatment (background, border, padding) breaks mid-token and
+   inflates the row. Flattened to plain mono text, keeping the same 87.5% ratio
+   to its surroundings that inline code uses everywhere else — at the entry's
+   full size a 24-character token such as `USE_LISTING_CALLBACK=yes` does not
+   fit the column and wraps mid-word. `overflow-wrap` stays as the backstop for
+   tokens longer still. */
+.table-of-contents code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--ifm-code-font-size);
+  color: inherit;
+  overflow-wrap: break-word;
+}
+
+/* Figma marks the active heading with a small orange dot rather than a rule.
+   Drawn as a background rather than a positioned `::before` so it needs no
+   stacking context and cannot escape the link's box into the clipped region.
+
+   Vertical position is padding-top plus half a line, less half the dot, so it
+   sits on the first line of an entry that may wrap to three — the old
+   `top: 50%` centred it on the box and dropped it into the gap between lines
+   two and three. */
+.table-of-contents__link--active {
+  color: var(--primary);
+  background-image: radial-gradient(
+    circle at 2.5px 2.5px,
+    var(--primary) 0 2.5px,
+    transparent 2.5px
+  );
+  background-repeat: no-repeat;
+  background-size: 5px 5px;
+  background-position: 0 calc(0.28rem + 0.75em - 2.5px);
+}
+
+/* ---------------------------------------------------------------------------
+   Breadcrumbs — Figma renders the trail as plain text, no pill on the tail.
+--------------------------------------------------------------------------- */
+
+.breadcrumbs__item--active .breadcrumbs__link {
+  background: transparent;
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+.breadcrumbs__link {
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+  background: transparent;
+  padding: 0.15rem 0.3rem;
+}
+
+.breadcrumbs__item:not(:last-child)::after {
+  opacity: 0.4;
+}
+
+.breadcrumbs__item--active .breadcrumbs__link:hover {
+  background: transparent;
+}
+
+/* ---------------------------------------------------------------------------
+   Prose rhythm
+--------------------------------------------------------------------------- */
+
+/* The page H1 — either a synthetic <header><h1> (when the doc has no inline
+   heading) or an inline # Heading that follows DocMetaRow's div. :first-child
+   can't be used because DocMetaRow precedes the inline h1; :first-of-type
+   matches the first h1 among direct children regardless of preceding siblings.
+   chrome.css uses the same selector for `order`. */
+.markdown > header > h1,
+.markdown > h1:first-of-type {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  margin-bottom: 0.5rem;
+}
+
+.markdown > h2 {
+  margin-top: 3rem;
+  letter-spacing: -0.02em;
+  padding-top: 0;
+  border-top: none;
+}
+
+.markdown > h3 {
+  margin-top: 2rem;
+  letter-spacing: -0.01em;
+}
+
+.markdown table {
+  display: table;
+  width: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.markdown table thead tr {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
+.markdown table th,
+.markdown table td {
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
 }

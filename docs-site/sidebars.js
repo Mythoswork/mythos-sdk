@@ -4,6 +4,7 @@ const sidebars = {
     {
       type: 'category',
       label: 'Get started',
+      customProps: { icon: 'rocket' },
       items: [
         'getting-started/introduction',
         'getting-started/how-it-works',
@@ -16,6 +17,7 @@ const sidebars = {
     {
       type: 'category',
       label: 'Concepts',
+      customProps: { icon: 'book' },
       items: [
         'concepts/token-types',
         'concepts/launch-sessions',
@@ -26,6 +28,7 @@ const sidebars = {
     {
       type: 'category',
       label: 'Guides',
+      customProps: { icon: 'compass' },
       items: [
         'guides/ai-integration-prompt',
         'guides/required-routes',
@@ -42,6 +45,7 @@ const sidebars = {
     {
       type: 'category',
       label: 'API reference — Node.js',
+      customProps: { icon: 'braces' },
       items: [
         'reference/node/overview',
         'reference/node/handshake-route',
@@ -56,6 +60,7 @@ const sidebars = {
     {
       type: 'category',
       label: 'API reference — Python',
+      customProps: { icon: 'braces' },
       items: [
         'reference/python/overview',
         'reference/python/handshake-router',
@@ -70,6 +75,7 @@ const sidebars = {
     {
       type: 'category',
       label: 'Resources',
+      customProps: { icon: 'box' },
       items: [
         'resources/code-examples',
         'resources/mock-integration-apps',
