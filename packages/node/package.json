@@ -29,7 +29,8 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "jose": "^5.0.0"
+    "jose": "^5.0.0",
+    "openai": "^6.49.0"
   },
   "peerDependencies": {
     "express": ">=4.0.0"
