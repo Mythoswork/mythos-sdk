@@ -732,9 +732,10 @@ wheels = [
 
 [[package]]
 name = "mythos-sdk"
-version = "0.0.7"
+version = "0.0.8"
 source = { editable = "." }
 dependencies = [
+    { name = "cryptography" },
     { name = "httpx" },
     { name = "openai" },
     { name = "python-jose", extra = ["cryptography"] },
@@ -763,6 +764,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=42.0" },
     { name = "cryptography", marker = "extra == 'dev'", specifier = ">=42.0" },
     { name = "fastapi", marker = "extra == 'fastapi'", specifier = ">=0.100.0" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'dev'", specifier = ">=0.115.0" },

@@ -14,3 +14,4 @@ export { listingCallbackRoute } from './listing-callback';
 export type { MythosSession } from './types';
 export { getLlmBillingMetadata, llm } from './llm';
 export type { LlmOptions, MythosChatCompletion, MythosLlmBillingMetadata } from './llm';
+export { encodeSession, decodeSession } from './session';
