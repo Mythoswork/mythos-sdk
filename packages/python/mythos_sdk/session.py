@@ -28,6 +28,14 @@ def encode_session(session: MythosSession) -> str:
     sets the returned string as its own cookie (recommended: HttpOnly; Secure;
     SameSite=Lax); decode_session() reads it back on any later request with no call to
     Mythos at all.
+
+    NOT cross-language compatible with the Node SDK's encodeSession/decodeSession, even
+    with the same MYTHOS_SESSION_SECRET: AESGCM.encrypt() here produces
+    ciphertext || tag(16), appended after the nonce, while Node writes
+    iv(12) || authTag(16) || ciphertext -- a different byte layout under the same field
+    names. A Producer app must encode and decode its session cookie with the same
+    language's SDK throughout -- there is no supported mixed-language deployment for a
+    single cookie.
     """
     key = _get_session_key()
     nonce = os.urandom(NONCE_LENGTH)

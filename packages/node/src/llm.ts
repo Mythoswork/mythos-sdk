@@ -1,5 +1,4 @@
 import OpenAI from 'openai';
-import type { ChatCompletion } from 'openai/resources/chat/completions';
 
 import { loadConfig } from './config';
 import { MythosError } from './errors';
@@ -23,8 +22,6 @@ export interface MythosLlmBillingMetadata {
   mythos_creator_earning_credits?: number;
 }
 
-export type MythosChatCompletion = ChatCompletion & Partial<MythosLlmBillingMetadata>;
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -45,27 +42,23 @@ export function getLlmBillingMetadata(response: unknown): MythosLlmBillingMetada
   const pricingSource = response['mythos_pricing_source'];
   if ((typeof cost !== 'string' && cost !== null) || typeof pricingSource !== 'string') return null;
 
+  const providerCostCredits = optionalNonNegativeInteger(response['mythos_provider_cost_credits']);
+  const creatorMarginCredits = optionalNonNegativeInteger(response['mythos_creator_margin_credits']);
+  const platformFeeCredits = optionalNonNegativeInteger(response['mythos_platform_fee_credits']);
+  const chargeCredits = optionalNonNegativeInteger(response['mythos_charge_credits']);
+  const creatorEarningCredits = optionalNonNegativeInteger(response['mythos_creator_earning_credits']);
+
   return {
     mythos_cost_microunits: cost,
     mythos_pricing_source: pricingSource,
     ...(typeof response['mythos_billing_status'] === 'string'
       ? { mythos_billing_status: response['mythos_billing_status'] }
       : {}),
-    ...(optionalNonNegativeInteger(response['mythos_provider_cost_credits']) !== undefined
-      ? { mythos_provider_cost_credits: optionalNonNegativeInteger(response['mythos_provider_cost_credits']) }
-      : {}),
-    ...(optionalNonNegativeInteger(response['mythos_creator_margin_credits']) !== undefined
-      ? { mythos_creator_margin_credits: optionalNonNegativeInteger(response['mythos_creator_margin_credits']) }
-      : {}),
-    ...(optionalNonNegativeInteger(response['mythos_platform_fee_credits']) !== undefined
-      ? { mythos_platform_fee_credits: optionalNonNegativeInteger(response['mythos_platform_fee_credits']) }
-      : {}),
-    ...(optionalNonNegativeInteger(response['mythos_charge_credits']) !== undefined
-      ? { mythos_charge_credits: optionalNonNegativeInteger(response['mythos_charge_credits']) }
-      : {}),
-    ...(optionalNonNegativeInteger(response['mythos_creator_earning_credits']) !== undefined
-      ? { mythos_creator_earning_credits: optionalNonNegativeInteger(response['mythos_creator_earning_credits']) }
-      : {}),
+    ...(providerCostCredits !== undefined ? { mythos_provider_cost_credits: providerCostCredits } : {}),
+    ...(creatorMarginCredits !== undefined ? { mythos_creator_margin_credits: creatorMarginCredits } : {}),
+    ...(platformFeeCredits !== undefined ? { mythos_platform_fee_credits: platformFeeCredits } : {}),
+    ...(chargeCredits !== undefined ? { mythos_charge_credits: chargeCredits } : {}),
+    ...(creatorEarningCredits !== undefined ? { mythos_creator_earning_credits: creatorEarningCredits } : {}),
   };
 }
 
@@ -77,15 +70,28 @@ export function llm<TFallback = never>(
     if (options.fallback !== undefined) return options.fallback;
     throw new MythosError('An active Mythos session is required for LLM access', 'LLM_SESSION_REQUIRED');
   }
+  // A session decoded before this release, or verified against an older backend, can be
+  // real and active but still lack an identity token -- that's the same "can't reach
+  // Mythos's LLM gateway" situation as no session at all, so it falls back the same way
+  // rather than hard-throwing regardless of whether the caller configured one.
   if (!session.llmIdentityToken) {
+    if (options.fallback !== undefined) return options.fallback;
     throw new MythosError('The Mythos session is missing its LLM identity token', 'LLM_IDENTITY_REQUIRED');
   }
 
   const baseURL = options.baseURL ?? `${loadConfig().apiUrl.replace(/\/+$/, '')}/v1`;
-  return new OpenAI({
-    ...(options.apiKey === undefined ? {} : { apiKey: options.apiKey }),
-    baseURL,
-    defaultHeaders: { 'X-Mythos-Identity': `Bearer ${session.llmIdentityToken}` },
-    ...(options.timeout === undefined ? {} : { timeout: options.timeout }),
-  });
+  try {
+    return new OpenAI({
+      ...(options.apiKey === undefined ? {} : { apiKey: options.apiKey }),
+      baseURL,
+      defaultHeaders: { 'X-Mythos-Identity': `Bearer ${session.llmIdentityToken}` },
+      ...(options.timeout === undefined ? {} : { timeout: options.timeout }),
+    });
+  } catch (err) {
+    // Most commonly: no `apiKey` given and no OPENAI_API_KEY env var set, which the
+    // underlying OpenAI client rejects with its own error type -- surfaced as a
+    // MythosError instead, consistent with every other failure mode of this function.
+    const message = err instanceof Error ? err.message : String(err);
+    throw new MythosError(`Failed to construct the Mythos LLM client: ${message}`, 'LLM_CLIENT_CONSTRUCTION_ERROR');
+  }
 }

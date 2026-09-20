@@ -22,6 +22,13 @@ function getSessionKey(): Buffer {
  * token -- which is single-use -- on every page. The Producer sets the returned string as
  * its own cookie (recommended: HttpOnly; Secure; SameSite=Lax); decodeSession() reads it
  * back on any later request with no call to Mythos at all.
+ *
+ * NOT cross-language compatible with the Python SDK's encode_session/decode_session, even
+ * with the same MYTHOS_SESSION_SECRET: this writes iv(12) || authTag(16) || ciphertext,
+ * while Python's AESGCM.encrypt() produces ciphertext || tag(16), giving a different byte
+ * layout under the same field names. A Producer app must encode and decode its session
+ * cookie with the same language's SDK throughout -- there is no supported mixed-language
+ * deployment for a single cookie.
  */
 export function encodeSession(session: MythosSession): string {
   const key = getSessionKey();
@@ -52,8 +59,14 @@ export function decodeSession(token: string): MythosSession | null {
     const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
     const session = JSON.parse(plaintext.toString('utf8')) as MythosSession;
 
-    if (session.llmIdentityExpiresAt && new Date(session.llmIdentityExpiresAt).getTime() <= Date.now()) {
-      return null;
+    if (session.llmIdentityExpiresAt) {
+      const expiresAtMs = new Date(session.llmIdentityExpiresAt).getTime();
+      // A malformed date string parses to NaN, and NaN <= anything is always false -- so
+      // this must be checked explicitly, otherwise a malformed expiry fails open (treated
+      // as "not expired") instead of closed like Python's equivalent check.
+      if (Number.isNaN(expiresAtMs) || expiresAtMs <= Date.now()) {
+        return null;
+      }
     }
     return session;
   } catch {

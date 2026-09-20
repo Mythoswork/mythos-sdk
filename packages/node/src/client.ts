@@ -30,13 +30,20 @@ interface ConfirmChargeResponseMessage {
  * verification and is ready to be shown -- call this once, right after your app confirms
  * its Mythos session (e.g. after a successful /api/verify-session response). A no-op
  * (with a console warning) if this page isn't actually embedded in an iframe.
+ *
+ * `expectedOrigin` restricts the outgoing postMessage's targetOrigin instead of the
+ * permissive `'*'` -- pass the Mythos dashboard's real origin when your app knows it (e.g.
+ * from a build-time env var) so this app's handshake can't be read by an unexpected frame
+ * if the page ends up embedded somewhere it shouldn't be. Optional and omitted by default
+ * for backward compatibility; the actual security boundary is the backend wallet
+ * hold/402 on any billable action, not this message exchange.
  */
-export function sendHandshake(): void {
+export function sendHandshake(expectedOrigin?: string): void {
   if (window === window.parent) {
     console.warn('[mythos-client] not embedded in a parent frame — skipping handshake.');
     return;
   }
-  window.parent.postMessage({ type: MYTHOS_HANDSHAKE_MESSAGE_TYPE }, '*');
+  window.parent.postMessage({ type: MYTHOS_HANDSHAKE_MESSAGE_TYPE }, expectedOrigin ?? '*');
 }
 
 /**
@@ -44,12 +51,21 @@ export function sendHandshake(): void {
  * before your app performs the billable action. Resolves false (never rejects) on
  * timeout, decline, or if this page isn't embedded at all -- fail-closed, so a missing or
  * unresponsive dashboard never silently lets a charge through.
+ *
+ * `expectedOrigin` restricts both the outgoing postMessage's targetOrigin and which
+ * frame's response is accepted (checked against `event.origin`, in addition to the
+ * existing `event.source === window.parent` check). Optional and omitted by default for
+ * backward compatibility -- without it, any frame that is `window.parent` can read the
+ * outgoing `credits`/`reason` and answer on its behalf. The real security boundary
+ * remains the backend wallet hold/402 on the billable action itself; this only hardens the
+ * confirmation UX against an unexpected embedding frame.
  */
 export function confirmCharge(
   credits: number,
   reason?: string,
   timeoutMs: number = DEFAULT_CONFIRM_TIMEOUT_MS,
   kind: MythosChargeKind = 'generic',
+  expectedOrigin?: string,
 ): Promise<boolean> {
   return new Promise((resolve) => {
     if (window === window.parent) {
@@ -68,13 +84,14 @@ export function confirmCharge(
     const timer = window.setTimeout(() => {
       if (settled) return;
       console.warn('[mythos-client] timed out waiting for a confirm-charge response — skipping charge.');
-      window.parent.postMessage({ type: MYTHOS_CONFIRM_CHARGE_TIMEOUT_TYPE, requestId }, '*');
+      window.parent.postMessage({ type: MYTHOS_CONFIRM_CHARGE_TIMEOUT_TYPE, requestId }, expectedOrigin ?? '*');
       cleanup();
       resolve(false);
     }, timeoutMs);
 
     function onMessage(event: MessageEvent) {
       if (event.source !== window.parent) return;
+      if (expectedOrigin !== undefined && event.origin !== expectedOrigin) return;
       const data = event.data as Partial<ConfirmChargeResponseMessage> | null;
       if (!data || data.type !== MYTHOS_CONFIRM_CHARGE_RESPONSE_TYPE) return;
       if (typeof data.requestId !== 'string' || data.requestId !== requestId) return;
@@ -92,7 +109,7 @@ export function confirmCharge(
     window.addEventListener('message', onMessage);
     window.parent.postMessage(
       { type: MYTHOS_CONFIRM_CHARGE_REQUEST_TYPE, requestId, credits, reason, kind },
-      '*',
+      expectedOrigin ?? '*',
     );
   });
 }

@@ -5,12 +5,8 @@ import pytest
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletion
 
-from mythos_sdk import (
-    MythosError,
-    MythosSession,
-    get_llm_billing_metadata,
-    llm,
-)
+from mythos_sdk import MythosError, MythosSession
+from mythos_sdk.llm import get_llm_billing_metadata, llm
 
 
 SESSION = MythosSession(
