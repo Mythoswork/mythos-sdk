@@ -1,12 +1,33 @@
 # @mythos-work/sdk
 
-Official Mythos SDK for Node.js — launch token verification, usage reporting, and handshake.
+Official Mythos SDK for Node.js — launch token verification, OpenAI-compatible LLM access, usage reporting, and handshake.
 
 ## Install
 
 ```bash
 npm install @mythos-work/sdk
 ```
+
+## OpenAI-compatible LLM
+
+Use the session returned by `requireLaunchToken()` to create an official OpenAI client that
+routes through Mythos. The provider key is sent as the normal OpenAI `Authorization` header;
+the SDK adds the session identity header internally.
+
+```typescript
+import { getLlmBillingMetadata, llm } from '@mythos-work/sdk/llm';
+
+const client = llm(req.mythos, { apiKey: process.env.PROVIDER_API_KEY });
+const completion = await client.chat.completions.create({
+  model: 'openai/gpt-4o-mini',
+  messages: [{ role: 'user', content: 'Hello' }],
+});
+const billing = getLlmBillingMetadata(completion);
+```
+
+If no session is available, pass `{ fallback }` to return a fallback value unchanged; otherwise
+`llm()` throws `MythosError`. `baseURL` overrides the default `${MYTHOS_API_URL}/v1`, and
+`timeout` is in milliseconds.
 
 ## Quick start
 
@@ -55,7 +76,13 @@ Express middleware. Verifies the ES256 launch token from `?lt=`, enforces single
 
 ### `reportUsage(sessionJti, { credits, reason? })`
 
-Reports credit consumption against a session. Call after delivering value to the user.
+Reports non-inference product fees against a session. Call after delivering value to the user;
+LLM inference is metered by the OpenAI-compatible gateway instead.
+
+### `llm(session, { apiKey?, fallback?, baseURL?, timeout? })`
+
+Returns an official OpenAI client configured for the Mythos gateway and the session's identity.
+Use `getLlmBillingMetadata(completion)` to read server-provided billing metadata.
 
 ### `handshakeRoute()`
 

@@ -1,12 +1,39 @@
 from collections.abc import Awaitable, Callable
+from dataclasses import replace
 
 from fastapi import HTTPException, Query
+import httpx
 from jose.exceptions import JOSEError
 
 from .api_client import consume_session
 from .errors import InvalidLaunchTokenError, MythosConfigError
 from .types import MythosSession
 from .verify import verify_launch_token
+
+
+def _attach_identity_token(session: MythosSession, response: httpx.Response) -> MythosSession:
+    try:
+        body = response.json()
+    except (AttributeError, TypeError, ValueError):
+        return session
+    if not isinstance(body, dict):
+        return session
+
+    data = body.get("data")
+    if not isinstance(data, dict):
+        return session
+
+    token = data.get("llm_identity_token")
+    if not isinstance(token, str) or not token:
+        return session
+
+    expires_at = data.get("llm_identity_expires_at")
+    return replace(
+        session,
+        llmIdentityToken=token,
+        llmIdentityExpiresAt=expires_at if isinstance(expires_at, str) else None,
+    )
+
 
 def require_launch_token(
     resolve_listing_ids: Callable[[], Awaitable[list[str]]] | None = None,
@@ -37,6 +64,6 @@ def require_launch_token(
             # Any other non-2xx (500, 503, ...) is unconfirmed — fail closed.
             raise HTTPException(status_code=503, detail="Could not verify session")
 
-        return session
+        return _attach_identity_token(session, resp)
 
     return dependency

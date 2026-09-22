@@ -47,7 +47,16 @@ async function mintToken(jti = 'jti-001'): Promise<string> {
 
 test('happy path: req.mythos populated and next() called', async () => {
   const { requireLaunchToken } = await import('../src/middleware');
-  jest.spyOn(apiClient, 'consumeSession').mockResolvedValue({ status: 200 } as unknown as globalThis.Response);
+  jest.spyOn(apiClient, 'consumeSession').mockResolvedValue({
+    status: 200,
+    json: async () => ({
+      success: true,
+      data: {
+        llm_identity_token: 'identity-token',
+        llm_identity_expires_at: '2099-01-01T00:30:00.000Z',
+      },
+    }),
+  } as unknown as globalThis.Response);
 
   const token = await mintToken();
   const req = { query: { lt: token }, mythos: undefined } as unknown as Request;
@@ -59,6 +68,8 @@ test('happy path: req.mythos populated and next() called', async () => {
   expect(next).toHaveBeenCalled();
   expect(req.mythos?.userId).toBe('user-1');
   expect(req.mythos?.sessionJti).toBe('jti-001');
+  expect(req.mythos?.llmIdentityToken).toBe('identity-token');
+  expect(req.mythos?.llmIdentityExpiresAt).toBe('2099-01-01T00:30:00.000Z');
 });
 
 test('missing ?lt= → 401', async () => {

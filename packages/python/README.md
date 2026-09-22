@@ -1,12 +1,33 @@
 # mythos-sdk
 
-Official Mythos SDK for Python — launch token verification, usage reporting, and handshake.
+Official Mythos SDK for Python — launch token verification, OpenAI-compatible LLM access, usage reporting, and handshake.
 
 ## Install
 
 ```bash
-pip install mythos-sdk[fastapi]
+pip install "mythos-sdk[fastapi,llm]"
 ```
+
+## OpenAI-compatible LLM
+
+Use the session returned by `require_launch_token()` to create an official async OpenAI client
+that routes through Mythos. The provider key is sent as the normal OpenAI `Authorization` header;
+the SDK adds the session identity header internally.
+
+```python
+from mythos_sdk.llm import get_llm_billing_metadata, llm
+
+client = llm(session, api_key=provider_key)
+completion = await client.chat.completions.create(
+    model="openai/gpt-4o-mini",
+    messages=[{"role": "user", "content": "Hello"}],
+)
+billing = get_llm_billing_metadata(completion)
+```
+
+If no session is available, pass `fallback` to return it unchanged; otherwise `llm()` raises
+`MythosError`. `base_url` overrides the default `${MYTHOS_API_URL}/v1`, and `timeout` is in
+seconds.
 
 ## Quick start
 
@@ -66,7 +87,13 @@ FastAPI dependency. Verifies the ES256 launch token from `?lt=`, enforces single
 
 ### `report_usage(session_jti, *, credits, reason=None)`
 
-Reports credit consumption against a session. Call after delivering value to the user.
+Reports non-inference product fees against a session. Call after delivering value to the user;
+LLM inference is metered by the OpenAI-compatible gateway instead.
+
+### `llm(session, api_key=None, fallback=None, base_url=None, timeout=600.0)`
+
+Returns an official async OpenAI client configured for the Mythos gateway and the session's
+identity. Use `get_llm_billing_metadata(completion)` to read server-provided billing metadata.
 
 ### `create_handshake_router()`
 

@@ -10,6 +10,7 @@ from .handshake import create_handshake_router, handshake_router
 from .listing_callback import create_listing_callback_handler
 from .middleware import require_launch_token
 from .report_usage import report_usage
+from .session import decode_session, encode_session
 from .types import MythosSession
 from .verify import verify_launch_token
 
@@ -20,6 +21,8 @@ __all__ = [
     "handshake_router",
     "create_handshake_router",
     "create_listing_callback_handler",
+    "encode_session",
+    "decode_session",
     "MythosSession",
     "MythosError",
     "MythosConfigError",

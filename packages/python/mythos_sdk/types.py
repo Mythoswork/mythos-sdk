@@ -8,3 +8,5 @@ class MythosSession:
     displayName: str
     listingId: str
     sessionJti: str
+    llmIdentityToken: str | None = None
+    llmIdentityExpiresAt: str | None = None

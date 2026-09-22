@@ -18,6 +18,13 @@ MOCK_SESSION = MythosSession(
 async def test_happy_path_returns_session():
     consume_resp = MagicMock(spec=httpx.Response)
     consume_resp.status_code = 200
+    consume_resp.json.return_value = {
+        "success": True,
+        "data": {
+            "llm_identity_token": "identity-token",
+            "llm_identity_expires_at": "2099-01-01T00:30:00.000Z",
+        },
+    }
 
     with patch("mythos_sdk.middleware.verify_launch_token", new_callable=AsyncMock, return_value=MOCK_SESSION), \
          patch("mythos_sdk.middleware.consume_session", new_callable=AsyncMock, return_value=consume_resp):
@@ -25,6 +32,8 @@ async def test_happy_path_returns_session():
 
     assert session.userId == "user-1"
     assert session.sessionJti == "jti-001"
+    assert session.llmIdentityToken == "identity-token"
+    assert session.llmIdentityExpiresAt == "2099-01-01T00:30:00.000Z"
 
 
 async def test_missing_lt_raises_401():

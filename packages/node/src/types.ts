@@ -4,6 +4,8 @@ export interface MythosSession {
   displayName: string;
   listingId: string;
   sessionJti: string;
+  llmIdentityToken?: string;
+  llmIdentityExpiresAt?: string;
 }
 
 export interface MythosConfig {
