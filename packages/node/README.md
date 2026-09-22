@@ -15,7 +15,7 @@ routes through Mythos. The provider key is sent as the normal OpenAI `Authorizat
 the SDK adds the session identity header internally.
 
 ```typescript
-import { getLlmBillingMetadata, llm } from '@mythos-work/sdk';
+import { getLlmBillingMetadata, llm } from '@mythos-work/sdk/llm';
 
 const client = llm(req.mythos, { apiKey: process.env.PROVIDER_API_KEY });
 const completion = await client.chat.completions.create({

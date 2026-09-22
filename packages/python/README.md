@@ -5,7 +5,7 @@ Official Mythos SDK for Python — launch token verification, OpenAI-compatible 
 ## Install
 
 ```bash
-pip install mythos-sdk[fastapi]
+pip install "mythos-sdk[fastapi,llm]"
 ```
 
 ## OpenAI-compatible LLM
@@ -15,7 +15,7 @@ that routes through Mythos. The provider key is sent as the normal OpenAI `Autho
 the SDK adds the session identity header internally.
 
 ```python
-from mythos_sdk import get_llm_billing_metadata, llm
+from mythos_sdk.llm import get_llm_billing_metadata, llm
 
 client = llm(session, api_key=provider_key)
 completion = await client.chat.completions.create(
