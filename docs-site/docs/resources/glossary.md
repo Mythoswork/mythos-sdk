@@ -1,25 +1,17 @@
 # Glossary
 
-Terms used throughout the Mythos SDK documentation.
+These terms describe the Mythos launch and billing model used throughout the SDK docs.
 
 | Term | Definition |
-|------|------------|
-| **Producer** | App developer who integrates the SDK and lists on the Mythos marketplace |
-| **Consumer** | End user who discovers and launches Producer apps via Mythos |
-| **Listing** | A published app entry on the Mythos marketplace |
-| **Listing ID** | UUID identifying your listing — used in `aud` claim validation |
-| **Launch token** | ES256 JWT in `?lt=` query param when Consumer opens your app |
-| **Handshake token** | JWT with `purpose: "handshake-check"` for publish gate |
-| **Listing registered token** | JWT with `purpose: "listing_registered"` for dynamic ID callback |
-| **sessionJti** | Session identifier (`jti` claim) — use for `reportUsage` / `report_usage` |
-| **JWKS** | JSON Web Key Set — Mythos public keys for ES256 verification |
-| **Consume** | `POST /api/apps/sessions/{jti}/consume` — marks launch token single-use |
-| **Meter** | `POST /api/apps/sessions/{jti}/meter` — debits Consumer wallet |
-| **charge_id** | Per-call idempotency key sent with meter requests |
-| **ADR-0003** | Architecture decision: single-use consume is mandatory and non-skippable |
-| **Well-known routes** | Standard paths under `/.well-known/` for Mythos platform integration |
-
-## See also
-
-- [How it works](../getting-started/how-it-works.md)
-- [Token types](../concepts/token-types.md)
+|---|---|
+| **Producer** | App developer who integrates the SDK and lists an app on Mythos |
+| **Consumer** | User who buys credits and spends them across Mythos apps |
+| **Listing** | A published app entry in the Mythos marketplace |
+| **Launch session** | Secure context connecting a Consumer, listing, and billing identity |
+| **Standalone** | App state when it was opened outside a Mythos launch |
+| **Charge confirmation** | Consumer approval returned by `confirmCharge` before a billable action |
+| **Consent ID** | Approval identifier that can be passed to the server charge |
+| **Idempotency key** | Client-generated UUID reused for retries of one fixed-price action |
+| **Session metered total** | Running credit total returned by `charge` |
+| **LLM gateway** | Mythos-routed OpenAI-compatible client returned by `mythos.llm` |
+| **Well-known route** | Standard integration endpoint under `/.well-known/` |

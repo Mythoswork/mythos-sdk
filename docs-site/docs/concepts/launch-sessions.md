@@ -1,82 +1,32 @@
 # Launch sessions
 
-Learn how launch tokens are verified, consumed, and enforced as single-use.
+A launch session connects a Consumer, a listing, and server-side billing context.
 
-:::info
-**Just getting started?** [Quickstart: Node.js](../getting-started/quickstart-node.md) wires session exchange in minutes.
-:::
+## Session lifecycle
 
-## Flow
+1. A Consumer launches a listing from Mythos.
+2. The SDK's browser client initializes against `/api/mythos/session`.
+3. The SDK validates and consumes the launch once, then establishes secure transport.
+4. Server routes read the session with `getSession` and perform charges with `charge`.
+5. The browser reports `expired` when the session can no longer be used.
 
-1. Consumer arrives with `?lt=<launch-jwt>`
-2. Your server calls `verifyLaunchToken` (or uses `requireLaunchToken` middleware)
-3. SDK fetches Mythos JWKS, verifies ES256 signature and issuer `mythos`
-4. SDK validates audience (`aud`) against configured listing ID(s)
-5. SDK calls `POST /api/apps/sessions/{jti}/consume` on Mythos
-6. On success, session is returned to your app / frontend
-
-```mermaid
-sequenceDiagram
-  participant Frontend
-  participant ProducerServer
-  participant MythosAPI
-
-  Frontend->>ProducerServer: GET /api/mythos/session?lt=JWT
-  ProducerServer->>ProducerServer: verifyLaunchToken (JWKS)
-  ProducerServer->>MythosAPI: POST /consume sessionJti
-  MythosAPI-->>ProducerServer: 200
-  ProducerServer-->>Frontend: session JSON
-```
-
-## MythosSession shape
-
-Both Node and Python return the same field names (camelCase):
+## Session shape
 
 | Field | Description |
-|-------|-------------|
-| `userId` | Consumer's Mythos user ID (`sub` claim) |
+|---|---|
+| `userId` | Consumer's Mythos user ID |
 | `email` | Consumer email |
 | `displayName` | Consumer display name |
 | `listingId` | Listing that was launched |
-| `sessionJti` | Session ID — use for `reportUsage` / `report_usage` |
+| `sessionJti` | Session identifier managed by the SDK |
 
-## Audience validation
+```ts
+const session = await mythos.getSession(req);
+if (!session) return handleStandaloneRequest(req);
+```
 
-The launch token's `aud` claim must match one of your configured listing IDs:
+`null` means the app was opened standalone, not that initialization failed. See [Standalone mode](../recipes/standalone-mode.md).
 
-- From env: `MYTHOS_LISTING_ID` or `MYTHOS_LISTING_IDS`
-- From callback: IDs returned by `resolveListingIds` / `resolve_listing_ids`
+## Browser transport
 
-Python checks **all** `aud` elements when `aud` is an array. Node checks the first audience value.
-
-## Single-use enforcement (ADR-0003)
-
-The SDK **always** calls `/consume` inside `requireLaunchToken` / `require_launch_token`. You cannot skip this step or verify tokens without consuming them via the SDK middleware.
-
-| `/consume` result | HTTP response |
-|-------------------|---------------|
-| 2xx | Session granted |
-| 409 | 401 — token already consumed |
-| Network error / 5xx | 503 — fail closed, no access |
-
-:::warning
-Fail closed: if Mythos `/consume` is unreachable, return 503. Never grant access without a confirmed consume.
-:::
-
-## JWKS caching
-
-Public keys are fetched from Mythos JWKS endpoint and cached for 10 minutes. On key rotation (kid miss), the SDK re-fetches once automatically.
-
-## Frontend responsibilities
-
-After session exchange:
-
-1. Store `sessionJti` for billing
-2. **Strip `?lt=` from the URL** — `history.replaceState` even on failure
-3. Do not store or re-use the raw launch JWT
-
-## Next steps
-
-- [requireLaunchToken](../reference/node/require-launch-token.md) · [require_launch_token](../reference/python/require-launch-token.md)
-- [Frontend client](../guides/frontend-client.md)
-- [Token types](token-types.md)
+The SDK prefers an HTTP-only session cookie and manages a fallback when cookies are blocked. Application code must not store Mythos tokens in browser storage. Use the session-aware `fetch` returned by [the browser client](../getting-started/browser-client.md).

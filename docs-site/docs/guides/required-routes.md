@@ -1,9 +1,13 @@
+:::caution Advanced — 0.0.x primitives
+You don't need this page for a normal integration. Use the [quickstarts](/getting-started/quickstart-nextjs-app) and `createMythos()` instead. These low-level functions remain exported for custom setups.
+:::
+
 # Required routes
 
 Every Producer app must expose these routes on **every** server entry point that serves production traffic.
 
 :::info
-**Just getting started?** [Quickstart: Node.js](../getting-started/quickstart-node.md) · [Quickstart: Python](../getting-started/quickstart-python.md)
+**Just getting started?** [Quickstart: Next.js](../getting-started/quickstart-nextjs-app.md) · [Quickstart: FastAPI](../getting-started/quickstart-fastapi.md)
 :::
 
 ## Route overview
@@ -79,7 +83,7 @@ Verifies signature, validates audience, calls Mythos `/consume`.
 }
 ```
 
-Pick one shape and use it consistently in frontend code. The [frontend client](frontend-client.md) supports both.
+Pick one shape and use it consistently in frontend code. The current [browser client](../getting-started/browser-client.md) manages this automatically.
 
 ## 3. Report usage
 
@@ -127,6 +131,6 @@ Use `/api/mythos/report-usage` consistently. Avoid drift (`/api/mythos/usage`, `
 
 ## Next steps
 
-- [Express](express.md) · [FastAPI](fastapi.md) · [Next.js](nextjs.md) · [Vercel](vercel-serverless.md)
+- [Express](../getting-started/quickstart-express.md) · [FastAPI](../getting-started/quickstart-fastapi.md) · [Next.js](../getting-started/quickstart-nextjs-app.md) · [Vercel](vercel-serverless.md)
 - [Verify your integration](../getting-started/verify-integration.md)
 - [Troubleshooting](../resources/troubleshooting.md)

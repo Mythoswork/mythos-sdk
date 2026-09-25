@@ -1,9 +1,13 @@
+:::caution Advanced — 0.0.x primitives
+You don't need this page for a normal integration. Use the [quickstarts](/getting-started/quickstart-nextjs-app) and `createMythos()` instead. These low-level functions remain exported for custom setups.
+:::
+
 # Python SDK overview
 
 API reference for `mythos-sdk` — the official Mythos SDK for Python.
 
 :::info
-**Just getting started?** [Quickstart: Python](../../getting-started/quickstart-python.md)
+**Just getting started?** [Quickstart: FastAPI](../../getting-started/quickstart-fastapi.md)
 :::
 
 ## Install

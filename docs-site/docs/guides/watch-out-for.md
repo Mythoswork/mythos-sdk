@@ -1,9 +1,13 @@
+:::caution Advanced — 0.0.x primitives
+You don't need this page for a normal integration. Use the [quickstarts](/getting-started/quickstart-nextjs-app) and `createMythos()` instead. These low-level functions remain exported for custom setups.
+:::
+
 # What to watch out for
 
 Every item here comes from the SDK's source, its test suite, or a real commit in one of the reference mock apps. Where a bug was hit and fixed in production, the commit is linked so you can see the actual failure.
 
 > **ℹ️ Info**
-> This page assumes you've already done the [Node](../getting-started/quickstart-node.md) or [Python](../getting-started/quickstart-python.md) quickstart. Come back here before you ship.
+> This page assumes you've already done a [current quickstart](../getting-started/quickstart-nextjs-app.md). Come back here before you ship.
 
 ## Launch tokens are single-use
 
@@ -100,7 +104,7 @@ If `MYTHOS_LISTING_IDS` is set **at all**, `MYTHOS_LISTING_ID` is never consulte
 
 ## Importing the SDK in a client bundle fails only at runtime
 
-The Node package's `"browser"` export condition swaps in a stub where every function throws `MythosError` (`code: 'NOT_IMPLEMENTED'`) the moment it's called. There's no build-time signal. If a bundler (Next.js, Vite) accidentally pulls an SDK import into client-side code, you won't find out until that code path actually runs in a browser. Keep all SDK calls server-side; see the [Next.js guide](nextjs.md) and [Vercel serverless guide](vercel-serverless.md) for the split.
+The Node package's `"browser"` export condition swaps in a stub where every function throws `MythosError` (`code: 'NOT_IMPLEMENTED'`) the moment it's called. There's no build-time signal. If a bundler (Next.js, Vite) accidentally pulls an SDK import into client-side code, you won't find out until that code path actually runs in a browser. Keep all SDK calls server-side; see the [Next.js quickstart](../getting-started/quickstart-nextjs-app.md) and [Vercel serverless guide](vercel-serverless.md) for the split.
 
 ## Also worth knowing
 
@@ -221,7 +225,7 @@ Content-Type: application/json
 > **⚠️ Warning**
 > The exact JSON error-body shape for these statuses isn't verifiable from the SDK source or its tests. Both SDKs' test suites only assert on status codes, not response bodies, for these paths. Treat status codes as the only guaranteed contract and confirm body shapes against a live/staging environment yourself before hardcoding a parser for them.
 
-**Fail closed on `/consume`.** This is a documented security property (see [Security](../resources/security.md#fail-closed)): if `/consume` is unreachable, times out, or returns a 5xx, do not grant access. Both SDKs return their own 503 in this case rather than falling back to "verified but not consumed." Replicate that: a network blip on `/consume` must never be treated as equivalent to a successful consume.
+**Fail closed on `/consume`.** This is a documented security property (see [Security](../resources/security.md)): if `/consume` is unreachable, times out, or returns a 5xx, do not grant access. Both SDKs return their own 503 in this case rather than falling back to "verified but not consumed." Replicate that: a network blip on `/consume` must never be treated as equivalent to a successful consume.
 
 For `/meter`, a 5xx or unreachable call means the usage report didn't land. Surface it to your own error handling (retry with the same `charge_id`, or queue for later) rather than silently dropping it, but it's a billing-accuracy concern rather than an auth bypass, so it doesn't need the same fail-closed treatment as `/consume`.
 

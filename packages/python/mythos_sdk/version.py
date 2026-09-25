@@ -5,7 +5,7 @@ def get_sdk_version() -> str:
     try:
         return version("mythos-sdk")
     except PackageNotFoundError:
-        return "0.2.0"
+        return "0.3.0"
 
 
 SDK_VERSION = get_sdk_version()
