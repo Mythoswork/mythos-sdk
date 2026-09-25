@@ -8,7 +8,7 @@ beforeEach(() => {
 
 test('reportUsage calls /meter with correct body', async () => {
   const { reportUsage } = await import('../src/reportUsage');
-  const spy = jest.spyOn(apiClient, 'meterSession').mockResolvedValue(undefined);
+  const spy = jest.spyOn(apiClient, 'meterSession').mockResolvedValue({ chargeId: 'charge-1', sessionMeteredTotal: null });
 
   await reportUsage('jti-001', { credits: 5, reason: 'page-view' });
 
@@ -17,7 +17,7 @@ test('reportUsage calls /meter with correct body', async () => {
 
 test('reportUsage forwards idempotencyKey', async () => {
   const { reportUsage } = await import('../src/reportUsage');
-  const spy = jest.spyOn(apiClient, 'meterSession').mockResolvedValue(undefined);
+  const spy = jest.spyOn(apiClient, 'meterSession').mockResolvedValue({ chargeId: 'charge-1', sessionMeteredTotal: null });
 
   await reportUsage('jti-001', { credits: 1, idempotencyKey: 'charge-123' });
 

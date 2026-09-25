@@ -1,11 +1,12 @@
 import { jwtVerify, errors } from 'jose';
 import type { RequestHandler } from 'express';
 import { getKeySet, getKeySetWithKidFallback } from './jwks-cache';
+import { mythosLog } from './logger';
 
 const MYTHOS_ISSUER = 'mythos';
 const DEFAULT_API_URL = 'https://api.mythos.work';
 
-async function validateListingCallbackToken(token: string): Promise<string> {
+export async function validateListingCallbackToken(token: string): Promise<string> {
   const apiUrl = process.env.MYTHOS_API_URL ?? DEFAULT_API_URL;
   let keySet = await getKeySet(apiUrl);
 
@@ -48,7 +49,7 @@ export function listingCallbackRoute(
       if (err instanceof errors.JOSEError) {
         res.status(401).json({ error: 'Invalid listing callback token' });
       } else {
-        console.error('[mythos-sdk] listing-callback: unexpected error', err);
+        mythosLog.error('listing-callback: unexpected error', err);
         res.status(503).json({ error: 'Service unavailable' });
       }
       return;

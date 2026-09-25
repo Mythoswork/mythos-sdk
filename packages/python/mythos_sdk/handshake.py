@@ -1,4 +1,3 @@
-import logging
 import os
 
 from fastapi import APIRouter, Request
@@ -7,9 +6,8 @@ from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JOSEError, JWTError
 
 from .jwks_cache import get_jwks, get_jwks_with_kid_fallback
+from .logger import log_error
 from .version import SDK_VERSION
-
-_logger = logging.getLogger(__name__)
 
 _DEFAULT_API_URL = "https://api.mythos.work"
 # Handshake tokens are validated by signature and purpose only.
@@ -43,8 +41,8 @@ def create_handshake_router() -> APIRouter:
             await _validate_handshake_token(token)
         except JOSEError:
             return JSONResponse({"error": "Invalid launch token"}, status_code=401)
-        except Exception:
-            _logger.exception("Unexpected error in handshake endpoint")
+        except Exception as err:
+            log_error("handshake: unexpected error", err)
             return JSONResponse({"error": "Service unavailable"}, status_code=503)
         return JSONResponse({"ok": True, "sdk_version": SDK_VERSION})
 

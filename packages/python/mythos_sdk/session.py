@@ -66,3 +66,35 @@ def decode_session(token: str) -> MythosSession | None:
         return MythosSession(**data)
     except Exception:
         return None
+
+
+def seal_session(session: MythosSession, expires_at: str) -> str:
+    key = _get_session_key()
+    nonce = os.urandom(NONCE_LENGTH)
+    payload = asdict(session) | {"expiresAt": expires_at}
+    plaintext = json.dumps(payload).encode("utf-8")
+    ciphertext = AESGCM(key).encrypt(nonce, plaintext, None)
+    return base64.urlsafe_b64encode(nonce + ciphertext).decode("ascii").rstrip("=")
+
+
+def open_session(token: str) -> tuple[MythosSession, str] | None:
+    key = _get_session_key()
+    try:
+        padded = token + "=" * (-len(token) % 4)
+        raw = base64.urlsafe_b64decode(padded.encode("ascii"))
+        nonce, ciphertext = raw[:NONCE_LENGTH], raw[NONCE_LENGTH:]
+        plaintext = AESGCM(key).decrypt(nonce, ciphertext, None)
+        payload = json.loads(plaintext.decode("utf-8"))
+        if not isinstance(payload, dict):
+            return None
+        expires_at = payload.pop("expiresAt", None)
+        if not isinstance(expires_at, str):
+            return None
+        parsed_expiry = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+        if parsed_expiry.tzinfo is None:
+            parsed_expiry = parsed_expiry.replace(tzinfo=timezone.utc)
+        if parsed_expiry <= datetime.now(timezone.utc):
+            return None
+        return MythosSession(**payload), expires_at
+    except Exception:
+        return None

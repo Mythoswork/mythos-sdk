@@ -1,4 +1,3 @@
-import logging
 import os
 from collections.abc import Awaitable, Callable
 
@@ -8,8 +7,7 @@ from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JOSEError, JWTClaimsError, JWTError
 
 from .jwks_cache import get_jwks, get_jwks_with_kid_fallback
-
-_logger = logging.getLogger(__name__)
+from .logger import log_error
 
 _DEFAULT_API_URL = "https://api.mythos.work"
 _MYTHOS_ISSUER = "mythos"
@@ -49,8 +47,8 @@ def create_listing_callback_handler(
             await on_registered(listing_id)
         except JOSEError:
             return JSONResponse({"error": "Invalid listing callback token"}, status_code=401)
-        except Exception:
-            _logger.exception("listing-callback: unexpected error")
+        except Exception as err:
+            log_error("listing-callback: unexpected error", err)
             return JSONResponse({"error": "Service unavailable"}, status_code=503)
         return JSONResponse({"ok": True})
 
