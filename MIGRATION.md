@@ -2,12 +2,36 @@
 
 Version 0.1.1 moves launch consumption, encrypted session reuse, metering, handshake and listing registration behind one SDK object. The low-level primitives remain available for integrations that need custom control.
 
+## 0.1.x → 0.2.0
+
+The Python session route moved from `/mythos/session` to `/api/mythos/session`, matching Node.js.
+
+Replace page-owned session fetching, `sessionStorage`, session headers and handshake calls:
+
+```tsx
+// Before: fetch('/api/mythos/session'), store sessionToken, add X-Mythos-Session
+// After
+const { status, session, fetch, confirmCharge, relaunch } = useMythos();
+```
+
+Replace hand-written template bootstrap and `postMessage` code with the global client:
+
+```html
+<!-- Before: fetch('/mythos/session'), store the token, add X-Mythos-Session, post the handshake -->
+
+<!-- After -->
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.2.0/dist/mythos-client.global.js"></script>
+<script>const mythos = Mythos.initMythos(); mythos.ready.then(console.log);</script>
+```
+
+The legacy `confirmCharge(credits, reason)` still returns a boolean. The new `mythos.confirmCharge({ credits, reason, kind })` returns `{ approved, consentId? }`.
+
 ## 0.0.x → 0.1.1 migration matrix
 
 | Area | Node.js before → after | Python before → after |
 |---|---|---|
 | Verify/session | <code>requireLaunchToken()</code> + app-owned <code>/verify-session</code> → <code>createMythos()</code>, mount <code>mythos.handlers</code> (or <code>pagesHandler(mythos)</code>), then <code>await mythos.getSession(req)</code> | <code>Depends(require_launch_token())</code> + app-owned <code>/verify-session</code> → <code>create_mythos()</code>, <code>app.include_router(mythos.router)</code>, then <code>await mythos.get_session(request)</code> |
-| Cookie lifecycle | <code>encodeSession(session)</code> / <code>decodeSession(cookie)</code> in app code → SDK seals the cookie at <code>/api/mythos/session</code> and <code>mythos.getSession(req)</code> returns the public fields | <code>encode_session(session)</code> / <code>decode_session(cookie)</code> in app code → SDK seals the cookie at <code>/mythos/session</code> and <code>mythos.get_session(request)</code> returns a sanitized copy |
+| Cookie lifecycle | <code>encodeSession(session)</code> / <code>decodeSession(cookie)</code> in app code → SDK seals the cookie at <code>/api/mythos/session</code> and <code>mythos.getSession(req)</code> returns the public fields | <code>encode_session(session)</code> / <code>decode_session(cookie)</code> in app code → SDK seals the cookie at <code>/api/mythos/session</code> and <code>mythos.get_session(request)</code> returns a sanitized copy |
 | Fixed charge | <code>verifyLaunchToken(lt)</code> + <code>reportUsage(session.sessionJti, { credits, reason })</code> → <code>mythos.charge(req, { credits, reason })</code> | <code>verify_launch_token(lt)</code> + <code>report_usage(session.sessionJti, credits=..., reason=...)</code> → <code>mythos.charge(request, credits=..., reason=...)</code> |
 | LLM and billing | <code>llm(session, { apiKey })</code> + <code>getLlmBillingMetadata(completion)</code> → <code>await mythos.llm(req, { apiKey })</code> + <code>mythos.billing(completion)</code> | <code>llm(session, api_key=...)</code> + <code>get_llm_billing_metadata(completion)</code> → <code>await mythos.llm(request, api_key=...)</code> + <code>mythos.billing(completion)</code> |
 | Handshake/listing callback | Mount <code>handshakeRoute()</code> and <code>listingCallbackRoute()</code> → SDK handlers; Next Pages Router rewrites <code>/.well-known/mythos-handshake</code> to <code>/api/mythos/handshake</code> and listing registration to <code>/api/mythos/listing-registered</code> | Mount <code>create_handshake_router()</code> and <code>create_listing_callback_handler()</code> → <code>app.include_router(mythos.router)</code>; configure <code>on_listing_registered</code> |
@@ -70,7 +94,7 @@ client = await mythos.llm(request, api_key=producer_api_key)
 billing = mythos.billing(completion)
 ```
 
-`mythos.router` serves `GET /mythos/session`, the handshake route, and—when configured—the listing-registration callback. The Python session cookie preserves the existing Python encryption byte layout.
+`mythos.router` serves `GET /api/mythos/session`, the handshake route, and—when configured—the listing-registration callback. The Python session cookie preserves the existing Python encryption byte layout.
 
 ## Replace the old primitives
 
@@ -155,4 +179,4 @@ Catch `MythosError` and return its `httpStatus` / `http_status` and `code`; do n
 
 - Fixed `charge()` calls can return `SESSION_EXPIRED` roughly five minutes after launch because the backend currently gives `launch_sessions.expires_at` the launch-token expiry. This is tracked by [backend issue #179](https://github.com/Mythoswork/backend/issues/179); LLM requests use a separate 30-minute identity token.
 - Node and Python encrypted session cookies are not interchangeable. Their AES-GCM byte layouts remain language-specific until Phase 3.
-- Some browsers block third-party cookies. The session endpoint also returns `data.sessionToken`; until the Phase 2 browser helper is available, send it as `X-Mythos-Session` / `x-mythos-session` on SDK calls.
+- Some browsers block third-party cookies. `initMythos()` automatically probes cookie support once per tab and falls back to the session header when needed.

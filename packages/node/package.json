@@ -1,6 +1,6 @@
 {
   "name": "@mythos-work/sdk",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Official Mythos SDK for Node.js — launch token verification, usage reporting, and handshake",
   "license": "Apache-2.0",
   "repository": {
@@ -15,24 +15,29 @@
   "exports": {
     ".": {
       "browser": "./dist/browser.js",
+      "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
-      "default": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "default": "./dist/index.js"
     },
     "./client": {
+      "types": "./dist/client.d.ts",
       "require": "./dist/client.js",
-      "default": "./dist/client.js",
-      "types": "./dist/client.d.ts"
+      "default": "./dist/client.js"
     },
     "./llm": {
+      "types": "./dist/llm.d.ts",
       "require": "./dist/llm.js",
-      "default": "./dist/llm.js",
-      "types": "./dist/llm.d.ts"
+      "default": "./dist/llm.js"
     },
     "./next": {
+      "types": "./dist/next.d.ts",
       "require": "./dist/next.js",
-      "default": "./dist/next.js",
-      "types": "./dist/next.d.ts"
+      "default": "./dist/next.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "require": "./dist/react.js",
+      "default": "./dist/react.js"
     },
     "./package.json": "./package.json"
   },
@@ -43,7 +48,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run build:global",
+    "build:global": "esbuild src/client-global.ts --bundle --format=iife --global-name=Mythos --target=es2019 --minify --outfile=dist/mythos-client.global.js",
     "test": "jest",
     "prepublishOnly": "npm run build"
   },
@@ -52,7 +58,8 @@
   },
   "peerDependencies": {
     "express": ">=4.0.0",
-    "openai": "^6.49.0"
+    "openai": "^6.49.0",
+    "react": ">=18"
   },
   "peerDependenciesMeta": {
     "express": {
@@ -60,15 +67,23 @@
     },
     "openai": {
       "optional": true
+    },
+    "react": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@types/express": "^4.17.0",
     "@types/jest": "^29.0.0",
     "@types/node": "^20.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.28.2",
     "express": "^4.21.2",
     "jest": "^29.0.0",
     "openai": "^6.49.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "ts-jest": "^29.0.0",
     "typescript": "^5.0.0"
   },
