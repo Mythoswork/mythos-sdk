@@ -1,13 +1,16 @@
+import { createRequire } from 'module';
+
 import { jwtVerify, errors } from 'jose';
-import { Router } from 'express';
-import type { Request, Response } from 'express';
+import type { Request, Response, Router } from 'express';
 import { getKeySet, getKeySetWithKidFallback } from './jwks-cache';
 import { extractLaunchToken } from './query';
 import { SDK_VERSION } from './version';
+import { mythosLog } from './logger';
 
 const DEFAULT_API_URL = 'https://api.mythos.work';
+const requireFromSdk = createRequire(__filename);
 
-async function validateHandshakeToken(token: string): Promise<void> {
+export async function validateHandshakeToken(token: string): Promise<void> {
   const apiUrl = process.env.MYTHOS_API_URL ?? DEFAULT_API_URL;
   let keySet = await getKeySet(apiUrl);
 
@@ -31,7 +34,8 @@ async function validateHandshakeToken(token: string): Promise<void> {
 }
 
 export function handshakeRoute(): Router {
-  const router = Router();
+  const express = requireFromSdk('express') as typeof import('express');
+  const router = express.Router();
 
   router.get('/.well-known/mythos-handshake', async (req: Request, res: Response) => {
     const token = extractLaunchToken(req.query['lt']);
@@ -45,6 +49,7 @@ export function handshakeRoute(): Router {
       if (err instanceof errors.JOSEError) {
         res.status(401).json({ error: 'Invalid launch token' });
       } else {
+        mythosLog.error('handshake: validation failed', err);
         res.status(503).json({ error: 'Service unavailable' });
       }
       return;

@@ -1,25 +1,10 @@
 import type { RequestHandler } from 'express';
 import { errors } from 'jose';
 import { verifyLaunchToken } from './verify';
-import { consumeSession } from './api-client';
+import { consumeSession, readIdentityFields } from './api-client';
 import { extractLaunchToken } from './query';
 import { InvalidLaunchTokenError, MythosConfigError } from './errors';
-import type { MythosSession } from './types';
-
-function readIdentityFields(body: unknown): Pick<MythosSession, 'llmIdentityToken' | 'llmIdentityExpiresAt'> | null {
-  if (!body || typeof body !== 'object') return null;
-  const data = (body as { data?: unknown }).data;
-  if (!data || typeof data !== 'object') return null;
-
-  const token = (data as { llm_identity_token?: unknown }).llm_identity_token;
-  if (typeof token !== 'string' || token.length === 0) return null;
-
-  const expiresAt = (data as { llm_identity_expires_at?: unknown }).llm_identity_expires_at;
-  return {
-    llmIdentityToken: token,
-    ...(typeof expiresAt === 'string' ? { llmIdentityExpiresAt: expiresAt } : {}),
-  };
-}
+import { mythosLog } from './logger';
 
 export function requireLaunchToken(options?: {
   resolveListingIds?: () => Promise<string[]>;
@@ -36,6 +21,7 @@ export function requireLaunchToken(options?: {
       session = await verifyLaunchToken(token, options);
     } catch (err) {
       if (err instanceof MythosConfigError) {
+        mythosLog.error('requireLaunchToken: invalid configuration', err);
         res.status(500).json({ error: err.message });
         return;
       }
@@ -43,6 +29,7 @@ export function requireLaunchToken(options?: {
         res.status(401).json({ error: 'Invalid launch token' });
         return;
       }
+      mythosLog.error('requireLaunchToken: launch token verification failed', err);
       res.status(503).json({ error: 'Could not verify session' });
       return;
     }
@@ -50,7 +37,8 @@ export function requireLaunchToken(options?: {
     let consumeRes: Response;
     try {
       consumeRes = await consumeSession(session.sessionJti);
-    } catch {
+    } catch (err) {
+      mythosLog.error('requireLaunchToken: consume request failed', err);
       res.status(503).json({ error: 'Could not verify session' });
       return;
     }
@@ -59,6 +47,7 @@ export function requireLaunchToken(options?: {
       return;
     }
     if (consumeRes.status < 200 || consumeRes.status >= 300) {
+      mythosLog.error(`requireLaunchToken: consume returned ${consumeRes.status}`);
       res.status(503).json({ error: 'Could not verify session' });
       return;
     }
