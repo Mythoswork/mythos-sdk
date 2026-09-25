@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0
+
+### Added
+- `initMythos()` browser client with session bootstrap, automatic handshake, cookie-first transport with a one-time probe, `m.fetch`, `m.confirmCharge` returning `{ approved, consentId? }`, and `m.relaunch()`
+- `@mythos-work/sdk/react` SSR-safe `useMythos()` hook
+- `dist/mythos-client.global.js` script build exposing the global `Mythos` API
+- `./package.json` export
+
+### Changed
+- Python session route moved to `/api/mythos/session` to match Node.js
+
 ## 0.1.1
 
 ### Added

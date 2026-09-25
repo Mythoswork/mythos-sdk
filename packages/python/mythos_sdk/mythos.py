@@ -218,7 +218,7 @@ class Mythos:
 
         router = APIRouter()
 
-        @router.get("/mythos/session")
+        @router.get("/api/mythos/session")
         async def session_route(request: Request) -> JSONResponse:
             try:
                 status, body, session_token, expires_at = await self.handle_session(request)
