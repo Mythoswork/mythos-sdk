@@ -3,7 +3,6 @@ import {
   requestChargeConfirmation,
   sendHandshake,
   type ConfirmChargeResult,
-  type MythosChargeKind,
 } from './client';
 import type { MythosSession } from './types';
 
@@ -25,16 +24,20 @@ export interface InitMythosOptions {
   confirmTimeoutMs?: number;
 }
 
+/**
+ * Fixed-price actions pass `credits`. LLM calls are usage-based (provider cost + margin,
+ * settled after the response), so `kind: 'llm'` takes no credits.
+ */
+export type ConfirmChargeOptions =
+  | { kind?: 'generic'; credits: number; reason?: string }
+  | { kind: 'llm'; reason?: string };
+
 export interface MythosClient {
   readonly state: MythosClientState;
   readonly ready: Promise<MythosClientState>;
   subscribe(listener: () => void): () => void;
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
-  confirmCharge(options: {
-    credits: number;
-    reason?: string;
-    kind?: MythosChargeKind;
-  }): Promise<ConfirmChargeResult>;
+  confirmCharge(options: ConfirmChargeOptions): Promise<ConfirmChargeResult>;
   relaunch(): void;
 }
 
@@ -245,16 +248,12 @@ function createClient(options: InitMythosOptions): MythosClient {
     return response;
   };
 
-  const confirmCharge = ({ credits, reason, kind = 'generic' }: {
-    credits: number;
-    reason?: string;
-    kind?: MythosChargeKind;
-  }): Promise<ConfirmChargeResult> =>
+  const confirmCharge = (charge: ConfirmChargeOptions): Promise<ConfirmChargeResult> =>
     requestChargeConfirmation(
-      credits,
-      reason,
+      charge.kind === 'llm' ? 0 : charge.credits, // ponytail: dashboard requires a numeric field; its LLM dialog ignores it
+      charge.reason,
       options.confirmTimeoutMs ?? DEFAULT_CONFIRM_TIMEOUT_MS,
-      kind,
+      charge.kind ?? 'generic',
       options.expectedOrigin,
     );
 

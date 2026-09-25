@@ -284,7 +284,7 @@ body {
         link's own padding, which put rows ~35px apart against the mock's ~28.
         At that looseness a wrapped entry's internal line gap equals the gap
         between entries, so the list stops reading as discrete rows — visible
-        on guides/ai-integration-prompt, where most entries wrap.
+        on long documentation pages, where most entries wrap.
      2. Alignment. The active dot lived inside the link's left padding, which
         pushed every label 13.5px right of the "ON THIS PAGE" label above it.
         The mock aligns label with label and hangs the dot outside that edge.
@@ -321,7 +321,7 @@ body {
 }
 
 /* h3 entries. The mock's page has h3 sections but its TOC lists only h2s;
-   keeping them is a deliberate departure — guides/ai-integration-prompt alone
+   keeping them is a deliberate departure — long documentation pages alone
    has eight, and dropping them costs real navigation on a page that is mostly
    h3. They step down instead, so the h2 spine still reads first. Infima's own
    nested indent is 0.5rem, which at this row pitch is too small to register as

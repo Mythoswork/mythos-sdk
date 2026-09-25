@@ -1,17 +1,22 @@
 {
   "name": "@mythos-work/sdk",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Official Mythos SDK for Node.js — launch token verification, usage reporting, and handshake",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Mythoswork/mythos-sdk/tree/main/packages/node"
+    "url": "git+https://github.com/Mythoswork/mythos-sdk.git#main"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "AGENTS.md",
+    "skills"
   ],
+  "bin": {
+    "mythos-sdk": "dist/cli.js"
+  },
   "exports": {
     ".": {
       "browser": "./dist/browser.js",
@@ -34,6 +39,11 @@
       "require": "./dist/next.js",
       "default": "./dist/next.js"
     },
+    "./express": {
+      "types": "./dist/express.d.ts",
+      "require": "./dist/express.js",
+      "default": "./dist/express.js"
+    },
     "./react": {
       "types": "./dist/react.d.ts",
       "require": "./dist/react.js",
@@ -51,7 +61,7 @@
     "build": "tsc && npm run build:global",
     "build:global": "esbuild src/client-global.ts --bundle --format=iife --global-name=Mythos --target=es2019 --minify --outfile=dist/mythos-client.global.js",
     "test": "jest",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "node ../../scripts/sync-agents.mjs && npm run build"
   },
   "dependencies": {
     "jose": "^5.0.0"
@@ -91,5 +101,15 @@
     "preset": "ts-jest",
     "testEnvironment": "node",
     "clearMocks": true
-  }
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "keywords": [],
+  "author": "",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Mythoswork/mythos-sdk/issues"
+  },
+  "homepage": "https://github.com/Mythoswork/mythos-sdk/tree/main#readme"
 }

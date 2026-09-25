@@ -2,6 +2,24 @@
 
 Version 0.1.1 moves launch consumption, encrypted session reuse, metering, handshake and listing registration behind one SDK object. The low-level primitives remain available for integrations that need custom control.
 
+## 0.2.x → 0.3.0
+
+Two small API changes (0.2.0 was never published, so most apps are unaffected):
+
+- `m.confirmCharge({ kind: 'llm', reason })` no longer accepts `credits` — LLM cost is usage-based and the dashboard shows no amount. Delete any `credits` you passed alongside `kind: 'llm'`. Fixed-price `confirmCharge({ credits, reason })` is unchanged, as is the legacy positional `confirmCharge()`.
+- `mythos.llm<OpenAI>(req, …)` now returns `Promise<OpenAI>` (your client type) instead of a union. Code that narrowed the union can drop the narrowing.
+
+Express and FastAPI do not load `.env` automatically — start with `node --env-file=.env server.js` / `uvicorn main:app --env-file .env`, or set variables in the host environment. Run `npx @mythos-work/sdk agents` to install the coding-agent skill.
+
+Run `npx @mythos-work/sdk init` to scaffold framework files and `npx @mythos-work/sdk doctor` to diagnose configuration.
+
+Express users can replace manual SDK route wiring with:
+
+```ts
+import { mythosExpress } from '@mythos-work/sdk/express';
+app.use(mythosExpress(mythos));
+```
+
 ## 0.1.x → 0.2.0
 
 The Python session route moved from `/mythos/session` to `/api/mythos/session`, matching Node.js.
@@ -20,8 +38,8 @@ Replace hand-written template bootstrap and `postMessage` code with the global c
 <!-- Before: fetch('/mythos/session'), store the token, add X-Mythos-Session, post the handshake -->
 
 <!-- After -->
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.2.0/dist/mythos-client.global.js"></script>
-<script>const mythos = Mythos.initMythos(); mythos.ready.then(console.log);</script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.3.0/dist/mythos-client.global.js"></script>
+<script>const m = Mythos.initMythos(); m.ready.then(console.log);</script>
 ```
 
 The legacy `confirmCharge(credits, reason)` still returns a boolean. The new `mythos.confirmCharge({ credits, reason, kind })` returns `{ approved, consentId? }`.

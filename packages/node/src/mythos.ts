@@ -53,7 +53,8 @@ export interface Mythos {
   handle(request: Request): Promise<Response>;
   getSession(req: MythosRequestLike): Promise<PublicSession | null>;
   charge(req: MythosRequestLike, options: ChargeOptions): Promise<ChargeResult>;
-  llm<TFallback = never>(req: MythosRequestLike, options?: LlmOptions<TFallback>): Promise<OpenAI | TFallback>;
+  /** Returns the caller's OpenAI client type (`mythos.llm<OpenAI>(req, …)`); `fallback` should be the same type. */
+  llm<TClient = OpenAI>(req: MythosRequestLike, options?: LlmOptions<TClient>): Promise<TClient>;
   billing(completion: unknown): MythosLlmBillingMetadata | null;
 }
 
@@ -320,13 +321,21 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
         throw err;
       }
     },
-    async llm<TFallback = never>(req: MythosRequestLike, llmOptions: LlmOptions<TFallback> = {}) {
-      const { llm: buildLlm } = await import('./llm');
+    async llm<TClient = OpenAI>(req: MythosRequestLike, llmOptions: LlmOptions<TClient> = {}): Promise<TClient> {
       const session = readStoredSession(req);
+      if (!session) {
+        if (llmOptions.fallback !== undefined) return llmOptions.fallback;
+        throw new MythosError('An active Mythos session is required for LLM access', 'LLM_SESSION_REQUIRED');
+      }
       if (session && !session.llmIdentityToken) {
         mythosLog.warn('llm: session has no LLM identity token (backend identity key misconfigured?)');
+        if (llmOptions.fallback !== undefined) return llmOptions.fallback;
+        throw new MythosError('The Mythos session is missing its LLM identity token', 'LLM_IDENTITY_REQUIRED');
       }
-      return buildLlm(session, llmOptions);
+      const { llm: buildLlm } = await import('./llm');
+      // ponytail: the gateway client is an instance of the caller's own `openai` peer. Typing it as the
+      // caller's TClient avoids a CJS (index.d.ts) vs ESM (index.d.mts) OpenAI type clash in bundler projects.
+      return buildLlm(session, llmOptions) as unknown as TClient;
     },
     billing(completion) {
       return getLlmBillingMetadata(completion);

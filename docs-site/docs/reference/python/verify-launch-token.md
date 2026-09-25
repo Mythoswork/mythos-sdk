@@ -1,3 +1,7 @@
+:::caution Advanced — 0.0.x primitives
+You don't need this page for a normal integration. Use the [quickstarts](/getting-started/quickstart-nextjs-app) and `createMythos()` instead. These low-level functions remain exported for custom setups.
+:::
+
 # verify_launch_token
 
 Low-level launch token verification. Prefer `require_launch_token` for route handlers.
