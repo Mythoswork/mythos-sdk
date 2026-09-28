@@ -14,7 +14,7 @@ FastAPI projects can also run `python -m mythos_sdk doctor`. Fix every failed ch
 | `INVALID_LAUNCH_TOKEN` | Launch from the Mythos dashboard and verify the listing ID. |
 | `TOKEN_ALREADY_CONSUMED` | Start a new launch; launch tokens are single-use. |
 | `SESSION_REQUIRED` | Use the session-aware browser client and open the app from Mythos. |
-| `SESSION_EXPIRED` | Call `relaunch()` and retry after a new launch. |
+| `SESSION_EXPIRED` | In an embedded app, the browser client requests a new launch automatically once. If `autoRelaunch: false` is configured, offer `relaunch()` instead. Confirm the dashboard handles `mythos:relaunch`; if expiry happens before eight hours, check backend refresh availability. |
 | `INSUFFICIENT_FUNDS` | Ask the Consumer to add credits or choose a cheaper action. |
 | `SESSION_NOT_FOUND` | Relaunch to establish a current session. |
 | `INVALID_USAGE` | Send integer credits and valid charge options. |

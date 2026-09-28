@@ -1,0 +1,30 @@
+name: Staging e2e release gate
+
+on:
+  workflow_dispatch:
+
+jobs:
+  e2e-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/node
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: packages/node/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npx --yes tsx ../../scripts/e2e-staging.ts
+        env:
+          E2E_API_URL: ${{ secrets.E2E_API_URL }}
+          E2E_CONSUMER_EMAIL: ${{ secrets.E2E_CONSUMER_EMAIL }}
+          E2E_CONSUMER_PASSWORD: ${{ secrets.E2E_CONSUMER_PASSWORD }}
+          E2E_LISTING_ID: ${{ secrets.E2E_LISTING_ID }}
+          E2E_PROVIDER_API_KEY: ${{ secrets.E2E_PROVIDER_API_KEY }}
+          E2E_PLATFORM_FEE_PCT: ${{ vars.E2E_PLATFORM_FEE_PCT }}
+          MYTHOS_SESSION_SECRET: ${{ secrets.MYTHOS_SESSION_SECRET }}

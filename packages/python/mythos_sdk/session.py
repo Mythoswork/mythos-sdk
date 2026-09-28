@@ -69,17 +69,24 @@ def decode_session(token: str) -> MythosSession | None:
 
 
 def seal_session(session: MythosSession, expires_at: str) -> str:
-    key = _get_session_key()
-    nonce = os.urandom(NONCE_LENGTH)
-    payload = asdict(session) | {"expiresAt": expires_at}
-    plaintext = json.dumps(payload).encode("utf-8")
-    ciphertext = AESGCM(key).encrypt(nonce, plaintext, None)
-    return base64.urlsafe_b64encode(nonce + ciphertext).decode("ascii").rstrip("=")
+    """Seal a v1 session interchangeable with the Node SDK given the same secret."""
+    return _seal_session_with_nonce(session, expires_at, os.urandom(NONCE_LENGTH))
+
+
+def _seal_session_with_nonce(session: MythosSession, expires_at: str, nonce: bytes) -> str:
+    payload = {key: value for key, value in asdict(session).items() if value is not None}
+    payload["expiresAt"] = expires_at
+    plaintext = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    ciphertext = AESGCM(_get_session_key()).encrypt(nonce, plaintext, None)
+    return "v1." + base64.urlsafe_b64encode(nonce + ciphertext).decode("ascii").rstrip("=")
 
 
 def open_session(token: str) -> tuple[MythosSession, str] | None:
     key = _get_session_key()
+    if not token.startswith("v1."):
+        return None
     try:
+        token = token[3:]
         padded = token + "=" * (-len(token) % 4)
         raw = base64.urlsafe_b64decode(padded.encode("ascii"))
         nonce, ciphertext = raw[:NONCE_LENGTH], raw[NONCE_LENGTH:]

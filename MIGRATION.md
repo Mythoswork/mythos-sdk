@@ -2,6 +2,16 @@
 
 Version 0.1.1 moves launch consumption, encrypted session reuse, metering, handshake and listing registration behind one SDK object. The low-level primitives remain available for integrations that need custom control.
 
+## 0.3.x → 0.4.0
+
+The high-level Node and Python APIs need no application code changes. Consumed launch sessions now last up to 8 hours; identity tokens refresh automatically at the session route and, when needed, inline in `llm()`. Do not cache `llm()` clients across requests.
+
+Sealed session cookies now use the shared Node/Python `v1.` format. Existing cookies are invalidated, so users relaunch once after upgrading. The legacy `encodeSession`/`decodeSession` and `encode_session`/`decode_session` primitives remain language-specific.
+
+Embedded browser clients request a relaunch automatically on hard expiry. To keep manual recovery instead, call `initMythos({ autoRelaunch: false })`; the React hook uses the default client behavior.
+
+Silent refresh requires a backend with `POST /api/apps/sessions/:jti/refresh`. The SDK still works with an older backend that lacks that endpoint, but the session then ends at its identity-token expiry (normally 30 minutes). An SDK 0.3 integration keeps working against the new backend; it ignores the extra consume response field. Deploy the backend first, then SDK 0.4.0, then the frontend. Charges beyond the former 5-minute window likewise require the updated backend.
+
 ## 0.2.x → 0.3.0
 
 Two small API changes (0.2.0 was never published, so most apps are unaffected):
@@ -112,7 +122,7 @@ client = await mythos.llm(request, api_key=producer_api_key)
 billing = mythos.billing(completion)
 ```
 
-`mythos.router` serves `GET /api/mythos/session`, the handshake route, and—when configured—the listing-registration callback. The Python session cookie preserves the existing Python encryption byte layout.
+`mythos.router` serves `GET /api/mythos/session`, the handshake route, and—when configured—the listing-registration callback. The sealed Python session cookie shares the Node `v1.` format.
 
 ## Replace the old primitives
 
@@ -195,6 +205,5 @@ Catch `MythosError` and return its `httpStatus` / `http_status` and `code`; do n
 
 ## Known limitations
 
-- Fixed `charge()` calls can return `SESSION_EXPIRED` roughly five minutes after launch because the backend currently gives `launch_sessions.expires_at` the launch-token expiry. This is tracked by [backend issue #179](https://github.com/Mythoswork/backend/issues/179); LLM requests use a separate 30-minute identity token.
-- Node and Python encrypted session cookies are not interchangeable. Their AES-GCM byte layouts remain language-specific until Phase 3.
+- An older backend without session refresh limits sessions to the original identity-token expiry.
 - Some browsers block third-party cookies. `initMythos()` automatically probes cookie support once per tab and falls back to the session header when needed.

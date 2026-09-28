@@ -6,6 +6,7 @@ import type { MythosSession } from './types';
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
+const SEALED_PREFIX = 'v1.';
 
 export interface StoredSession extends MythosSession {
   expiresAt: string;
@@ -78,23 +79,27 @@ export function decodeSession(token: string): MythosSession | null {
   }
 }
 
+/** Node and Python v1 sealed sessions are interchangeable with the same secret. */
 export function sealSession(session: StoredSession): string {
-  const key = getSessionKey();
-  const iv = randomBytes(IV_LENGTH);
-  const cipher = createCipheriv(ALGORITHM, key, iv);
-  const plaintext = Buffer.from(JSON.stringify(session), 'utf8');
-  const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
-  const authTag = cipher.getAuthTag();
-  return Buffer.concat([iv, authTag, ciphertext]).toString('base64url');
+  return sealSessionWithIv(session, randomBytes(IV_LENGTH));
+}
+
+/** Internal deterministic sealer for conformance fixtures. */
+export function sealSessionWithIv(session: StoredSession, iv: Buffer): string {
+  const cipher = createCipheriv(ALGORITHM, getSessionKey(), iv);
+  const ciphertext = Buffer.concat([cipher.update(Buffer.from(JSON.stringify(session), 'utf8')), cipher.final()]);
+  return SEALED_PREFIX + Buffer.concat([iv, ciphertext, cipher.getAuthTag()]).toString('base64url');
 }
 
 export function openSession(token: string): StoredSession | null {
   const key = getSessionKey();
+  if (!token.startsWith(SEALED_PREFIX)) return null;
   try {
-    const raw = Buffer.from(token, 'base64url');
+    const raw = Buffer.from(token.slice(SEALED_PREFIX.length), 'base64url');
+    if (raw.length < IV_LENGTH + AUTH_TAG_LENGTH) return null;
     const iv = raw.subarray(0, IV_LENGTH);
-    const authTag = raw.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
-    const ciphertext = raw.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
+    const authTag = raw.subarray(raw.length - AUTH_TAG_LENGTH);
+    const ciphertext = raw.subarray(IV_LENGTH, raw.length - AUTH_TAG_LENGTH);
     const decipher = createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);
     const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
@@ -103,6 +108,8 @@ export function openSession(token: string): StoredSession | null {
     const stored = session as StoredSession;
     const expiresAtMs = typeof stored.expiresAt === 'string' ? Date.parse(stored.expiresAt) : Number.NaN;
     if (Number.isNaN(expiresAtMs) || expiresAtMs <= Date.now()) return null;
+    if (stored.llmIdentityToken === null) delete stored.llmIdentityToken;
+    if (stored.llmIdentityExpiresAt === null) delete stored.llmIdentityExpiresAt;
     return stored;
   } catch {
     return null;

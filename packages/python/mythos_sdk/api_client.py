@@ -15,10 +15,19 @@ from .errors import (
     SessionNotFoundError,
 )
 from .http import get_http_client
+
+
 @dataclass(frozen=True)
 class MeterResult:
     charge_id: str
     session_metered_total: int | None
+
+
+@dataclass(frozen=True)
+class SessionRefreshResult:
+    llm_identity_token: str
+    llm_identity_expires_at: str
+    session_expires_at: str
 
 
 def read_identity_fields(body: object) -> tuple[str, str | None] | None:
@@ -32,6 +41,47 @@ def read_identity_fields(body: object) -> tuple[str, str | None] | None:
         return None
     expires_at = data.get("llm_identity_expires_at")
     return token, expires_at if isinstance(expires_at, str) else None
+
+
+def read_session_expires_at(body: object) -> str | None:
+    data = body.get("data") if isinstance(body, dict) else None
+    value = data.get("session_expires_at") if isinstance(data, dict) else None
+    return value if isinstance(value, str) and value else None
+
+
+def _read_code(body: object) -> str | None:
+    code = body.get("code") if isinstance(body, dict) else None
+    return code if isinstance(code, str) else None
+
+
+async def refresh_session(jti: str, identity_token: str) -> SessionRefreshResult | None:
+    config = load_config()
+    try:
+        resp = await get_http_client().post(
+            f"{config.api_url}/api/apps/sessions/{_encode_jti(jti)}/refresh",
+            headers={"X-Mythos-Identity": f"Bearer {identity_token}"},
+            json={},
+        )
+    except httpx.HTTPError as err:
+        raise MythosUnreachableError(f"Could not reach Mythos API: {err}") from err
+    try:
+        body = resp.json()
+    except (ValueError, TypeError):
+        body = None
+    code = _read_code(body)
+    if resp.status_code == 404 and code is None:
+        return None
+    if resp.status_code == 404 and code == "SESSION_NOT_FOUND":
+        raise SessionNotFoundError(jti)
+    if resp.status_code in {401, 403, 409, 410}:
+        raise SessionExpiredError("Mythos session expired — relaunch from Mythos")
+    if resp.status_code != 200:
+        raise MythosUpstreamError("Session refresh failed", resp.status_code, code)
+    identity = read_identity_fields(body)
+    expires_at = read_session_expires_at(body)
+    if identity is None or not identity[1] or not expires_at:
+        raise MythosUpstreamError("Malformed refresh response", 200)
+    return SessionRefreshResult(identity[0], identity[1], expires_at)
 
 
 def _encode_jti(jti: str) -> str:

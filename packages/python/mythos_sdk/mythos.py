@@ -9,7 +9,10 @@ import httpx
 from jose import jwt
 from jose.exceptions import JOSEError
 
-from .api_client import MeterResult, consume_session, meter_session, read_identity_fields
+from .api_client import (
+    MeterResult, consume_session, meter_session, read_identity_fields,
+    read_session_expires_at, refresh_session,
+)
 from .billing_metadata import MythosLlmBillingMetadata, get_llm_billing_metadata
 from .config import load_config
 from .errors import (
@@ -19,6 +22,7 @@ from .errors import (
     MythosError,
     MythosUpstreamError,
     SessionExpiredError,
+    SessionNotFoundError,
     SessionRequiredError,
 )
 from .logger import log_debug, log_error, log_warn
@@ -30,6 +34,7 @@ from .verify import verify_launch_token
 SESSION_COOKIE = "mythos_session"
 SESSION_HEADER = "x-mythos-session"
 DEFAULT_SESSION_TTL_SECONDS = 1800
+REFRESH_LEAD_SECONDS = 300
 MIN_SESSION_SECRET_LENGTH = 32
 
 
@@ -83,7 +88,7 @@ class Mythos:
             raise SessionRequiredError()
         session, _expires_at = stored
         if consent_id:
-            log_debug("charge: consentId accepted (enforced in Phase 3)")
+            log_debug("charge: consentId accepted (enforcement deferred to Phase 4)")
         try:
             return await meter_session(session.sessionJti, credits, reason, idempotency_key)
         except MythosError as err:
@@ -106,7 +111,74 @@ class Mythos:
         session = stored[0] if stored else None
         if session is not None and not session.llmIdentityToken:
             log_warn("llm: session has no LLM identity token (backend identity key misconfigured?)")
+        if stored and session and session.llmIdentityToken:
+            outcome, session, _expires_at, error = await self._refresh_if_due(*stored)
+            if outcome == "expired":
+                raise error or SessionExpiredError()
         return build_llm(session, api_key=api_key, fallback=fallback, base_url=base_url, timeout=timeout)
+
+    async def _refresh_if_due(
+        self, session: MythosSession, expires_at: str, force: bool = False,
+    ) -> tuple[str, MythosSession, str, SessionExpiredError | None]:
+        if not session.llmIdentityToken or not session.llmIdentityExpiresAt:
+            return "unchanged", session, expires_at, None
+        try:
+            due_at = datetime.fromisoformat(session.llmIdentityExpiresAt.replace("Z", "+00:00"))
+            if due_at.tzinfo is None:
+                due_at = due_at.replace(tzinfo=timezone.utc)
+        except ValueError:
+            due_at = datetime.now(timezone.utc)
+        if not force and datetime.now(timezone.utc) < due_at - timedelta(seconds=REFRESH_LEAD_SECONDS):
+            return "unchanged", session, expires_at, None
+        try:
+            refreshed = await refresh_session(session.sessionJti, session.llmIdentityToken)
+        except (SessionExpiredError, SessionNotFoundError):
+            return "expired", session, expires_at, SessionExpiredError("Mythos session expired — relaunch from Mythos")
+        except Exception as err:
+            code = err.code if isinstance(err, MythosError) else "REFRESH_FAILED"
+            log_warn(f"session: identity refresh failed; keeping current session; code={code}; jti={session.sessionJti}")
+            return "unchanged", session, expires_at, None
+        if refreshed is None:
+            log_debug("session: backend has no refresh endpoint")
+            return "unchanged", session, expires_at, None
+        return "refreshed", replace(
+            session,
+            llmIdentityToken=refreshed.llm_identity_token,
+            llmIdentityExpiresAt=refreshed.llm_identity_expires_at,
+        ), refreshed.session_expires_at, None
+
+    async def _existing_session_response(
+        self, session: MythosSession, expires_at: str,
+    ) -> tuple[int, dict[str, Any], str | None, str | None]:
+        outcome, active, active_expiry, error = await self._refresh_if_due(session, expires_at)
+        if outcome == "expired":
+            expired = error or SessionExpiredError()
+            return expired.http_status, {"success": False, "error": str(expired), "code": expired.code}, None, None
+        status, body, _, _ = self._session_success(active, active_expiry)
+        return status, body, body["data"]["sessionToken"] if outcome == "refreshed" else None, active_expiry
+
+    def _session_success(
+        self, session: MythosSession, expires_at: str,
+    ) -> tuple[int, dict[str, Any], str, str]:
+        session_token = seal_session(session, expires_at)
+        refresh_at = None
+        if session.llmIdentityToken and session.llmIdentityExpiresAt:
+            try:
+                identity_expiry = datetime.fromisoformat(session.llmIdentityExpiresAt.replace("Z", "+00:00"))
+                if identity_expiry.tzinfo is None:
+                    identity_expiry = identity_expiry.replace(tzinfo=timezone.utc)
+                refresh_at = (identity_expiry - timedelta(seconds=REFRESH_LEAD_SECONDS)).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+            except ValueError:
+                pass
+        return 200, {
+            "success": True,
+            "data": {
+                "session": asdict(self._public_session(session)),
+                "sessionToken": session_token,
+                "expiresAt": expires_at,
+                "refreshAt": refresh_at,
+            },
+        }, session_token, expires_at
 
     def billing(self, completion: object) -> MythosLlmBillingMetadata | None:
         return get_llm_billing_metadata(completion)
@@ -118,23 +190,16 @@ class Mythos:
         launch_token = request.query_params.get("lt")
         existing = self._read_stored_session(request)
 
-        def success(session: MythosSession, expires_at: str) -> tuple[int, dict[str, Any], str | None, str]:
-            session_token = seal_session(session, expires_at)
-            return 200, {
-                "success": True,
-                "data": {"session": asdict(self._public_session(session)), "sessionToken": session_token},
-            }, None, expires_at
-
         if not launch_token:
             if existing:
-                return success(existing[0], existing[1])
+                return await self._existing_session_response(*existing)
             return 200, {"success": True, "data": None}, None, None
 
         try:
             incoming = await verify_launch_token(launch_token, self._resolve_listing_ids)
         except Exception as err:
             if existing and self._unverified_jti(launch_token) == existing[0].sessionJti:
-                return success(existing[0], existing[1])
+                return await self._existing_session_response(*existing)
             if isinstance(err, MythosConfigError):
                 log_error("session: invalid SDK configuration", err)
                 return 500, {"success": False, "error": str(err), "code": "CONFIG_ERROR"}, None, None
@@ -148,7 +213,7 @@ class Mythos:
             }, None, None
 
         if existing and existing[0].sessionJti == incoming.sessionJti:
-            return success(existing[0], existing[1])
+            return await self._existing_session_response(*existing)
 
         try:
             consume_response = await consume_session(incoming.sessionJti)
@@ -172,9 +237,10 @@ class Mythos:
             return error.http_status, {"success": False, "error": str(error), "code": error.code}, None, None
 
         try:
-            identity = read_identity_fields(consume_response.json())
+            consume_body = consume_response.json()
         except (ValueError, TypeError):
-            identity = None
+            consume_body = None
+        identity = read_identity_fields(consume_body)
         if identity is None:
             log_warn("session: consume returned no LLM identity token; mythos.llm() will use fallback or throw")
             session = incoming
@@ -185,11 +251,10 @@ class Mythos:
                 llmIdentityToken=identity_token,
                 llmIdentityExpiresAt=identity_expiry,
             )
-        expires_at = session.llmIdentityExpiresAt or (
+        expires_at = read_session_expires_at(consume_body) or session.llmIdentityExpiresAt or (
             datetime.now(timezone.utc) + timedelta(seconds=DEFAULT_SESSION_TTL_SECONDS)
         ).isoformat()
-        status, body, _token, _expiry = success(session, expires_at)
-        return status, body, body["data"]["sessionToken"], expires_at
+        return self._session_success(session, expires_at)
 
     @staticmethod
     def _unverified_jti(token: str) -> str | None:
@@ -242,6 +307,18 @@ class Mythos:
                     )
                     if is_https:
                         response.headers["set-cookie"] = response.headers["set-cookie"] + "; Partitioned"
+                elif status == 401 and body.get("code") == "SESSION_EXPIRED":
+                    forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip()
+                    is_https = request.url.scheme == "https" or forwarded_proto == "https"
+                    response.delete_cookie(
+                        SESSION_COOKIE,
+                        path="/",
+                        secure=is_https,
+                        httponly=True,
+                        samesite="none" if is_https else "lax",
+                    )
+                    if is_https:
+                        response.headers["set-cookie"] += "; Partitioned"
                 return response
             except MythosError as err:
                 if err.http_status >= 500:
