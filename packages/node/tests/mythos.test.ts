@@ -249,7 +249,7 @@ test('handshake preserves legacy response shape', async () => {
   const handshakeToken = await createTestToken('handshake-1', '5m', 'handshake-check');
   const response = await sdk.handle(new Request(`https://app.test/.well-known/mythos-handshake?lt=${handshakeToken}`));
   expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({ ok: true, sdk_version: '0.3.0' });
+  expect(await response.json()).toMatchObject({ ok: true, sdk_version: '0.4.0' });
 });
 
 test('listing-registered is unavailable unless a callback is configured', async () => {
@@ -277,4 +277,87 @@ test('listing-registered GET and POST validate token and call callback', async (
   expect(await postResponse.json()).toEqual({ ok: true });
   expect(onListingRegistered).toHaveBeenNthCalledWith(1, 'listing-abc');
   expect(onListingRegistered).toHaveBeenNthCalledWith(2, 'listing-abc');
+});
+
+async function storedRequest(identityExpiresAt: string) {
+  const { sealSession } = await import('../src/session');
+  const token = sealSession({
+    userId: 'user-1', email: 'a@b.c', displayName: 'A', listingId: 'listing-abc', sessionJti: 'j1',
+    llmIdentityToken: 'old-token', llmIdentityExpiresAt: identityExpiresAt,
+    expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
+  });
+  return sessionRequest('https://app.test/api/mythos/session', `mythos_session=${token}`);
+}
+
+const refreshPayload = () => ({ success: true, data: {
+  llm_identity_token: 'new-token',
+  llm_identity_expires_at: new Date(Date.now() + 30 * 60_000).toISOString(),
+  session_expires_at: new Date(Date.now() + 8 * 60 * 60_000).toISOString(),
+} });
+
+test('session route refreshes a near-expiry identity and sets a new cookie and refreshAt', async () => {
+  const sdk = await createSdk();
+  jest.mocked(global.fetch).mockResolvedValueOnce(new Response(JSON.stringify(refreshPayload())));
+  const response = await sdk.handle(await storedRequest(new Date(Date.now() + 2 * 60_000).toISOString()));
+  const body = await response.json() as { data: { refreshAt: string; session: object } };
+  const { openSession } = await import('../src/session');
+  expect(response.status).toBe(200);
+  expect(jest.mocked(global.fetch).mock.calls[0]?.[1]?.headers).toMatchObject({ 'X-Mythos-Identity': 'Bearer old-token' });
+  expect(body.data.session).not.toHaveProperty('llmIdentityToken');
+  expect(Date.parse(body.data.refreshAt)).toBeCloseTo(Date.now() + 25 * 60_000, -3);
+  expect(openSession(cookiePair(response).split('=')[1] ?? '')?.llmIdentityToken).toBe('new-token');
+});
+
+test('session route leaves a fresh identity and cookie unchanged', async () => {
+  const sdk = await createSdk();
+  const response = await sdk.handle(await storedRequest(new Date(Date.now() + 20 * 60_000).toISOString()));
+  expect(response.status).toBe(200);
+  expect(response.headers.has('set-cookie')).toBe(false);
+  expect(global.fetch).not.toHaveBeenCalled();
+});
+
+test.each([
+  [410, { code: 'SESSION_EXPIRED' }, 401],
+  [404, {}, 200],
+])('session route maps refresh HTTP %i', async (status, error, expectedStatus) => {
+  const sdk = await createSdk();
+  jest.mocked(global.fetch).mockResolvedValueOnce(new Response(JSON.stringify(error), { status }));
+  const response = await sdk.handle(await storedRequest(new Date(Date.now() + 2 * 60_000).toISOString()));
+  expect(response.status).toBe(expectedStatus);
+  if (status === 410) {
+    expect(await response.json()).toMatchObject({ code: 'SESSION_EXPIRED' });
+    expect(response.headers.get('set-cookie')).toMatch(/^mythos_session=; Path=\/; HttpOnly; Max-Age=0;/);
+  }
+  else {
+    expect(response.headers.has('set-cookie')).toBe(false);
+    expect(await response.json()).toMatchObject({ data: { session: { sessionJti: 'j1' } } });
+  }
+});
+
+test('llm refreshes inline with an expired identity and uses the new header', async () => {
+  const sdk = await createSdk();
+  jest.mocked(global.fetch).mockResolvedValueOnce(new Response(JSON.stringify(refreshPayload())));
+  const client = await sdk.llm(await storedRequest(new Date(Date.now() - 60_000).toISOString()), { apiKey: 'sk-test' });
+  expect((client as unknown as { _options: { defaultHeaders: Record<string, string> } })._options.defaultHeaders)
+    .toMatchObject({ 'X-Mythos-Identity': 'Bearer new-token' });
+});
+
+test('llm throws SessionExpiredError when refresh is revoked', async () => {
+  const sdk = await createSdk();
+  jest.mocked(global.fetch).mockResolvedValueOnce(new Response('{}', { status: 410 }));
+  await expect(sdk.llm(await storedRequest(new Date(Date.now() - 60_000).toISOString()), { apiKey: 'sk-test' }))
+    .rejects.toMatchObject({ code: 'SESSION_EXPIRED' });
+});
+
+test.each([true, false])('consume stores absolute lifetime when provided=%s', async (hasLifetime) => {
+  const absolute = new Date(Date.now() + 8 * 60 * 60_000).toISOString();
+  jest.mocked(global.fetch).mockResolvedValueOnce(new Response(JSON.stringify({ data: {
+    llm_identity_token: 'identity', llm_identity_expires_at: new Date(Date.now() + 30 * 60_000).toISOString(),
+    ...(hasLifetime ? { session_expires_at: absolute } : {}),
+  } })));
+  const sdk = await createSdk();
+  const response = await sdk.handle(sessionRequest(`https://app.test/api/mythos/session?lt=${await createTestToken('j1')}`));
+  const { openSession } = await import('../src/session');
+  const stored = openSession(cookiePair(response).split('=')[1] ?? '');
+  expect(stored?.expiresAt).toBe(hasLifetime ? absolute : stored?.llmIdentityExpiresAt);
 });

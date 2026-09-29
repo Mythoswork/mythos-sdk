@@ -11,6 +11,7 @@ Mythos lets users buy credits once and spend them across apps. The SDK handles l
 - LLM calls are usage-based: `confirmCharge({ kind: 'llm', reason })` takes no credits; billing settles after the response.
 - Express/FastAPI do not load `.env` automatically; Next.js does. Make sure the process actually loads the env file.
 - Map `MythosError` with `.httpStatus`; Python uses `.http_status`.
+- Sessions last up to 8 h and refresh automatically; never cache `llm()` clients across requests.
 
 ## Pick Your Framework
 
@@ -103,7 +104,7 @@ const { approved: chatApproved } = await confirmCharge({ kind: 'llm', reason: 'c
 Non-React bundled apps import `initMythos` from `@mythos-work/sdk/client`. Unbundled pages use:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.3.0/dist/mythos-client.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.4.0/dist/mythos-client.global.js"></script>
 <script>const m = Mythos.initMythos(); m.ready.then(console.log);</script>
 ```
 

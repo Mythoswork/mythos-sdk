@@ -22,6 +22,7 @@ export interface InitMythosOptions {
   sessionPath?: string;
   expectedOrigin?: string;
   confirmTimeoutMs?: number;
+  autoRelaunch?: boolean;
 }
 
 /**
@@ -43,7 +44,7 @@ export interface MythosClient {
 
 interface SessionResponseBody {
   success?: boolean;
-  data?: { session?: MythosClientSession; sessionToken?: string } | null;
+  data?: { session?: MythosClientSession; sessionToken?: string; refreshAt?: string | null; expiresAt?: string | null } | null;
   code?: string;
   error?: string;
 }
@@ -55,6 +56,7 @@ const DEFAULT_SESSION_PATH = '/api/mythos/session';
 const DEFAULT_CONFIRM_TIMEOUT_MS = 10_000;
 
 let instance: MythosClient | null = null;
+let cleanupInstance: (() => void) | null = null;
 
 export function initMythos(options: InitMythosOptions = {}): MythosClient {
   if (instance) return instance;
@@ -64,6 +66,8 @@ export function initMythos(options: InitMythosOptions = {}): MythosClient {
 
 /** Test-only: drop the singleton so each test starts clean. */
 export function resetMythosClientForTests(): void {
+  cleanupInstance?.();
+  cleanupInstance = null;
   instance = null;
 }
 
@@ -118,14 +122,68 @@ function createClient(options: InitMythosOptions): MythosClient {
   const listeners = new Set<() => void>();
   let transport = storageGet(TRANSPORT_KEY) as 'cookie' | 'header' | null;
   let memoryToken = transport === 'header' ? storageGet(TOKEN_KEY) : null;
+  let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+  let expiryTimer: ReturnType<typeof setTimeout> | undefined;
+  let refreshAt: number | null = null;
+  let expiresAt: number | null = null;
+  let relaunched = false;
+  let disposed = false;
 
-  const setState = (next: MythosClientState): void => {
-    state = next;
-    listeners.forEach((listener) => listener());
+  const clearTimers = (): void => {
+    clearTimeout(refreshTimer);
+    clearTimeout(expiryTimer);
+  };
+  cleanupInstance = () => {
+    disposed = true;
+    clearTimers();
+    document.removeEventListener('visibilitychange', onVisibilityChange);
   };
 
-  const load = async (): Promise<MythosClientState> => {
-    const sessionUrl = `${sessionPath}${window.location.search}`;
+  const relaunch = (): void => {
+    if (!isEmbedded()) return;
+    try {
+      window.parent.postMessage({ type: MYTHOS_RELAUNCH_MESSAGE_TYPE }, options.expectedOrigin ?? '*');
+    } catch {
+      // Relaunch is best-effort when the embedding origin is unavailable.
+    }
+  };
+
+  const setState = (next: MythosClientState): void => {
+    const shouldRelaunch = state.status !== 'expired' && next.status === 'expired' &&
+      options.autoRelaunch !== false && !relaunched && isEmbedded();
+    state = next;
+    if (next.status === 'expired') {
+      clearTimers();
+      storageRemove(TRANSPORT_KEY);
+      storageRemove(TOKEN_KEY);
+      transport = null;
+      memoryToken = null;
+      refreshAt = null;
+      expiresAt = null;
+    }
+    listeners.forEach((listener) => listener());
+    if (shouldRelaunch) {
+      relaunched = true;
+      relaunch();
+    }
+  };
+
+  const clampDelay = (ms: number): number => Math.min(Math.max(ms, 0), 2_147_483_000);
+  const retryRefresh = (): MythosClientState => {
+    if (disposed) return state;
+    if (expiresAt !== null && Date.now() >= expiresAt) {
+      setState({
+        status: 'expired', session: null,
+        error: { code: 'SESSION_EXPIRED', message: 'Mythos session expired' },
+      });
+      return state;
+    }
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => void load('', true), 60_000);
+    return state;
+  };
+  const load = async (search: string, isRefresh = false): Promise<MythosClientState> => {
+    const sessionUrl = `${sessionPath}${search}`;
     const headers = new Headers();
     if (memoryToken && isSameOrigin(sessionUrl)) headers.set(MYTHOS_SESSION_HEADER, memoryToken);
     let response: Response;
@@ -136,6 +194,7 @@ function createClient(options: InitMythosOptions): MythosClient {
         headers,
       });
     } catch (error) {
+      if (isRefresh && state.status === 'mythos') return retryRefresh();
       setState({
         status: 'error',
         session: null,
@@ -145,6 +204,7 @@ function createClient(options: InitMythosOptions): MythosClient {
     }
 
     const body = await readJson(response);
+    if (disposed) return state;
     if (body?.success === true && body.data === null) {
       if (isEmbedded() && transport !== null) {
         setState({
@@ -201,25 +261,43 @@ function createClient(options: InitMythosOptions): MythosClient {
       }
 
       setState({ status: 'mythos', session, error: null });
-      try {
-        sendHandshake(options.expectedOrigin);
-      } catch {
-        // Session state remains usable when the embedding frame rejects postMessage.
+      clearTimers();
+      refreshAt = typeof body.data.refreshAt === 'string' ? Date.parse(body.data.refreshAt) : null;
+      expiresAt = typeof body.data.expiresAt === 'string' ? Date.parse(body.data.expiresAt) : null;
+      if (refreshAt !== null && Number.isFinite(refreshAt)) {
+        // A backend without refresh may return an already-past refreshAt. Retry without a tight loop.
+        const remaining = refreshAt - Date.now();
+        refreshTimer = setTimeout(() => void load('', true), clampDelay(remaining > 0 ? remaining : 60_000));
+      }
+      if (expiresAt !== null && Number.isFinite(expiresAt)) {
+        expiryTimer = setTimeout(() => void load('', true), clampDelay(expiresAt - Date.now() + 1000));
+      }
+      if (!isRefresh) {
+        try {
+          sendHandshake(options.expectedOrigin);
+        } catch {
+          // Session state remains usable when the embedding frame rejects postMessage.
+        }
       }
       return state;
     }
 
     const code = typeof body?.code === 'string' ? body.code : `HTTP_${response.status}`;
     const message = typeof body?.error === 'string' ? body.error : 'Session verification failed';
+    if (isRefresh && state.status === 'mythos' && !code.startsWith('SESSION_')) return retryRefresh();
     setState({
-      status: code === 'SESSION_EXPIRED' ? 'expired' : 'error',
+      status: code === 'SESSION_EXPIRED' || (isRefresh && code.startsWith('SESSION_')) ? 'expired' : 'error',
       session: null,
       error: { code, message },
     });
     return state;
   };
 
-  const ready = load();
+  const onVisibilityChange = (): void => {
+    if (!document.hidden && state.status === 'mythos' && refreshAt !== null && Date.now() >= refreshAt) void load('', true);
+  };
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  const ready = load(window.location.search);
 
   const mythosFetch = async (input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> => {
     const inputHeaders = input instanceof Request ? input.headers : undefined;
@@ -256,15 +334,6 @@ function createClient(options: InitMythosOptions): MythosClient {
       charge.kind ?? 'generic',
       options.expectedOrigin,
     );
-
-  const relaunch = (): void => {
-    if (!isEmbedded()) return;
-    try {
-      window.parent.postMessage({ type: MYTHOS_RELAUNCH_MESSAGE_TYPE }, options.expectedOrigin ?? '*');
-    } catch {
-      // Relaunch is best-effort when the embedding origin is unavailable.
-    }
-  };
 
   const subscribe = (listener: () => void): (() => void) => {
     listeners.add(listener);

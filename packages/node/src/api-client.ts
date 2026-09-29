@@ -20,10 +20,10 @@ function validateCredits(credits: number): void {
   }
 }
 
-async function post(path: string, body: unknown): Promise<Response> {
+async function post(path: string, body: unknown, headers: Record<string, string> = {}): Promise<Response> {
   return mythosRequest(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(body),
   });
 }
@@ -58,6 +58,52 @@ export function readIdentityFields(
     llmIdentityToken: token,
     ...(typeof expiresAt === 'string' ? { llmIdentityExpiresAt: expiresAt } : {}),
   };
+}
+
+export function readSessionExpiresAt(body: unknown): string | undefined {
+  if (!isRecord(body) || !isRecord(body['data'])) return undefined;
+  const expiresAt = body['data']['session_expires_at'];
+  return typeof expiresAt === 'string' ? expiresAt : undefined;
+}
+
+export interface SessionRefreshResult {
+  llmIdentityToken: string;
+  llmIdentityExpiresAt: string;
+  sessionExpiresAt: string;
+}
+
+/** An old backend responds with 404 without a code; keep the existing session in that case. */
+export async function refreshSession(jti: string, identityToken: string): Promise<SessionRefreshResult | null> {
+  let res: Response;
+  try {
+    res = await post(`/api/apps/sessions/${encodeJti(jti)}/refresh`, {}, {
+      'X-Mythos-Identity': `Bearer ${identityToken}`,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new MythosUnreachableError(`Could not reach Mythos API: ${message}`);
+  }
+  if (!res.ok) {
+    const code = await readErrorCode(res);
+    if (res.status === 404 && !code) return null;
+    if (res.status === 404 && code === 'SESSION_NOT_FOUND') throw new SessionNotFoundError(jti);
+    if ([401, 403, 409, 410].includes(res.status)) {
+      throw new SessionExpiredError('Mythos session expired — relaunch from Mythos');
+    }
+    throw new MythosUpstreamError('Session refresh failed', res.status, code);
+  }
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    throw new MythosUpstreamError('Malformed refresh response', 200);
+  }
+  const identity = readIdentityFields(body);
+  const sessionExpiresAt = readSessionExpiresAt(body);
+  if (!identity?.llmIdentityToken || !identity.llmIdentityExpiresAt || !sessionExpiresAt) {
+    throw new MythosUpstreamError('Malformed refresh response', 200);
+  }
+  return { llmIdentityToken: identity.llmIdentityToken, llmIdentityExpiresAt: identity.llmIdentityExpiresAt, sessionExpiresAt };
 }
 
 export async function consumeSession(jti: string): Promise<Response> {

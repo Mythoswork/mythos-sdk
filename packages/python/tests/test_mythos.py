@@ -2,6 +2,7 @@ import importlib
 import sys
 import time
 from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -11,7 +12,7 @@ from fastapi import FastAPI
 from jose import jwt
 from httpx import ASGITransport
 
-from mythos_sdk.errors import MythosConfigError, SessionRequiredError
+from mythos_sdk.errors import MythosConfigError, SessionExpiredError, SessionRequiredError
 from mythos_sdk.mythos import SESSION_COOKIE, SESSION_HEADER, create_mythos
 from mythos_sdk.session import open_session, seal_session
 from mythos_sdk.types import MythosSession
@@ -347,3 +348,147 @@ async def test_meter_session_maps_expired_and_network_errors():
         get_client.return_value.post = AsyncMock(side_effect=httpx.ConnectError("offline"))
         with pytest.raises(MythosUnreachableError):
             await meter_session("jti-1", 1)
+
+
+def identity_session(minutes: int) -> MythosSession:
+    return replace(
+        SESSION, llmIdentityToken="old-identity",
+        llmIdentityExpiresAt=(datetime.now(timezone.utc) + timedelta(minutes=minutes)).isoformat(),
+    )
+
+
+def refreshed_response(status: int = 200, code: str | None = None) -> httpx.Response:
+    expiry = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+    lifetime = (datetime.now(timezone.utc) + timedelta(hours=8)).isoformat()
+    body = {"data": {"llm_identity_token": "new-identity", "llm_identity_expires_at": expiry,
+                     "session_expires_at": lifetime}} if status == 200 else ({"code": code} if code else {})
+    return httpx.Response(status, json=body)
+
+
+async def test_session_route_refresh_rewrites_cookie(monkeypatch):
+    monkeypatch.setenv("MYTHOS_SESSION_SECRET", "x" * 32)
+    sdk = create_mythos()
+    app = FastAPI()
+    app.include_router(sdk.router)
+    cookie = seal_session(identity_session(2), "2099-01-01T00:00:00Z")
+    post = AsyncMock(return_value=refreshed_response())
+    with patch("mythos_sdk.api_client.get_http_client") as client:
+        client.return_value.post = post
+        async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="https://app.test") as browser:
+            response = await browser.get("/api/mythos/session", headers={"cookie": f"mythos_session={cookie}"})
+    assert response.status_code == 200
+    assert "set-cookie" in response.headers
+    data = response.json()["data"]
+    assert data["session"]["llmIdentityToken"] is None
+    assert data["refreshAt"] is not None
+    assert data["expiresAt"] == open_session(data["sessionToken"])[1]
+    assert open_session(data["sessionToken"])[0].llmIdentityToken == "new-identity"
+    assert post.await_args.kwargs["headers"] == {"X-Mythos-Identity": "Bearer old-identity"}
+
+
+@pytest.mark.parametrize("base_url,expected_attributes", [
+    ("https://app.test", ("samesite=none", "secure", "partitioned")),
+    ("http://localhost", ("samesite=lax",)),
+])
+async def test_session_route_revocation_clears_cookie(monkeypatch, base_url, expected_attributes):
+    monkeypatch.setenv("MYTHOS_SESSION_SECRET", "x" * 32)
+    sdk = create_mythos()
+    app = FastAPI()
+    app.include_router(sdk.router)
+    cookie = seal_session(identity_session(2), "2099-01-01T00:00:00Z")
+    with patch("mythos_sdk.api_client.get_http_client") as client:
+        client.return_value.post = AsyncMock(return_value=refreshed_response(410, "SESSION_REVOKED"))
+        async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url=base_url) as browser:
+            response = await browser.get("/api/mythos/session", headers={"cookie": f"mythos_session={cookie}"})
+    assert response.status_code == 401
+    clearing_cookie = response.headers["set-cookie"].lower()
+    assert 'mythos_session="";' in clearing_cookie
+    assert "max-age=0" in clearing_cookie
+    for attribute in expected_attributes:
+        assert attribute in clearing_cookie
+
+
+@pytest.mark.parametrize("minutes,status,code,expected_status,rewrites", [
+    (20, 200, None, 200, False),
+    (2, 404, None, 200, False),
+    (2, 410, "SESSION_EXPIRED", 401, False),
+    (2, 200, None, 200, True),
+])
+async def test_existing_session_refresh_outcomes(monkeypatch, minutes, status, code, expected_status, rewrites):
+    monkeypatch.setenv("MYTHOS_SESSION_SECRET", "x" * 32)
+    sdk = create_mythos()
+    cookie = seal_session(identity_session(minutes), "2099-01-01T00:00:00Z")
+    post = AsyncMock(return_value=refreshed_response(status, code))
+    with patch("mythos_sdk.api_client.get_http_client") as client:
+        client.return_value.post = post
+        result, body, new_cookie, _expiry = await sdk.handle_session(request_like(cookie=cookie))
+    assert result == expected_status
+    if minutes == 20:
+        post.assert_not_awaited()
+    else:
+        post.assert_awaited_once()
+    assert (new_cookie is not None) == rewrites
+    if expected_status == 401:
+        assert body["code"] == "SESSION_EXPIRED"
+    else:
+        assert body["data"]["refreshAt"] is not None
+
+
+async def test_llm_inline_refresh_and_expired_response(monkeypatch):
+    monkeypatch.setenv("MYTHOS_SESSION_SECRET", "x" * 32)
+    sdk = create_mythos()
+    cookie = seal_session(identity_session(-1), "2099-01-01T00:00:00Z")
+    post = AsyncMock(return_value=refreshed_response())
+    with patch("mythos_sdk.api_client.get_http_client") as client:
+        client.return_value.post = post
+        llm_client = await sdk.llm(request_like(cookie=cookie), api_key="provider-key")
+    assert llm_client.default_headers["X-Mythos-Identity"] == "Bearer new-identity"
+    assert open_session(cookie)[0].llmIdentityToken == "old-identity"
+    with patch("mythos_sdk.api_client.get_http_client") as client:
+        client.return_value.post = AsyncMock(return_value=refreshed_response(410, "SESSION_EXPIRED"))
+        with pytest.raises(SessionExpiredError):
+            await sdk.llm(request_like(cookie=cookie), api_key="provider-key")
+
+
+async def test_refresh_failure_keeps_existing_session(monkeypatch):
+    monkeypatch.setenv("MYTHOS_SESSION_SECRET", "x" * 32)
+    cookie = seal_session(identity_session(2), "2099-01-01T00:00:00Z")
+    with patch("mythos_sdk.api_client.get_http_client") as client:
+        client.return_value.post = AsyncMock(side_effect=httpx.ConnectError("offline"))
+        status, body, rewritten, _expiry = await create_mythos().handle_session(request_like(cookie=cookie))
+    assert status == 200
+    assert rewritten is None
+    assert open_session(body["data"]["sessionToken"])[0].llmIdentityToken == "old-identity"
+
+
+async def test_matching_expired_launch_token_still_refreshes(monkeypatch, rsa_key_pair):
+    monkeypatch.setenv("MYTHOS_SESSION_SECRET", "x" * 32)
+    cookie = seal_session(identity_session(2), "2099-01-01T00:00:00Z")
+    post = AsyncMock(return_value=refreshed_response())
+    with mock_jwks(rsa_key_pair), patch("mythos_sdk.api_client.get_http_client") as client:
+        client.return_value.post = post
+        status, _body, rewritten, _expiry = await create_mythos().handle_session(request_like(
+            cookie=cookie, lt=mint_launch_token(rsa_key_pair["private"], exp=int(time.time()) - 10),
+        ))
+    assert status == 200
+    assert rewritten is not None
+    assert open_session(rewritten)[0].llmIdentityToken == "new-identity"
+    post.assert_awaited_once()
+
+
+@pytest.mark.parametrize("has_lifetime", [True, False])
+async def test_consume_uses_absolute_lifetime_or_legacy_fallback(monkeypatch, rsa_key_pair, has_lifetime):
+    monkeypatch.setenv("MYTHOS_SESSION_SECRET", "x" * 32)
+    identity_expiry = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+    lifetime = (datetime.now(timezone.utc) + timedelta(hours=8)).isoformat()
+    data = {"llm_identity_token": "identity", "llm_identity_expires_at": identity_expiry}
+    if has_lifetime:
+        data["session_expires_at"] = lifetime
+    response = httpx.Response(200, json={"data": data})
+    with mock_jwks(rsa_key_pair), patch("mythos_sdk.api_client.get_http_client") as client:
+        client.return_value.post = AsyncMock(return_value=response)
+        _status, body, token, expiry = await create_mythos().handle_session(
+            request_like(lt=mint_launch_token(rsa_key_pair["private"])))
+    assert expiry == (lifetime if has_lifetime else identity_expiry)
+    assert body["data"]["expiresAt"] == expiry
+    assert open_session(token)[1] == expiry

@@ -34,6 +34,12 @@ function installFakeWindow(options: FakeWindowOptions = {}) {
   const values = new Map(Object.entries(options.storage ?? {}));
   const listeners: MessageListener[] = [];
   const parentCalls: Array<{ data: unknown; origin: string }> = [];
+  const documentListeners = new Map<string, () => void>();
+  const doc = {
+    hidden: false,
+    addEventListener: (type: string, listener: () => void) => documentListeners.set(type, listener),
+    removeEventListener: (type: string) => documentListeners.delete(type),
+  };
   const fetchMock = jest.fn<Promise<Response>, [RequestInfo | URL, RequestInit?]>();
   const win = {
     parent: undefined as unknown,
@@ -73,7 +79,9 @@ function installFakeWindow(options: FakeWindowOptions = {}) {
   win.parent = parent;
 
   const previousWindow = (globalThis as { window?: unknown }).window;
+  const previousDocument = (globalThis as { document?: unknown }).document;
   (globalThis as { window?: unknown }).window = win;
+  (globalThis as { document?: unknown }).document = doc;
 
   return {
     fetchMock,
@@ -81,8 +89,11 @@ function installFakeWindow(options: FakeWindowOptions = {}) {
     storage: values,
     dispatchMessage: (data: unknown, origin = '*') =>
       listeners.forEach((listener) => listener({ data, source: parent, origin })),
+    showDocument: () => documentListeners.get('visibilitychange')?.(),
     restore: () => {
+      resetMythosClientForTests();
       (globalThis as { window?: unknown }).window = previousWindow;
+      (globalThis as { document?: unknown }).document = previousDocument;
     },
   };
 }
@@ -298,6 +309,28 @@ test('authenticated fetch marks a SESSION_ 401 expired without consuming its res
   }
 });
 
+test('expiry clears the stored header transport before another authenticated request', async () => {
+  const fake = installFakeWindow({ storage: {
+    'mythos:transport': 'header', 'mythos:session-token': 'sealed-token',
+  } });
+  fake.fetchMock
+    .mockResolvedValueOnce(response(sessionBody('sealed-token')))
+    .mockResolvedValueOnce(response({ code: 'SESSION_EXPIRED' }, 401))
+    .mockResolvedValueOnce(response({ success: true }));
+  try {
+    const client = initMythos();
+    await client.ready;
+    await client.fetch('/api/action');
+    expect(client.state.status).toBe('expired');
+    expect(fake.storage.has('mythos:transport')).toBe(false);
+    expect(fake.storage.has('mythos:session-token')).toBe(false);
+    await client.fetch('/api/action');
+    expect(new Headers(fake.fetchMock.mock.calls[2][1]?.headers).has('X-Mythos-Session')).toBe(false);
+  } finally {
+    fake.restore();
+  }
+});
+
 test.each([
   response({ success: false, code: 'INVALID_USAGE', error: 'Bad usage' }, 401),
   new Response('not-json', { status: 401 }),
@@ -345,7 +378,8 @@ test('LLM charge confirmation needs no credits and sends a numeric placeholder',
     fake.dispatchMessage({ type: 'mythos:confirm-charge-response', requestId: request?.requestId, approved: true });
     expect(await pending).toEqual({ approved: true });
     // @ts-expect-error LLM confirmations are usage-based and must not take credits
-    void client.confirmCharge({ kind: 'llm', credits: 1 });
+    const invalidCharge: Parameters<typeof client.confirmCharge>[0] = { kind: 'llm', credits: 1 };
+    void invalidCharge;
   } finally {
     fake.restore();
   }
@@ -430,6 +464,111 @@ test('sandboxed storage falls back to memory without preventing a Mythos session
     .mockResolvedValueOnce(response({ success: true, data: null }));
   try {
     expect(await initMythos().ready).toMatchObject({ status: 'mythos', session: SESSION });
+  } finally {
+    fake.restore();
+  }
+});
+
+test('refresh timer and visibility reload without replaying the launch token', async () => {
+  jest.useFakeTimers();
+  const fake = installFakeWindow({ search: '?lt=old', storage: { 'mythos:transport': 'cookie' } });
+  const refreshAt = new Date(Date.now() + 10_000).toISOString();
+  fake.fetchMock.mockResolvedValue(response({
+    ...sessionBody(), data: { ...sessionBody().data, refreshAt },
+  }));
+  try {
+    await initMythos().ready;
+    await jest.advanceTimersByTimeAsync(10_000);
+    expect(fake.fetchMock.mock.calls[1]?.[0]).toBe('/api/mythos/session');
+    fake.showDocument();
+    await Promise.resolve();
+    expect(fake.fetchMock.mock.calls[2]?.[0]).toBe('/api/mythos/session');
+  } finally {
+    fake.restore();
+    jest.useRealTimers();
+  }
+});
+
+test('a transient background refresh failure keeps the session and retries quietly', async () => {
+  jest.useFakeTimers();
+  const fake = installFakeWindow({ storage: { 'mythos:transport': 'cookie' } });
+  const refreshAt = new Date(Date.now() + 10_000).toISOString();
+  fake.fetchMock
+    .mockResolvedValueOnce(response({ ...sessionBody(), data: { ...sessionBody().data, refreshAt } }))
+    .mockRejectedValueOnce(new Error('offline'))
+    .mockResolvedValueOnce(response(sessionBody('new-token')));
+  try {
+    const client = initMythos();
+    await client.ready;
+    await jest.advanceTimersByTimeAsync(10_000);
+    expect(client.state).toMatchObject({ status: 'mythos', session: SESSION });
+    await jest.advanceTimersByTimeAsync(60_000);
+    expect(fake.fetchMock).toHaveBeenCalledTimes(3);
+    expect(fake.fetchMock.mock.calls[2][0]).toBe('/api/mythos/session');
+    expect(client.state.status).toBe('mythos');
+  } finally {
+    fake.restore();
+    jest.useRealTimers();
+  }
+});
+
+test('a non-session refresh error retains the active session', async () => {
+  jest.useFakeTimers();
+  const fake = installFakeWindow({ storage: { 'mythos:transport': 'cookie' } });
+  fake.fetchMock
+    .mockResolvedValueOnce(response({ ...sessionBody(), data: {
+      ...sessionBody().data, refreshAt: new Date(Date.now() + 1000).toISOString(),
+    } }))
+    .mockResolvedValueOnce(response({ success: false, code: 'UPSTREAM_ERROR' }, 503));
+  try {
+    const client = initMythos();
+    await client.ready;
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(client.state.status).toBe('mythos');
+  } finally {
+    fake.restore();
+    jest.useRealTimers();
+  }
+});
+
+test('an offline refresh still expires the session at its absolute deadline', async () => {
+  jest.useFakeTimers();
+  const fake = installFakeWindow({ storage: { 'mythos:transport': 'cookie' } });
+  fake.fetchMock
+    .mockResolvedValueOnce(response({ ...sessionBody(), data: {
+      ...sessionBody().data,
+      refreshAt: new Date(Date.now() + 1000).toISOString(),
+      expiresAt: new Date(Date.now() + 5000).toISOString(),
+    } }))
+    .mockRejectedValue(new Error('offline'));
+  try {
+    const client = initMythos();
+    await client.ready;
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(client.state.status).toBe('mythos');
+    await jest.advanceTimersByTimeAsync(5001);
+    expect(client.state.status).toBe('expired');
+    expect(fake.parentCalls.filter((call) => (call.data as { type: string }).type === 'mythos:relaunch')).toHaveLength(1);
+  } finally {
+    fake.restore();
+    jest.useRealTimers();
+  }
+});
+
+test.each([
+  [true, true, 1],
+  [true, false, 0],
+  [false, true, 0],
+])('expired auto-relaunch embedded=%s enabled=%s posts %i time(s)', async (embedded, enabled, expected) => {
+  const fake = installFakeWindow({ embedded, storage: { 'mythos:transport': 'cookie' } });
+  fake.fetchMock.mockResolvedValueOnce(response(sessionBody()));
+  fake.fetchMock.mockResolvedValue(response({ code: 'SESSION_EXPIRED' }, 401));
+  try {
+    const client = initMythos({ autoRelaunch: enabled });
+    await client.ready;
+    await client.fetch('/api/action');
+    await client.fetch('/api/action');
+    expect(fake.parentCalls.filter((call) => (call.data as { type: string }).type === 'mythos:relaunch')).toHaveLength(expected);
   } finally {
     fake.restore();
   }

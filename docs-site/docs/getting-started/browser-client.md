@@ -27,7 +27,7 @@ const unsubscribe = m.subscribe(() => console.log(m.state.status));
 ## No bundler
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.3.0/dist/mythos-client.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.4.0/dist/mythos-client.global.js"></script>
 <script>const m = Mythos.initMythos();</script>
 ```
 
@@ -38,11 +38,15 @@ const unsubscribe = m.subscribe(() => console.log(m.state.status));
 | `loading` | Session initialization is in progress | Show a loading state |
 | `mythos` | A Mythos launch session is active | Enable Mythos billing |
 | `standalone` | The app was opened outside Mythos | Use your own auth or paywall |
-| `expired` | The launch session expired | Offer `relaunch()` |
+| `expired` | The launch session expired | Embedded clients request a relaunch automatically; offer `relaunch()` as a manual fallback |
 | `error` | Initialization failed | Show `error` and a retry path |
+
+## Automatic relaunch
+
+`initMythos({ autoRelaunch: false })` disables the default one-time `mythos:relaunch` request to the embedding Mythos dashboard on expiry. For manual recovery, display a `relaunch()` button when status is `expired`. Standalone pages never post a relaunch. The client schedules a silent session refresh before identity expiry and checks again when a background tab becomes visible.
 
 ## Transport
 
 The client uses an HTTP-only cookie first, so session credentials are normally unavailable to JavaScript. If the browser blocks cookies, the SDK falls back to its managed transport. Your code never reads, parses, or stores Mythos tokens in `localStorage` or `sessionStorage`. This keeps transport details inside the SDK while preserving the same API in embedded and standalone browsers.
 
-Use `m.fetch` (or the `fetch` returned by `useMythos`) like native `fetch`; it automatically attaches the current session. Before a billable action, call `confirmCharge({ credits, reason })` for a fixed price, or `confirmCharge({ kind: 'llm', reason })` for LLM calls — those are usage-based (provider cost plus your margin, settled after the response), so they take no credits. If the status becomes `expired`, call `relaunch()` to ask the Mythos dashboard to launch the app again.
+Use `m.fetch` (or the `fetch` returned by `useMythos`) like native `fetch`; it automatically attaches the current session. Before a billable action, call `confirmCharge({ credits, reason })` for a fixed price, or `confirmCharge({ kind: 'llm', reason })` for LLM calls — those are usage-based (provider cost plus your margin, settled after the response), so they take no credits.

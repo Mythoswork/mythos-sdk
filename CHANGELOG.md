@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0
+
+### Added
+- Consumed launch sessions last up to 8 hours; identity tokens refresh silently at the session route and inline for `llm()` calls.
+- Embedded browser clients automatically request a relaunch at hard expiry (`autoRelaunch: false` opts out).
+- Node and Python sealed sessions share the `v1.` cookie format and can open each other's cookies when configured with the same secret; a shared conformance suite verifies parity.
+
+### Migration
+- Existing pre-v1 cookies require one relaunch after upgrade. See [MIGRATION.md](MIGRATION.md).
+
 ## 0.3.0
 
 ### Added

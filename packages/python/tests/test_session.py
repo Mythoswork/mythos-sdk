@@ -1,3 +1,4 @@
+import base64
 import os
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
@@ -5,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from mythos_sdk import MythosConfigError, MythosSession, decode_session, encode_session
+from mythos_sdk.session import _seal_session_with_nonce, open_session, seal_session
 
 SESSION = MythosSession(
     userId="user-1",
@@ -61,3 +63,32 @@ def test_raises_mythos_config_error_when_secret_is_missing():
     os.environ.pop("MYTHOS_SESSION_SECRET", None)
     with pytest.raises(MythosConfigError):
         encode_session(SESSION)
+
+
+def test_v1_session_round_trip_and_compact_payload():
+    expiry = "2099-01-01T00:00:00.000Z"
+    token = _seal_session_with_nonce(SESSION, expiry, bytes(range(12)))
+    assert token.startswith("v1.")
+    assert open_session(token) == (SESSION, expiry)
+    assert open_session(seal_session(replace(SESSION, llmIdentityToken=None, llmIdentityExpiresAt=None), expiry)) == (
+        replace(SESSION, llmIdentityToken=None, llmIdentityExpiresAt=None), expiry,
+    )
+
+
+def test_v1_rejects_tampering_legacy_and_expiry():
+    token = seal_session(SESSION, "2099-01-01T00:00:00.000Z")
+    raw = bytearray(base64.urlsafe_b64decode(token[3:] + "=" * (-len(token[3:]) % 4)))
+    raw[-1] ^= 1
+    assert open_session("v1." + base64.urlsafe_b64encode(raw).decode().rstrip("=")) is None
+    assert open_session(token[3:]) is None
+    assert open_session(encode_session(SESSION)) is None
+    assert open_session(seal_session(SESSION, "2000-01-01T00:00:00.000Z")) is None
+
+
+def test_v1_wrong_secret_and_missing_secret():
+    token = seal_session(SESSION, "2099-01-01T00:00:00.000Z")
+    os.environ["MYTHOS_SESSION_SECRET"] = "wrong"
+    assert open_session(token) is None
+    os.environ.pop("MYTHOS_SESSION_SECRET")
+    with pytest.raises(MythosConfigError):
+        open_session(token)

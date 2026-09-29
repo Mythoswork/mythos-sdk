@@ -4,8 +4,11 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from mythos_sdk.api_client import meter_session
-from mythos_sdk.errors import InvalidUsageError
+from mythos_sdk.api_client import meter_session, read_session_expires_at, refresh_session, SessionRefreshResult
+from mythos_sdk.errors import (
+    InvalidUsageError, MythosUnreachableError, MythosUpstreamError,
+    SessionExpiredError, SessionNotFoundError,
+)
 
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)
 
@@ -65,3 +68,47 @@ async def test_meter_session_reuses_caller_supplied_charge_id():
 
     assert bodies[0]["charge_id"] == "stable-charge-key"
     assert bodies[1]["charge_id"] == "stable-charge-key"
+
+
+async def test_refresh_session_success_and_encoded_request():
+    response = httpx.Response(200, json={"data": {
+        "llm_identity_token": "new", "llm_identity_expires_at": "2099-01-01T00:30:00Z",
+        "session_expires_at": "2099-01-01T08:00:00Z",
+    }})
+    post = AsyncMock(return_value=response)
+    with patch("mythos_sdk.api_client.get_http_client") as client:
+        client.return_value.post = post
+        result = await refresh_session("jti/one", "old")
+    assert result == SessionRefreshResult("new", "2099-01-01T00:30:00Z", "2099-01-01T08:00:00Z")
+    assert post.await_args.args[0].endswith("/jti%2Fone/refresh")
+    assert post.await_args.kwargs == {"headers": {"X-Mythos-Identity": "Bearer old"}, "json": {}}
+    assert read_session_expires_at(response.json()) == "2099-01-01T08:00:00Z"
+
+
+@pytest.mark.parametrize("status,body,expected", [
+    (200, {"data": {"llm_identity_token": "new"}}, MythosUpstreamError),
+    (404, {}, None),
+    (404, {"code": "SESSION_NOT_FOUND"}, SessionNotFoundError),
+    (401, {"code": "INVALID_IDENTITY_TOKEN"}, SessionExpiredError),
+    (403, {}, SessionExpiredError),
+    (409, {}, SessionExpiredError),
+    (410, {"code": "SESSION_REVOKED"}, SessionExpiredError),
+    (500, {"code": "IDENTITY_UNAVAILABLE"}, MythosUpstreamError),
+])
+async def test_refresh_session_status_mapping(status, body, expected):
+    with patch("mythos_sdk.api_client.get_http_client") as client:
+        client.return_value.post = AsyncMock(return_value=httpx.Response(status, json=body))
+        if expected is None:
+            assert await refresh_session("jti", "old") is None
+        else:
+            with pytest.raises(expected) as caught:
+                await refresh_session("jti", "old")
+            if isinstance(caught.value, MythosUpstreamError):
+                assert caught.value.upstream_status == status
+
+
+async def test_refresh_session_network_error():
+    with patch("mythos_sdk.api_client.get_http_client") as client:
+        client.return_value.post = AsyncMock(side_effect=httpx.ConnectError("offline"))
+        with pytest.raises(MythosUnreachableError):
+            await refresh_session("jti", "old")
