@@ -11,6 +11,7 @@ export const MYTHOS_HANDSHAKE_MESSAGE_TYPE = 'mythos:handshake' as const;
 export const MYTHOS_CONFIRM_CHARGE_REQUEST_TYPE = 'mythos:confirm-charge' as const;
 export const MYTHOS_CONFIRM_CHARGE_RESPONSE_TYPE = 'mythos:confirm-charge-response' as const;
 export const MYTHOS_CONFIRM_CHARGE_TIMEOUT_TYPE = 'mythos:confirm-charge-timeout' as const;
+export const MYTHOS_RELAUNCH_MESSAGE_TYPE = 'mythos:relaunch' as const;
 
 const DEFAULT_CONFIRM_TIMEOUT_MS = 10_000;
 
@@ -19,16 +20,22 @@ const DEFAULT_CONFIRM_TIMEOUT_MS = 10_000;
 // cost is only known after the provider responds.
 export type MythosChargeKind = 'generic' | 'llm';
 
+export interface ConfirmChargeResult {
+  approved: boolean;
+  consentId?: string;
+}
+
 interface ConfirmChargeResponseMessage {
   type: typeof MYTHOS_CONFIRM_CHARGE_RESPONSE_TYPE;
   requestId: string;
   approved: boolean;
+  consentId?: string;
 }
 
 /**
  * Tells the Mythos dashboard parent frame this app has finished its own session
  * verification and is ready to be shown -- call this once, right after your app confirms
- * its Mythos session (e.g. after a successful /api/verify-session response). A no-op
+ * its Mythos session (initMythos/useMythos do this automatically). A no-op
  * (with a console warning) if this page isn't actually embedded in an iframe.
  *
  * `expectedOrigin` restricts the outgoing postMessage's targetOrigin instead of the
@@ -48,9 +55,9 @@ export function sendHandshake(expectedOrigin?: string): void {
 
 /**
  * Asks the Mythos dashboard parent frame to confirm a Credit charge with the Consumer
- * before your app performs the billable action. Resolves false (never rejects) on
- * timeout, decline, or if this page isn't embedded at all -- fail-closed, so a missing or
- * unresponsive dashboard never silently lets a charge through.
+ * before your app performs the billable action. Resolves `{ approved: false }` (never
+ * rejects) on timeout, decline, or if this page isn't embedded at all -- fail-closed, so
+ * a missing or unresponsive dashboard never silently lets a charge through.
  *
  * `expectedOrigin` restricts both the outgoing postMessage's targetOrigin and which
  * frame's response is accepted (checked against `event.origin`, in addition to the
@@ -60,17 +67,17 @@ export function sendHandshake(expectedOrigin?: string): void {
  * remains the backend wallet hold/402 on the billable action itself; this only hardens the
  * confirmation UX against an unexpected embedding frame.
  */
-export function confirmCharge(
+export function requestChargeConfirmation(
   credits: number,
   reason?: string,
   timeoutMs: number = DEFAULT_CONFIRM_TIMEOUT_MS,
   kind: MythosChargeKind = 'generic',
   expectedOrigin?: string,
-): Promise<boolean> {
+): Promise<ConfirmChargeResult> {
   return new Promise((resolve) => {
     if (window === window.parent) {
       console.warn('[mythos-client] not embedded in a parent frame — skipping charge.');
-      resolve(false);
+      resolve({ approved: false });
       return;
     }
 
@@ -84,9 +91,13 @@ export function confirmCharge(
     const timer = window.setTimeout(() => {
       if (settled) return;
       console.warn('[mythos-client] timed out waiting for a confirm-charge response — skipping charge.');
-      window.parent.postMessage({ type: MYTHOS_CONFIRM_CHARGE_TIMEOUT_TYPE, requestId }, expectedOrigin ?? '*');
+      try {
+        window.parent.postMessage({ type: MYTHOS_CONFIRM_CHARGE_TIMEOUT_TYPE, requestId }, expectedOrigin ?? '*');
+      } catch {
+        // Confirmation already failed closed; an invalid target origin changes no result.
+      }
       cleanup();
-      resolve(false);
+      resolve({ approved: false });
     }, timeoutMs);
 
     function onMessage(event: MessageEvent) {
@@ -96,7 +107,10 @@ export function confirmCharge(
       if (!data || data.type !== MYTHOS_CONFIRM_CHARGE_RESPONSE_TYPE) return;
       if (typeof data.requestId !== 'string' || data.requestId !== requestId) return;
       cleanup();
-      resolve(Boolean(data.approved));
+      resolve({
+        approved: Boolean(data.approved),
+        ...(typeof data.consentId === 'string' ? { consentId: data.consentId } : {}),
+      });
     }
 
     function cleanup() {
@@ -107,9 +121,28 @@ export function confirmCharge(
     }
 
     window.addEventListener('message', onMessage);
-    window.parent.postMessage(
-      { type: MYTHOS_CONFIRM_CHARGE_REQUEST_TYPE, requestId, credits, reason, kind },
-      expectedOrigin ?? '*',
-    );
+    try {
+      window.parent.postMessage(
+        { type: MYTHOS_CONFIRM_CHARGE_REQUEST_TYPE, requestId, credits, reason, kind },
+        expectedOrigin ?? '*',
+      );
+    } catch {
+      cleanup();
+      resolve({ approved: false });
+    }
   });
 }
+
+export async function confirmCharge(
+  credits: number,
+  reason?: string,
+  timeoutMs: number = DEFAULT_CONFIRM_TIMEOUT_MS,
+  kind: MythosChargeKind = 'generic',
+  expectedOrigin?: string,
+): Promise<boolean> {
+  const { approved } = await requestChargeConfirmation(credits, reason, timeoutMs, kind, expectedOrigin);
+  return approved;
+}
+
+export { initMythos } from './mythos-client';
+export type { InitMythosOptions, MythosClient, MythosClientState, MythosStatus } from './mythos-client';

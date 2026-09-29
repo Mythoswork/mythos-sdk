@@ -2,7 +2,7 @@
 
 Official Mythos SDK for Node.js — launch token verification, OpenAI-compatible LLM access, usage reporting, and handshake.
 
-## Quick start (0.1.1)
+## Quick start (0.2.0)
 
 ```typescript
 import { createMythos } from '@mythos-work/sdk';
@@ -18,12 +18,28 @@ const billing = mythos.billing(completion);
 
 Set `MYTHOS_SESSION_SECRET` to a random secret of at least 32 characters (`openssl rand -base64 32`). Node.js 20+ is required. See the [migration guide](../../MIGRATION.md) for Next.js Pages Router wiring and error handling.
 
+### Browser
+
+```tsx
+import { useMythos } from '@mythos-work/sdk/react';
+const { status, session, fetch, confirmCharge, relaunch } = useMythos();
+```
+
+For non-bundled pages:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.2.0/dist/mythos-client.global.js"></script>
+<script>const mythos = Mythos.initMythos(); mythos.ready.then(console.log);</script>
+```
+
 ## Advanced (primitives)
+
+Legacy `sendHandshake` and boolean-returning `confirmCharge` remain available from `@mythos-work/sdk/client`.
 
 ## Install
 
 ```bash
-npm install @mythos-work/sdk@0.1.1
+npm install @mythos-work/sdk@0.2.0
 ```
 
 ## OpenAI-compatible LLM

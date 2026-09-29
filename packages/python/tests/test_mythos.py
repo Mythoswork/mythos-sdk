@@ -15,7 +15,6 @@ from mythos_sdk.errors import MythosConfigError, SessionRequiredError
 from mythos_sdk.mythos import SESSION_COOKIE, SESSION_HEADER, create_mythos
 from mythos_sdk.session import open_session, seal_session
 from mythos_sdk.types import MythosSession
-import mythos_sdk
 
 
 SESSION = MythosSession(
@@ -102,8 +101,8 @@ def test_create_mythos_rejects_invalid_api_url(monkeypatch):
 def test_core_import_and_create_mythos_do_not_load_fastapi(monkeypatch):
     monkeypatch.setenv("MYTHOS_SESSION_SECRET", "x" * 32)
     monkeypatch.setitem(sys.modules, "fastapi", None)
-    sdk_module = importlib.reload(mythos_sdk)
-    assert sdk_module.create_mythos()
+    mythos_module = importlib.reload(sys.modules["mythos_sdk.mythos"])
+    assert mythos_module.create_mythos()
     assert sys.modules["fastapi"] is None
 
 
@@ -254,7 +253,7 @@ async def test_session_router_sets_partitioned_secure_cookie(monkeypatch, rsa_ke
     async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="https://app.test") as test_client:
         with mock_jwks(rsa_key_pair), patch("mythos_sdk.api_client.get_http_client", return_value=client):
             response = await test_client.get(
-                "/mythos/session",
+                "/api/mythos/session",
                 params={"lt": mint_launch_token(rsa_key_pair["private"])},
             )
     assert response.status_code == 200
@@ -273,7 +272,7 @@ async def test_dev_session_cookie_uses_lax_without_secure(monkeypatch, rsa_key_p
     with mock_jwks(rsa_key_pair), patch("mythos_sdk.api_client.get_http_client", return_value=client):
         async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://localhost") as test_client:
             response = await test_client.get(
-                "/mythos/session",
+                "/api/mythos/session",
                 params={"lt": mint_launch_token(rsa_key_pair["private"])},
             )
     assert response.status_code == 200
