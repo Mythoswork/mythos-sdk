@@ -1,4 +1,0 @@
-{
-  "input": { "credits": 100, "reason": "calc", "idempotencyKey": "123e4567-e89b-42d3-a456-426614174000" },
-  "body": { "credits": 100, "charge_id": "123e4567-e89b-42d3-a456-426614174000", "reason": "calc" }
-}
