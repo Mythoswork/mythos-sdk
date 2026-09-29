@@ -2,7 +2,13 @@
 
 Official Mythos SDK for Node.js — launch token verification, OpenAI-compatible LLM access, usage reporting, and handshake.
 
-## Quick start (0.2.0)
+## Quick start (0.3.0)
+
+```bash
+npm install @mythos-work/sdk@0.3.0
+npx @mythos-work/sdk init
+npx @mythos-work/sdk agents   # optional: skills for Claude Code, Cursor, Codex, Devin
+```
 
 ```typescript
 import { createMythos } from '@mythos-work/sdk';
@@ -12,24 +18,26 @@ export const { GET, POST } = mythos.handlers;
 
 const session = await mythos.getSession(req); // null in standalone mode
 await mythos.charge(req, { credits: 1, reason: 'page-view' });
-const client = await mythos.llm(req, { apiKey: process.env.PRODUCER_OPENAI_API_KEY });
+const client = await mythos.llm<OpenAI>(req, { apiKey: process.env.PRODUCER_OPENAI_API_KEY });
 const billing = mythos.billing(completion);
 ```
 
-Set `MYTHOS_SESSION_SECRET` to a random secret of at least 32 characters (`openssl rand -base64 32`). Node.js 20+ is required. See the [migration guide](../../MIGRATION.md) for Next.js Pages Router wiring and error handling.
+Set `MYTHOS_SESSION_SECRET` to a random secret of at least 32 characters (`openssl rand -base64 32`). Node.js 20+ is required. See [docs.mythos.work](https://docs.mythos.work) and the [migration guide](../../MIGRATION.md).
 
 ### Browser
 
 ```tsx
 import { useMythos } from '@mythos-work/sdk/react';
 const { status, session, fetch, confirmCharge, relaunch } = useMythos();
+await confirmCharge({ credits: 1, reason: 'calculate' }); // fixed price
+await confirmCharge({ kind: 'llm', reason: 'chat' });     // LLM: usage-based, no credits
 ```
 
 For non-bundled pages:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.2.0/dist/mythos-client.global.js"></script>
-<script>const mythos = Mythos.initMythos(); mythos.ready.then(console.log);</script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.3.0/dist/mythos-client.global.js"></script>
+<script>const m = Mythos.initMythos(); m.ready.then(console.log);</script>
 ```
 
 ## Advanced (primitives)
@@ -39,7 +47,7 @@ Legacy `sendHandshake` and boolean-returning `confirmCharge` remain available fr
 ## Install
 
 ```bash
-npm install @mythos-work/sdk@0.2.0
+npm install @mythos-work/sdk@0.3.0
 ```
 
 ## OpenAI-compatible LLM

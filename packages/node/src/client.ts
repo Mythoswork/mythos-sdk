@@ -145,4 +145,4 @@ export async function confirmCharge(
 }
 
 export { initMythos } from './mythos-client';
-export type { InitMythosOptions, MythosClient, MythosClientState, MythosStatus } from './mythos-client';
+export type { ConfirmChargeOptions, InitMythosOptions, MythosClient, MythosClientState, MythosStatus } from './mythos-client';

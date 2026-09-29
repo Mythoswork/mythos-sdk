@@ -37,4 +37,4 @@ export function useMythos(options?: InitMythosOptions): UseMythosResult {
   };
 }
 
-export type { InitMythosOptions, MythosClientState, MythosStatus } from './mythos-client';
+export type { ConfirmChargeOptions, InitMythosOptions, MythosClientState, MythosStatus } from './mythos-client';

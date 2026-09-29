@@ -1,9 +1,13 @@
+:::caution Advanced — 0.0.x primitives
+You don't need this page for a normal integration. Use the [quickstarts](/getting-started/quickstart-nextjs-app) and `createMythos()` instead. These low-level functions remain exported for custom setups.
+:::
+
 # Vercel serverless
 
 Deploy Mythos SDK routes on Vercel with serverless functions and rewrites.
 
 :::info
-**Also see:** [Next.js guide](nextjs.md) for App Router · [Express](express.md) for traditional servers
+**Also see:** [Next.js quickstart](../getting-started/quickstart-nextjs-app.md) for App Router · [Express quickstart](../getting-started/quickstart-express.md) for traditional servers
 :::
 
 ## One handler per route
@@ -19,7 +23,7 @@ const router = handshakeRoute();
 module.exports = (req, res) => router(req, res, () => res.status(404).end());
 ```
 
-For a cleaner setup, use the Next.js App Router pattern in [nextjs.md](nextjs.md) instead of raw `api/` files.
+For a cleaner setup, use the [Next.js App Router quickstart](../getting-started/quickstart-nextjs-app.md) instead of raw `api/` files.
 
 **`api/mythos-session.js`:**
 

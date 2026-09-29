@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.0
+
+### Added
+- `npx @mythos-work/sdk init` and `doctor` CLI
+- `python -m mythos_sdk doctor`
+- `@mythos-work/sdk/express` adapter with `mythosExpress`
+- Bundled `AGENTS.md` in the npm package and Python wheel
+- `npx @mythos-work/sdk agents` installs the `integrate-mythos-sdk` skill for Claude Code (`.claude/skills`), Codex and Devin (`.agents/skills` + root `AGENTS.md`) and Cursor (`.cursor/skills`)
+- `doctor` warns when Express/FastAPI config exists only in `.env` (those servers don't load it automatically)
+
+### Changed
+- `m.confirmCharge({ kind: 'llm', reason })` no longer takes `credits` — LLM cost is usage-based. The legacy positional `confirmCharge()` is unchanged
+- `mythos.llm<OpenAI>(req, …)` now returns `Promise<OpenAI>` (the caller's client type) instead of a `SdkOpenAI | TFallback` union, fixing "expression is not callable" in ESM/bundler projects where `openai`'s CJS and ESM typings differ
+
+### Documentation
+- Rewrote the docs site around `createMythos()` and generated `llms.txt` / `llms-full.txt`
+
 ## 0.2.0
 
 ### Added

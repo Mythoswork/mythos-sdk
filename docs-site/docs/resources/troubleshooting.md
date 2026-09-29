@@ -1,77 +1,27 @@
 # Troubleshooting
 
-Common integration issues and fixes.
+Start every diagnosis with:
 
-## Quick diagnosis
-
-| Symptom | Likely cause | Fix |
-|---------|--------------|-----|
-| Handshake 404 | Wrong path or route not on production entry point | Must be `/.well-known/mythos-handshake`; check all deploy entry points |
-| Session 404 | Route not registered | Add `/api/mythos/session` to every server entry point |
-| Always 401 with real token | Wrong listing ID or placeholder token | Set correct `MYTHOS_LISTING_ID`; get real JWT from Mythos |
-| 503 on session | `/consume` unreachable | Check `MYTHOS_API_URL`; ensure backend is running |
-| Works locally, fails in prod | Only wired local entry point | Add Mythos routes to Vercel `api/` or production `main` |
-| Publish gate fails | Handshake not mounted correctly | Use `app.use(handshakeRoute())` on Node |
-
-## Duplicate entry points
-
-Apps with `backend/main.py` (local) and `api/index.py` (Vercel) need Mythos on **both**. Local-only wiring is the most common production failure.
-
-## Handshake path
-
-Must be exactly `/.well-known/mythos-handshake`. Custom paths fail unless you add a rewrite:
-
-```json
-{ "source": "/.well-known/mythos-handshake", "destination": "/api/mythos-handshake" }
+```bash
+npx @mythos-work/sdk doctor
 ```
 
-## Route naming drift
+FastAPI projects can also run `python -m mythos_sdk doctor`. Fix every failed check before debugging application code.
 
-Pick one report-usage path and match frontend + docs:
+| Error or symptom | Fix |
+|---|---|
+| `CONFIG_ERROR` | Set a session secret of at least 32 characters and configure a listing ID or resolver. |
+| `INVALID_LAUNCH_TOKEN` | Launch from the Mythos dashboard and verify the listing ID. |
+| `TOKEN_ALREADY_CONSUMED` | Start a new launch; launch tokens are single-use. |
+| `SESSION_REQUIRED` | Use the session-aware browser client and open the app from Mythos. |
+| `SESSION_EXPIRED` | Call `relaunch()` and retry after a new launch. |
+| `INSUFFICIENT_FUNDS` | Ask the Consumer to add credits or choose a cheaper action. |
+| `SESSION_NOT_FOUND` | Relaunch to establish a current session. |
+| `INVALID_USAGE` | Send integer credits and valid charge options. |
+| `UPSTREAM_ERROR` | Retry later and inspect server logs. |
+| `MYTHOS_UNREACHABLE` | Check `MYTHOS_API_URL`, networking, and Mythos status. |
+| `LLM_SESSION_REQUIRED` / `LLM_IDENTITY_REQUIRED` | Launch through Mythos or supply an LLM fallback. |
+| Handshake is 404 | Wire the handler and make `/.well-known/mythos-handshake` reachable. |
+| Works locally but not after deploy | Set env vars in the host and rerun doctor in production. |
 
-- `/api/mythos/report-usage` (recommended)
-- Not `/api/mythos/usage` or `/api/mythos-usage`
-
-## Session JSON shape mismatch
-
-Node often wraps `{ session: ... }`; Python often returns flat fields. Frontend must match — see [frontend client](../guides/frontend-client.md).
-
-## Body key casing
-
-| Stack | Session field in POST body |
-|-------|---------------------------|
-| Node frontend → Node API | `sessionJti` |
-| Node frontend → Python API | `session_jti` |
-
-## Python-specific
-
-| Mistake | Fix |
-|---------|-----|
-| `Depends(require_launch_token)` | Use `Depends(require_launch_token())` |
-| `session.session_jti` | Use `session.sessionJti` (camelCase) |
-| `python main.py` | Use `uvicorn main:app` |
-
-## Node-specific
-
-| Mistake | Fix |
-|---------|-----|
-| `app.get('/.well-known/...', handshakeRoute())` | Use `app.use(handshakeRoute())` |
-| Verifying JWT in browser | Move to server session endpoint |
-
-## Placeholder tokens
-
-Test constants like `VALID_HANDSHAKE_TOKEN` are not real JWTs. Use tokens from Mythos dashboard or [mock apps](mock-integration-apps.md).
-
-## Single-use tokens
-
-Always strip `?lt=` from URL after session exchange. Refresh without new token = auth failure (expected).
-
-## Windows curl
-
-Use `curl.exe`, not PowerShell `curl` (alias for `Invoke-WebRequest`).
-
-## Next steps
-
-- [Verify your integration](../getting-started/verify-integration.md)
-- [Required routes](../guides/required-routes.md)
-- [Security](security.md)
+See the [full error reference](../reference/errors.md) and [deploy checklist](../getting-started/deploy-checklist.md).

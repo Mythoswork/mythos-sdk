@@ -1,9 +1,13 @@
+:::caution Advanced — 0.0.x primitives
+You don't need this page for a normal integration. Use the [quickstarts](/getting-started/quickstart-nextjs-app) and `createMythos()` instead. These low-level functions remain exported for custom setups.
+:::
+
 # Auth patterns
 
 Wire Mythos launch auth alongside your existing authentication gate.
 
 :::info
-**Just getting started?** [Frontend client](frontend-client.md) covers `?lt=` handling.
+**Just getting started?** [Browser client](../getting-started/browser-client.md) covers current session handling.
 :::
 
 ## Core rule
@@ -48,6 +52,6 @@ Refreshing the page without a new `?lt=` param will not restore Mythos auth. The
 
 ## Next steps
 
-- [Frontend client](frontend-client.md)
+- [Browser client](../getting-started/browser-client.md)
 - [Launch sessions](../concepts/launch-sessions.md)
-- [AI integration prompt](ai-integration-prompt.md)
+- [Use with AI agents](../ai-agents.md)

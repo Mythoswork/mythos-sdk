@@ -1,9 +1,13 @@
+:::caution Advanced — 0.0.x primitives
+You don't need this page for a normal integration. Use the [quickstarts](/getting-started/quickstart-nextjs-app) and `createMythos()` instead. These low-level functions remain exported for custom setups.
+:::
+
 # Node.js SDK overview
 
 API reference for `@mythos-work/sdk` — the official Mythos SDK for Node.js and TypeScript.
 
 :::info
-**Just getting started?** [Quickstart: Node.js](../../getting-started/quickstart-node.md)
+**Just getting started?** [Quickstart: Next.js](../../getting-started/quickstart-nextjs-app.md)
 :::
 
 ## Install

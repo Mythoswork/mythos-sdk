@@ -332,6 +332,25 @@ test('client charge confirmation returns approval and consent ID', async () => {
   }
 });
 
+test('LLM charge confirmation needs no credits and sends a numeric placeholder', async () => {
+  const fake = installFakeWindow();
+  const client = initialiseWithExistingCookie(fake);
+  try {
+    await client.ready;
+    const pending = client.confirmCharge({ kind: 'llm', reason: 'chat' });
+    const request = fake.parentCalls
+      .map((call) => call.data as { type?: string; credits?: unknown; kind?: string; requestId?: string })
+      .find((data) => data.type === 'mythos:confirm-charge');
+    expect(request).toMatchObject({ credits: 0, kind: 'llm', reason: 'chat' });
+    fake.dispatchMessage({ type: 'mythos:confirm-charge-response', requestId: request?.requestId, approved: true });
+    expect(await pending).toEqual({ approved: true });
+    // @ts-expect-error LLM confirmations are usage-based and must not take credits
+    void client.confirmCharge({ kind: 'llm', credits: 1 });
+  } finally {
+    fake.restore();
+  }
+});
+
 test('client charge confirmation fails closed on timeout', async () => {
   const fake = installFakeWindow();
   fake.storage.set('mythos:transport', 'cookie');

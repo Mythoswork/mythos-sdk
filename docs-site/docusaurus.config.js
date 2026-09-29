@@ -120,15 +120,15 @@ const config = {
           items: [
             // introduction.md carries `slug: /`, so it is the site root.
             { label: 'Introduction', to: '/' },
-            { label: 'Quickstart (Node)', to: '/getting-started/quickstart-node' },
-            { label: 'Quickstart (Python)', to: '/getting-started/quickstart-python' },
+            { label: 'Quickstart (Next.js)', to: '/getting-started/quickstart-nextjs-app' },
+            { label: 'Quickstart (FastAPI)', to: '/getting-started/quickstart-fastapi' },
           ],
         },
         {
           title: 'Reference',
           items: [
-            { label: 'Node SDK', to: '/reference/node/overview' },
-            { label: 'Python SDK', to: '/reference/python/overview' },
+            { label: 'Server API', to: '/reference/create-mythos' },
+            { label: 'Errors', to: '/reference/errors' },
           ],
         },
         {

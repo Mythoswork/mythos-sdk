@@ -7,6 +7,8 @@ on:
     paths:
       - 'packages/node/**'
       - 'packages/python/**'
+      - 'AGENTS.md'
+      - 'scripts/sync-agents.mjs'
       - '.github/workflows/ci.yml'
 
 jobs:
@@ -23,6 +25,8 @@ jobs:
           cache: npm
           cache-dependency-path: packages/node/package-lock.json
       - run: npm ci
+      - run: node scripts/sync-agents.mjs --check
+        working-directory: .
       - run: npm run build
       - run: npm test
 

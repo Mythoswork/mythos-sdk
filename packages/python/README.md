@@ -2,7 +2,15 @@
 
 Official Mythos SDK for Python — launch token verification, OpenAI-compatible LLM access, usage reporting, and handshake.
 
-## Quick start (0.2.0)
+## Quick start (0.3.0)
+
+```bash
+pip install "mythos-sdk[fastapi,llm]==0.3.0" "fastapi[standard]"
+npx @mythos-work/sdk init
+npx @mythos-work/sdk agents   # optional: skills for Claude Code, Cursor, Codex, Devin
+uvicorn main:app --env-file .env   # uvicorn does not load .env on its own
+python -m mythos_sdk doctor
+```
 
 ```python
 from mythos_sdk import create_mythos
@@ -16,15 +24,17 @@ client = await mythos.llm(request, api_key=producer_api_key)
 billing = mythos.billing(completion)
 ```
 
-Set `MYTHOS_SESSION_SECRET` to a random secret of at least 32 characters (`openssl rand -base64 32`). The router serves sessions at `/api/mythos/session`. See the [migration guide](../../MIGRATION.md) for error handling and advanced integrations.
+Set `MYTHOS_SESSION_SECRET` to a random secret of at least 32 characters (`openssl rand -base64 32`). The router serves sessions at `/api/mythos/session`. See [docs.mythos.work](https://docs.mythos.work) and the [migration guide](../../MIGRATION.md).
 
 Templates can use the framework-neutral browser client:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.2.0/dist/mythos-client.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.3.0/dist/mythos-client.global.js"></script>
 <script>
-  const mythos = Mythos.initMythos();
-  mythos.ready.then((state) => console.log(state.status));
+  const m = Mythos.initMythos();
+  m.ready.then((state) => console.log(state.status));
+  // fixed price: m.confirmCharge({ credits: 1, reason: 'calculate' })
+  // LLM (usage-based, no credits): m.confirmCharge({ kind: 'llm', reason: 'chat' })
 </script>
 ```
 
@@ -33,7 +43,7 @@ Templates can use the framework-neutral browser client:
 ## Install
 
 ```bash
-pip install "mythos-sdk[fastapi,llm]==0.2.0"
+pip install "mythos-sdk[fastapi,llm]==0.3.0"
 ```
 
 ## OpenAI-compatible LLM
