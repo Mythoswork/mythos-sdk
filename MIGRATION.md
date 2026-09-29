@@ -1,4 +1,6 @@
-# Migration guide: SDK 0.0.x → 0.1.1
+# Migration guide
+
+> **Upgrading from a published release?** 0.4.0 is the first release after **0.1.0 (npm)** and **0.0.8 (PyPI)**; 0.1.1, 0.2.0 and 0.3.0 were never published. Apply every section below that is newer than your version, oldest first. From npm 0.1.0, start at "0.1.x → 0.2.0". From PyPI 0.0.x, start at "0.0.x → 0.1.1".
 
 Version 0.1.1 moves launch consumption, encrypted session reuse, metering, handshake and listing registration behind one SDK object. The low-level primitives remain available for integrations that need custom control.
 
