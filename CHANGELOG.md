@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1
+
+### Added
+- High-level `createMythos()` / `create_mythos()` APIs for sessions, charges, LLM access and billing metadata
+- Web-standard Node handlers, a Next.js Pages Router adapter, and a FastAPI router
+- Encrypted session cookies with explicit expiry, cookie/header session transport, and launch-token reuse
+- Typed HTTP errors, meter results, and `[mythos]` diagnostic logging
+- 0.0.x → 0.1.1 migration guide
+
 ## 0.1.0
 
 ### Added

@@ -2,6 +2,7 @@
 node_modules/
 dist/
 *.tsbuildinfo
+*.tgz
 .npm
 
 # HonKit local preview build

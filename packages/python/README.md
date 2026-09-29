@@ -2,10 +2,28 @@
 
 Official Mythos SDK for Python — launch token verification, OpenAI-compatible LLM access, usage reporting, and handshake.
 
+## Quick start (0.1.1)
+
+```python
+from mythos_sdk import create_mythos
+
+mythos = create_mythos()
+app.include_router(mythos.router)
+
+session = await mythos.get_session(request)  # None in standalone mode
+await mythos.charge(request, credits=1, reason='page-view')
+client = await mythos.llm(request, api_key=producer_api_key)
+billing = mythos.billing(completion)
+```
+
+Set `MYTHOS_SESSION_SECRET` to a random secret of at least 32 characters (`openssl rand -base64 32`). See the [migration guide](../../MIGRATION.md) for error handling and advanced integrations.
+
+## Advanced (primitives)
+
 ## Install
 
 ```bash
-pip install "mythos-sdk[fastapi,llm]"
+pip install "mythos-sdk[fastapi,llm]==0.1.1"
 ```
 
 ## OpenAI-compatible LLM
