@@ -2,6 +2,8 @@
 
 ## 0.4.0
 
+First published release since **0.1.0 on npm** and **0.0.8 on PyPI**. It also ships everything in the unpublished 0.1.1, 0.2.0 and 0.3.0 entries below, so read them too when upgrading.
+
 ### Added
 - Consumed launch sessions last up to 8 hours; identity tokens refresh silently at the session route and inline for `llm()` calls.
 - Embedded browser clients automatically request a relaunch at hard expiry (`autoRelaunch: false` opts out).
