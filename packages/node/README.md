@@ -2,10 +2,10 @@
 
 Official Mythos SDK for Node.js — launch token verification, OpenAI-compatible LLM access, usage reporting, and handshake.
 
-## Quick start (0.3.0)
+## Quick start
 
 ```bash
-npm install @mythos-work/sdk@0.3.0
+npm install @mythos-work/sdk
 npx @mythos-work/sdk init
 npx @mythos-work/sdk agents   # optional: skills for Claude Code, Cursor, Codex, Devin
 ```
@@ -36,7 +36,7 @@ await confirmCharge({ kind: 'llm', reason: 'chat' });     // LLM: usage-based, n
 For non-bundled pages:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.3.0/dist/mythos-client.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.4/dist/mythos-client.global.js"></script>
 <script>const m = Mythos.initMythos(); m.ready.then(console.log);</script>
 ```
 
@@ -47,7 +47,7 @@ Legacy `sendHandshake` and boolean-returning `confirmCharge` remain available fr
 ## Install
 
 ```bash
-npm install @mythos-work/sdk@0.3.0
+npm install @mythos-work/sdk
 ```
 
 ## OpenAI-compatible LLM

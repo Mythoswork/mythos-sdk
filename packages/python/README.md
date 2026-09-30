@@ -2,10 +2,10 @@
 
 Official Mythos SDK for Python — launch token verification, OpenAI-compatible LLM access, usage reporting, and handshake.
 
-## Quick start (0.3.0)
+## Quick start
 
 ```bash
-pip install "mythos-sdk[fastapi,llm]==0.3.0" "fastapi[standard]"
+pip install "mythos-sdk[fastapi,llm]" "fastapi[standard]"
 npx @mythos-work/sdk init
 npx @mythos-work/sdk agents   # optional: skills for Claude Code, Cursor, Codex, Devin
 uvicorn main:app --env-file .env   # uvicorn does not load .env on its own
@@ -29,7 +29,7 @@ Set `MYTHOS_SESSION_SECRET` to a random secret of at least 32 characters (`opens
 Templates can use the framework-neutral browser client:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.3.0/dist/mythos-client.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.4/dist/mythos-client.global.js"></script>
 <script>
   const m = Mythos.initMythos();
   m.ready.then((state) => console.log(state.status));
@@ -43,7 +43,7 @@ Templates can use the framework-neutral browser client:
 ## Install
 
 ```bash
-pip install "mythos-sdk[fastapi,llm]==0.3.0"
+pip install "mythos-sdk[fastapi,llm]"
 ```
 
 ## OpenAI-compatible LLM
