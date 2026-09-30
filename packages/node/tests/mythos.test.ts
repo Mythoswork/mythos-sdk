@@ -1,5 +1,7 @@
 import { SignJWT, exportJWK, generateKeyPair, type KeyLike } from 'jose';
 
+import { SDK_VERSION } from '../src/version';
+
 let privateKey: KeyLike;
 let publicJwk: Awaited<ReturnType<typeof exportJWK>>;
 
@@ -249,7 +251,7 @@ test('handshake preserves legacy response shape', async () => {
   const handshakeToken = await createTestToken('handshake-1', '5m', 'handshake-check');
   const response = await sdk.handle(new Request(`https://app.test/.well-known/mythos-handshake?lt=${handshakeToken}`));
   expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({ ok: true, sdk_version: '0.4.0' });
+  expect(await response.json()).toMatchObject({ ok: true, sdk_version: SDK_VERSION });
 });
 
 test('listing-registered is unavailable unless a callback is configured', async () => {

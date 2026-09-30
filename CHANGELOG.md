@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1
+
+### Fixed
+- The npm and PyPI package pages (READMEs) and the Express/FastAPI quickstarts still showed `0.3.0` install commands and a `@0.3.0` CDN script, which was never published. Install commands are now unpinned, and the CDN script uses `@0.4` (latest 0.4.x). No code changes.
+
 ## 0.4.0
 
 First published release since **0.1.0 on npm** and **0.0.8 on PyPI**. It also ships everything in the unpublished 0.1.1, 0.2.0 and 0.3.0 entries below, so read them too when upgrading.
