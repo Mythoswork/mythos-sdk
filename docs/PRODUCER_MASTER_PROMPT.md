@@ -2,6 +2,6 @@
 
 This prompt has moved.
 
-**Copy from:** [guides/ai-integration-prompt.md](../docs-site/docs/guides/ai-integration-prompt.md)
+**Copy from:** [AGENTS.md](../AGENTS.md), the canonical integration brief shipped in both packages.
 
 That page contains the full agent brief with corrected API usage, listing callback support, and dynamic listing IDs.

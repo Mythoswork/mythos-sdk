@@ -5,6 +5,7 @@ export {
   MythosError,
   MythosConfigError,
   InvalidLaunchTokenError,
+  ProducerMismatchError,
   InsufficientFundsError,
   SessionNotFoundError,
   InvalidUsageError,

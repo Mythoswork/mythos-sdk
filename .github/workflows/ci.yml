@@ -8,6 +8,8 @@ on:
       - 'packages/node/**'
       - 'packages/python/**'
       - 'AGENTS.md'
+      - 'skills/**'
+      - '.cursor/skills/**'
       - 'scripts/sync-agents.mjs'
       - '.github/workflows/ci.yml'
 

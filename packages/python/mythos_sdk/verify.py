@@ -1,5 +1,4 @@
-from collections.abc import Awaitable, Callable
-from typing import Any
+from collections.abc import Awaitable, Callable, Mapping
 
 from jose import jwt, JWTError
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError
@@ -7,6 +6,7 @@ from jose.exceptions import ExpiredSignatureError, JWTClaimsError
 from .config import load_config
 from .errors import InvalidLaunchTokenError
 from .jwks_cache import get_jwks, get_jwks_with_kid_fallback
+from .producer_key import assert_producer_binding, read_producer_key, warn_missing_producer_key_once
 from .types import MythosSession
 
 ALGORITHMS = ["ES256"]
@@ -17,14 +17,14 @@ _DECODE_OPTIONS = {"verify_aud": False}
 MYTHOS_ISSUER = "mythos"
 
 
-def _require_string_claim(payload: dict[str, Any], claim: str) -> str:
+def _require_string_claim(payload: Mapping[str, object], claim: str) -> str:
     value = payload.get(claim)
     if not isinstance(value, str) or not value:
         raise InvalidLaunchTokenError(f"Missing {claim} claim")
     return value
 
 
-def _validate_audience(payload: dict[str, Any], listing_ids: list[str]) -> None:
+def _validate_audience(payload: Mapping[str, object], listing_ids: list[str]) -> None:
     aud = payload.get("aud")
     if aud is None:
         raise InvalidLaunchTokenError("Missing audience claim")
@@ -33,7 +33,7 @@ def _validate_audience(payload: dict[str, Any], listing_ids: list[str]) -> None:
         raise InvalidLaunchTokenError("Invalid audience")
 
 
-def _build_session(payload: dict[str, Any], listing_ids: list[str]) -> MythosSession:
+def _build_session(payload: Mapping[str, object], listing_ids: list[str]) -> MythosSession:
     _validate_audience(payload, listing_ids)
 
     listing_id = _require_string_claim(payload, "listingId")
@@ -90,4 +90,7 @@ async def verify_launch_token(
         )
     all_listing_ids = config.listing_ids + dynamic_ids
     _validate_audience(payload, all_listing_ids)
+    assert_producer_binding(payload)
+    if not read_producer_key() and payload.get("listingId") not in config.listing_ids:
+        warn_missing_producer_key_once()
     return _build_session(payload, all_listing_ids)

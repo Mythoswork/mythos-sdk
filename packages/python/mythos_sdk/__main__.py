@@ -8,6 +8,8 @@ from urllib.parse import quote, urlparse
 
 import httpx
 
+from .constants.producer_key import MISSING_PRODUCER_KEY_WARNING, PRODUCER_KEY_PATTERN
+
 
 USAGE = "Usage: python -m mythos_sdk doctor"
 DEFAULT_API_URL = "https://api.mythos.work"
@@ -37,7 +39,7 @@ def _load_env(cwd: Path, process_env: Mapping[str, str]) -> dict[str, str]:
     return env
 
 
-REQUIRED_ENV = ("MYTHOS_SESSION_SECRET", "MYTHOS_LISTING_ID", "MYTHOS_LISTING_IDS")
+REQUIRED_ENV = ("MYTHOS_SESSION_SECRET", "MYTHOS_LISTING_ID", "MYTHOS_LISTING_IDS", "MYTHOS_KEY")
 
 
 def _only_in_env_file(cwd: Path, process_env: Mapping[str, str]) -> bool:
@@ -83,6 +85,15 @@ def doctor(
     env = _load_env(root, source_env)
     passed = 0
     failed = 0
+    producer_key = env.get("MYTHOS_KEY", "").strip()
+    if not producer_key:
+        write(f"⚠ {MISSING_PRODUCER_KEY_WARNING}")
+    elif PRODUCER_KEY_PATTERN.fullmatch(producer_key):
+        write("✔ MYTHOS_KEY is set")
+        passed += 1
+    else:
+        write("✖ MYTHOS_KEY is malformed")
+        failed += 1
 
     secret = env.get("MYTHOS_SESSION_SECRET", "")
     if secret:

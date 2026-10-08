@@ -5,6 +5,7 @@ jest.mock('openai', () => {
 test('LLM fallback does not load the optional OpenAI peer without a session', async () => {
   process.env.MYTHOS_SESSION_SECRET = 'x'.repeat(32);
   process.env.MYTHOS_LISTING_ID = 'listing-abc';
+  delete process.env.MYTHOS_KEY;
 
   const { createMythos } = await import('../src/index');
   const fallback = { provider: 'standalone' };

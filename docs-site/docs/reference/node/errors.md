@@ -67,6 +67,10 @@ class InvalidLaunchTokenError extends MythosError
 
 Thrown by `verifyLaunchToken` for a structurally invalid token — missing required claims, missing/invalid `aud`, or a `listingId` claim that doesn't match a configured listing ID. If you use the `requireLaunchToken` middleware instead of calling `verifyLaunchToken` directly, this is caught internally (alongside JOSE verification errors) and mapped to a `401` response.
 
+## ProducerMismatchError (0.5.0)
+
+Extends `InvalidLaunchTokenError`, with code `PRODUCER_MISMATCH`, HTTP 401 and message `This app is bound to a different Mythos Producer. Check MYTHOS_KEY.` Raised when a configured key does not match the launch, handshake or callback `pkh`. Legacy middleware keeps its invalid-token 401; handshake and callback return `{"error":"Producer mismatch"}`, without invoking the registration callback. See [exact response bodies](../errors.md).
+
 ## InvalidUsageError
 
 ```typescript

@@ -40,14 +40,26 @@ function readDoc(id) {
   return { id, title, body, description: description.slice(0, 160), url };
 }
 
+// Concatenated docs have no source directory: make Markdown doc links usable
+// from llms-full.txt, respecting each target's frontmatter slug.
+function resolveDocLinks(body, id) {
+  return body.replace(/\]\(([^\s)]+\.mdx?(?:#[^\s)]*)?)\)/g, (_match, target) => {
+    if (/^https?:/.test(target)) return `](${target})`;
+    const resolved = new URL(target, `https://docs.mythos.work/${id}`);
+    const targetId = resolved.pathname.replace(/^\//, '').replace(/\.mdx?$/, '');
+    const doc = readDoc(targetId);
+    return `](${doc.url}${resolved.hash})`;
+  });
+}
+
 const docs = flatten(docsSidebar).map(readDoc);
 const index = `${header}\n\n## Docs\n${docs
   .map(({ title, description, url }) => `- [${title}](${url}): ${description}`)
   .join('\n')}\n\n## Full text\n- [llms-full.txt](https://docs.mythos.work/llms-full.txt)\n`;
 let full = header;
 
-for (const { title, body, url } of docs) {
-  full += `\n\n---\n# ${title}\nSource: ${url}\n\n${body}`;
+for (const { id, title, body, url } of docs) {
+  full += `\n\n---\n# ${title}\nSource: ${url}\n\n${resolveDocLinks(body, id)}`;
 }
 
 const agentsPath = join(docsSiteDir, '..', 'AGENTS.md');

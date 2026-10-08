@@ -5,12 +5,14 @@ from fastapi.responses import JSONResponse
 from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JOSEError, JWTError
 
+from .errors import ProducerMismatchError
 from .jwks_cache import get_jwks, get_jwks_with_kid_fallback
-from .logger import log_error
+from .logger import log_error, log_warn
+from .producer_key import assert_producer_binding, read_producer_key, warn_missing_producer_key_once
 from .version import SDK_VERSION
 
 _DEFAULT_API_URL = "https://api.mythos.work"
-# Handshake tokens are validated by signature and purpose only.
+# Handshake tokens are validated by signature, purpose, and Producer binding.
 _DECODE_OPTIONS = {"verify_aud": False, "verify_iss": False}
 
 
@@ -27,6 +29,9 @@ async def _validate_handshake_token(token: str) -> None:
 
     if payload.get("purpose") != "handshake-check":
         raise JWTError("Token purpose is not handshake-check")
+    assert_producer_binding(payload)
+    if not read_producer_key():
+        warn_missing_producer_key_once()
 
 
 def create_handshake_router() -> APIRouter:
@@ -39,6 +44,9 @@ def create_handshake_router() -> APIRouter:
             return JSONResponse({"error": "Missing launch token"}, status_code=401)
         try:
             await _validate_handshake_token(token)
+        except ProducerMismatchError as err:
+            log_warn("handshake: producer mismatch", {"listingId": err.listing_id})
+            return JSONResponse({"error": "Producer mismatch"}, status_code=401)
         except JOSEError:
             return JSONResponse({"error": "Invalid launch token"}, status_code=401)
         except Exception as err:

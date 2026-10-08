@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0
+
+### Added
+- Producer binding via `MYTHOS_KEY`: launch, handshake and listing callback tokens must carry the matching `pkh` when a key is configured.
+- Node and Python export `ProducerMismatchError` (`PRODUCER_MISMATCH`, HTTP 401), a subclass of `InvalidLaunchTokenError`.
+- Startup rejects malformed keys; doctor reports set, malformed and missing keys; init includes a dashboard key placeholder.
+
+### Migration
+- Missing keys remain a soft warning in 0.5.0 for auto-registration, dynamic launches, handshake and callback validation (once per process). Static `MYTHOS_LISTING_ID(S)` launch validation remains silent without a key.
+- `MYTHOS_KEY` will be required in 0.6.0. Copy it from Dashboard → Settings → Mythos key and redeploy. See [MIGRATION.md](MIGRATION.md).
+- Deploy backend P1 first; then publish SDK 0.5.0 to npm and PyPI, then update apps and frontend.
+
 ## 0.4.1
 
 ### Fixed

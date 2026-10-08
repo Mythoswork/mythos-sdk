@@ -17,6 +17,7 @@ from .billing_metadata import MythosLlmBillingMetadata, get_llm_billing_metadata
 from .config import load_config
 from .errors import (
     InvalidLaunchTokenError,
+    ProducerMismatchError,
     LaunchTokenConsumedError,
     MythosConfigError,
     MythosError,
@@ -26,6 +27,7 @@ from .errors import (
     SessionRequiredError,
 )
 from .logger import log_debug, log_error, log_warn
+from .producer_key import assert_producer_key_format, read_producer_key, warn_missing_producer_key_once
 from .session import open_session, seal_session
 from .types import MythosSession
 from .version import SDK_VERSION
@@ -200,6 +202,9 @@ class Mythos:
         except Exception as err:
             if existing and self._unverified_jti(launch_token) == existing[0].sessionJti:
                 return await self._existing_session_response(*existing)
+            if isinstance(err, ProducerMismatchError):
+                log_warn("session: producer mismatch", {"listingId": err.listing_id})
+                return 401, {"success": False, "error": str(err), "code": err.code}, None, None
             if isinstance(err, MythosConfigError):
                 log_error("session: invalid SDK configuration", err)
                 return 500, {"success": False, "error": str(err), "code": "CONFIG_ERROR"}, None, None
@@ -341,6 +346,9 @@ class Mythos:
                 return JSONResponse({"error": "Missing launch token"}, status_code=401)
             try:
                 await _validate_handshake_token(token)
+            except ProducerMismatchError as err:
+                log_warn("handshake: producer mismatch", {"listingId": err.listing_id})
+                return JSONResponse({"error": "Producer mismatch"}, status_code=401)
             except JOSEError:
                 return JSONResponse({"error": "Invalid launch token"}, status_code=401)
             except Exception as err:
@@ -356,6 +364,9 @@ class Mythos:
                 try:
                     listing_id = await _validate_listing_callback_token(token)
                     await self._on_listing_registered(listing_id)
+                except ProducerMismatchError as err:
+                    log_warn("listing-callback: producer mismatch", {"listingId": err.listing_id})
+                    return JSONResponse({"error": "Producer mismatch"}, status_code=401)
                 except JOSEError:
                     return JSONResponse({"error": "Invalid listing callback token"}, status_code=401)
                 except Exception as err:
@@ -371,6 +382,7 @@ def create_mythos(
     resolve_listing_ids: Callable[[], Awaitable[list[str]]] | None = None,
     on_listing_registered: Callable[[str], Awaitable[None]] | None = None,
 ) -> Mythos:
+    assert_producer_key_format()
     secret = os.environ.get("MYTHOS_SESSION_SECRET")
     if not secret:
         raise MythosConfigError("MYTHOS_SESSION_SECRET is not set. Generate one with: openssl rand -base64 32")
@@ -389,4 +401,6 @@ def create_mythos(
     if not config.listing_ids and resolve_listing_ids is None:
         raise MythosConfigError("MYTHOS_LISTING_ID (or MYTHOS_LISTING_IDS) is not set")
     log_debug(f"create_mythos: config ok; api_url={config.api_url}; listing_ids={config.listing_ids}")
+    if not read_producer_key() and (resolve_listing_ids is not None or on_listing_registered is not None):
+        warn_missing_producer_key_once()
     return Mythos(resolve_listing_ids, on_listing_registered)

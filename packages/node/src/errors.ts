@@ -17,9 +17,18 @@ export class MythosConfigError extends MythosError {
 }
 
 export class InvalidLaunchTokenError extends MythosError {
-  constructor(message = 'Invalid launch token') {
-    super(message, 'INVALID_LAUNCH_TOKEN', 401);
+  constructor(message = 'Invalid launch token', code = 'INVALID_LAUNCH_TOKEN') {
+    super(message, code, 401);
     this.name = 'InvalidLaunchTokenError';
+  }
+}
+
+export class ProducerMismatchError extends InvalidLaunchTokenError {
+  listingId?: string;
+
+  constructor() {
+    super('This app is bound to a different Mythos Producer. Check MYTHOS_KEY.', 'PRODUCER_MISMATCH');
+    this.name = 'ProducerMismatchError';
   }
 }
 

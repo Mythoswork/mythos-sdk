@@ -14,6 +14,7 @@ def set_env(monkeypatch):
     monkeypatch.setenv("MYTHOS_LISTING_ID", "listing-abc")
     monkeypatch.setenv("MYTHOS_API_URL", "https://api.mythos.work")
     monkeypatch.delenv("MYTHOS_LISTING_IDS", raising=False)
+    monkeypatch.delenv("MYTHOS_KEY", raising=False)
 
 
 @pytest.fixture(scope="session")

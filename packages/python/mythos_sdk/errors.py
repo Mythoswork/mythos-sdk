@@ -1,3 +1,6 @@
+from .constants.producer_key import PRODUCER_MISMATCH_MESSAGE
+
+
 class MythosError(Exception):
     def __init__(self, message: str, code: str, http_status: int = 500) -> None:
         super().__init__(message)
@@ -11,8 +14,15 @@ class MythosConfigError(MythosError):
 
 
 class InvalidLaunchTokenError(MythosError):
-    def __init__(self, message: str = "Invalid launch token") -> None:
-        super().__init__(message, "INVALID_LAUNCH_TOKEN", 401)
+    def __init__(self, message: str = "Invalid launch token", code: str = "INVALID_LAUNCH_TOKEN") -> None:
+        super().__init__(message, code, 401)
+
+
+class ProducerMismatchError(InvalidLaunchTokenError):
+    listing_id: str | None = None
+
+    def __init__(self) -> None:
+        super().__init__(PRODUCER_MISMATCH_MESSAGE, "PRODUCER_MISMATCH")
 
 
 class InsufficientFundsError(MythosError):

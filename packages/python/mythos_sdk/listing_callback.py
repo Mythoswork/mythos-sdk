@@ -6,8 +6,10 @@ from fastapi.responses import JSONResponse
 from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JOSEError, JWTClaimsError, JWTError
 
+from .errors import ProducerMismatchError
 from .jwks_cache import get_jwks, get_jwks_with_kid_fallback
-from .logger import log_error
+from .logger import log_error, log_warn
+from .producer_key import assert_producer_binding, read_producer_key, warn_missing_producer_key_once
 
 _DEFAULT_API_URL = "https://api.mythos.work"
 _MYTHOS_ISSUER = "mythos"
@@ -32,6 +34,9 @@ async def _validate_listing_callback_token(token: str) -> str:
     if payload.get("purpose") != "listing_registered":
         raise JWTClaimsError("Token purpose is not listing_registered")
 
+    assert_producer_binding(payload)
+    if not read_producer_key():
+        warn_missing_producer_key_once()
     return payload["listingId"]
 
 
@@ -45,6 +50,9 @@ def create_listing_callback_handler(
         try:
             listing_id = await _validate_listing_callback_token(token)
             await on_registered(listing_id)
+        except ProducerMismatchError as err:
+            log_warn("listing-callback: producer mismatch", {"listingId": err.listing_id})
+            return JSONResponse({"error": "Producer mismatch"}, status_code=401)
         except JOSEError:
             return JSONResponse({"error": "Invalid listing callback token"}, status_code=401)
         except Exception as err:

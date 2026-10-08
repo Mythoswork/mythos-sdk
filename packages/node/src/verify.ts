@@ -3,6 +3,7 @@ import { getKeySet, getKeySetWithKidFallback } from './jwks-cache';
 import { loadConfig } from './config';
 import { InvalidLaunchTokenError, MythosConfigError } from './errors';
 import type { MythosSession } from './types';
+import { assertProducerBinding, readProducerKey, warnMissingProducerKeyOnce } from './producer-key';
 
 // Matches backend's HANDSHAKE_ISS_CLAIM constant — the platform issuer is a
 // fixed identifier, not the API URL (which varies by environment).
@@ -74,6 +75,8 @@ export async function verifyLaunchToken(
   }
   const allListingIds = [...listingIds, ...dynamicIds];
   validateAudience(payload, allListingIds);
+  assertProducerBinding(payload);
+  if (!readProducerKey() && !listingIds.includes(payload.listingId as string)) warnMissingProducerKeyOnce();
 
   return buildSession(payload, allListingIds);
 }

@@ -6,6 +6,8 @@ import { getKeySet, getKeySetWithKidFallback } from './jwks-cache';
 import { extractLaunchToken } from './query';
 import { SDK_VERSION } from './version';
 import { mythosLog } from './logger';
+import { ProducerMismatchError } from './errors';
+import { assertProducerBinding, readProducerKey, warnMissingProducerKeyOnce } from './producer-key';
 
 const DEFAULT_API_URL = 'https://api.mythos.work';
 const requireFromSdk = createRequire(__filename);
@@ -31,6 +33,8 @@ export async function validateHandshakeToken(token: string): Promise<void> {
       'check',
     );
   }
+  assertProducerBinding(payload);
+  if (!readProducerKey()) warnMissingProducerKeyOnce();
 }
 
 export function handshakeRoute(): Router {
@@ -46,7 +50,10 @@ export function handshakeRoute(): Router {
     try {
       await validateHandshakeToken(token);
     } catch (err) {
-      if (err instanceof errors.JOSEError) {
+      if (err instanceof ProducerMismatchError) {
+        mythosLog.warn('handshake: producer mismatch', { listingId: err.listingId });
+        res.status(401).json({ error: 'Producer mismatch' });
+      } else if (err instanceof errors.JOSEError) {
         res.status(401).json({ error: 'Invalid launch token' });
       } else {
         mythosLog.error('handshake: validation failed', err);

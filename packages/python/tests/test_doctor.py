@@ -2,8 +2,10 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import httpx
+import pytest
 
 from mythos_sdk.__main__ import doctor, main
+from mythos_sdk.constants.producer_key import MISSING_PRODUCER_KEY_WARNING
 
 
 API_URL = "https://api.mythos.work"
@@ -218,3 +220,22 @@ def test_doctor_warns_when_config_is_only_in_env_file(tmp_path: Path):
 
     assert "found only in .env" in file_only
     assert "found only in .env" not in exported
+
+
+@pytest.mark.parametrize("key,expected,result", [
+    ("mk_" + "a" * 32, "✔ MYTHOS_KEY is set", 0),
+    ("foo", "✖ MYTHOS_KEY is malformed", 1),
+    (None, "⚠ " + MISSING_PRODUCER_KEY_WARNING, 0),
+])
+def test_doctor_producer_key_states(tmp_path: Path, key: str | None, expected: str, result: int):
+    env = {**VALID_ENV, **({"MYTHOS_KEY": key} if key is not None else {})}
+    status, output = run_doctor(tmp_path, env, [
+        response(200, {"keys": [{"kid": "key-1"}]}),
+        response(200, {"data": {"title": "Calc"}}),
+    ])
+    assert status == result
+    assert expected in output
+    if key is not None:
+        assert key not in output
+    if key is None:
+        assert output.endswith("6 passed, 0 failed")

@@ -22,6 +22,7 @@ Doctor reads process environment over `.env.local`, then `.env`, and performs th
 | Check | Failure or warning fix |
 |---|---|
 | `MYTHOS_SESSION_SECRET` is set | `Set MYTHOS_SESSION_SECRET (≥32 chars): openssl rand -base64 32` |
+| `MYTHOS_KEY` format and presence | `✔ MYTHOS_KEY is set`, `✖ MYTHOS_KEY is malformed`, or a `⚠` missing-key warning. Copy from Dashboard → Settings → Mythos key. Missing is not a hard failure in 0.5.0; required in 0.6.0. |
 | Express/FastAPI config is not only in `.env` | Warning: `MYTHOS_* found only in .env — make sure your start command loads it (node --env-file=.env … / uvicorn --env-file .env)`. Next.js loads `.env` itself, so it never gets this warning. |
 | Secret length is at least 32 | `MYTHOS_SESSION_SECRET is N chars; regenerate with openssl rand -base64 32 (and update your host's env, e.g. Vercel)` |
 | `MYTHOS_LISTING_ID` or `MYTHOS_LISTING_IDS` has an ID | Warning: `MYTHOS_LISTING_ID not set — fine only if your code passes resolveListingIds to createMythos()` |
@@ -32,7 +33,7 @@ Doctor reads process environment over `.env.local`, then `.env`, and performs th
 | Next.js well-known rewrites exist | `Add the /.well-known rewrites to next.config (see https://docs.mythos.work/getting-started/quickstart-nextjs-app)` |
 | Node SDK version is at least 0.2.0 | `Upgrade: npm i @mythos-work/sdk@latest` |
 
-Python doctor performs the first six checks. A listing ID warning does not fail the command because dynamic listing resolution may provide IDs at runtime.
+Python doctor checks server environment, key format, API reachability and listing publication. A listing ID warning does not fail the command because dynamic listing resolution may provide IDs at runtime. A missing-key warning is also soft in 0.5.0. See [configuration](./configuration.md) for the exact warning and silent static-listing launch behavior.
 
 ## `agents`
 

@@ -16,10 +16,17 @@ npx @mythos-work/sdk init
 # .env
 MYTHOS_LISTING_ID=your-listing-id
 MYTHOS_SESSION_SECRET=                     # openssl rand -base64 32  (≥ 32 chars)
+MYTHOS_KEY=                                # Mythos dashboard → Settings → Mythos key
 ```
 uvicorn does not read `.env` on its own — step 5 starts it with `--env-file`. In production, set these in your host's environment instead.
 
 ## 3. Server
+Missing `MYTHOS_KEY` is soft in 0.5.0; static listing launches remain silent, while dynamic registration, handshake and callbacks warn once per process. It will be required in 0.6.0. Update deployment env after key regeneration. See the [binding matrix](../reference/configuration.md).
+
+| Troubleshooting code | Fix |
+|---|---|
+| `PRODUCER_MISMATCH` | The `MYTHOS_KEY` in this deployment belongs to a different Producer, or was regenerated. Copy the current key from the dashboard and redeploy. |
+
 `init` created `mythos_setup.py` (`mythos = create_mythos()`); import it in `main.py`:
 ```python
 from fastapi import FastAPI, Request
@@ -44,7 +51,7 @@ Defining `mythos = create_mythos()` directly in `main.py` is equivalent.
 ## 4. Page
 ```html
 <button onclick="calculate()">Calculate (1 credit)</button>
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.4/dist/mythos-client.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.5.0/dist/mythos-client.global.js"></script>
 <script>
   const m = Mythos.initMythos();
   m.ready.then((s) => { document.body.dataset.mythos = s.status; });

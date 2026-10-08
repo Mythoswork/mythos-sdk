@@ -8,8 +8,11 @@ def log_error(msg: str, exc: BaseException | None = None) -> None:
     _log.error("[mythos] %s", msg, exc_info=exc)
 
 
-def log_warn(msg: str) -> None:
-    _log.warning("[mythos] %s", msg)
+def log_warn(msg: str, context: dict[str, object] | None = None) -> None:
+    if context is None:
+        _log.warning("[mythos] %s", msg)
+        return
+    _log.warning("[mythos] %s %s", msg, context)
 
 
 def log_debug(msg: str) -> None:

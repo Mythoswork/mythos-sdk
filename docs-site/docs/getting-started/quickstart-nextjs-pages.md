@@ -16,9 +16,16 @@ npx @mythos-work/sdk init
 # .env.local
 MYTHOS_LISTING_ID=your-listing-id
 MYTHOS_SESSION_SECRET=                     # openssl rand -base64 32  (≥ 32 chars)
+MYTHOS_KEY=                                # Mythos dashboard → Settings → Mythos key
 ```
 
 ## 3. Server: one file, one route
+Missing `MYTHOS_KEY` is soft in 0.5.0; static listing launches remain silent, while dynamic registration, handshake and callbacks warn once per process. It will be required in 0.6.0. Update deployment env after key regeneration. See the [binding matrix](../reference/configuration.md).
+
+| Troubleshooting code | Fix |
+|---|---|
+| `PRODUCER_MISMATCH` | The `MYTHOS_KEY` in this deployment belongs to a different Producer, or was regenerated. Copy the current key from the dashboard and redeploy. |
+
 ```ts
 // lib/mythos.ts
 import { createMythos } from '@mythos-work/sdk';
