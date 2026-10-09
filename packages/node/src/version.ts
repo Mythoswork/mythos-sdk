@@ -1,5 +1,2 @@
-import { createRequire } from 'module';
-
-const nodeRequire = createRequire(__filename);
-
-export const SDK_VERSION: string = nodeRequire('../package.json').version;
+// Browser-safe; release tests keep this aligned with package metadata.
+export const SDK_VERSION = '0.5.1';

@@ -4,7 +4,7 @@ from jose import jwt, JWTError
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError
 
 from .config import load_config
-from .errors import InvalidLaunchTokenError
+from .errors import InvalidLaunchTokenError, ListingNotRegisteredError, MythosConfigError
 from .jwks_cache import get_jwks, get_jwks_with_kid_fallback
 from .producer_key import assert_producer_binding, read_producer_key, warn_missing_producer_key_once
 from .types import MythosSession
@@ -30,7 +30,7 @@ def _validate_audience(payload: Mapping[str, object], listing_ids: list[str]) ->
         raise InvalidLaunchTokenError("Missing audience claim")
     aud_values = aud if isinstance(aud, list) else [aud]
     if not any(a in listing_ids for a in aud_values):
-        raise InvalidLaunchTokenError("Invalid audience")
+        raise ListingNotRegisteredError()
 
 
 def _build_session(payload: Mapping[str, object], listing_ids: list[str]) -> MythosSession:
@@ -60,6 +60,7 @@ async def verify_launch_token(
     """
     config = load_config()
 
+    jwt.get_unverified_header(token)
     jwks = await get_jwks(config.api_url)
     try:
         payload = jwt.decode(
@@ -85,7 +86,7 @@ async def verify_launch_token(
 
     dynamic_ids = await resolve_listing_ids() if resolve_listing_ids else []
     if not config.listing_ids and not dynamic_ids:
-        raise RuntimeError(
+        raise MythosConfigError(
             "MYTHOS_LISTING_ID or MYTHOS_LISTING_IDS env var is required, or pass resolve_listing_ids"
         )
     all_listing_ids = config.listing_ids + dynamic_ids

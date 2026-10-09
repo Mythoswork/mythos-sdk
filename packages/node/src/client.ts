@@ -7,6 +7,10 @@
 // exported so both sides share one source of truth instead of independently hardcoding
 // the same literals and risking drift.
 
+import { SDK_VERSION } from './version';
+
+export { renderTestFailureOverlay } from './test-failure-overlay';
+
 export const MYTHOS_HANDSHAKE_MESSAGE_TYPE = 'mythos:handshake' as const;
 export const MYTHOS_CONFIRM_CHARGE_REQUEST_TYPE = 'mythos:confirm-charge' as const;
 export const MYTHOS_CONFIRM_CHARGE_RESPONSE_TYPE = 'mythos:confirm-charge-response' as const;
@@ -50,7 +54,7 @@ export function sendHandshake(expectedOrigin?: string): void {
     console.warn('[mythos-client] not embedded in a parent frame — skipping handshake.');
     return;
   }
-  window.parent.postMessage({ type: MYTHOS_HANDSHAKE_MESSAGE_TYPE }, expectedOrigin ?? '*');
+  window.parent.postMessage({ type: MYTHOS_HANDSHAKE_MESSAGE_TYPE, sdk_version: SDK_VERSION }, expectedOrigin ?? '*');
 }
 
 /**

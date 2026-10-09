@@ -3,13 +3,17 @@ import { decodeJwt, errors } from 'jose';
 import { consumeSession, meterSession, readErrorCode, readIdentityFields, readSessionExpiresAt, refreshSession, type MeterResult } from './api-client';
 import { getLlmBillingMetadata } from './billing-metadata';
 import { loadConfig } from './config';
+import { readTestJti, reportLaunchFailure, reportSessionFailure } from './diagnostics';
+import { isDiagnosticCode, type DiagnosticCode } from './constants/diagnostics.constants';
 import {
   InvalidLaunchTokenError,
+  ListingNotRegisteredError,
   ProducerMismatchError,
   LaunchTokenConsumedError,
   MythosConfigError,
   MythosError,
   MythosUpstreamError,
+  MythosUnreachableError,
   SessionExpiredError,
   SessionNotFoundError,
   SessionRequiredError,
@@ -118,6 +122,12 @@ function errorResponse(err: unknown): Response {
   }
   mythosLog.error('request: unexpected error', err);
   return json(500, { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' });
+}
+
+function launchError(token: string, step: 'verify_launch' | 'consume', status: number,
+  error: string, code: DiagnosticCode): Response {
+  reportLaunchFailure(token, code, step);
+  return json(status, { success: false, error, code });
 }
 
 function buildSessionCookie(token: string, expiresAt: string, request: Request): string {
@@ -236,90 +246,75 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
     return json(200, { ok: true });
   }
 
-  async function handleSession(request: Request): Promise<Response> {
-    const url = new URL(request.url);
-    const token = extractLaunchToken(url.searchParams.get('lt'));
-    const existing = readStoredSession(request);
-    const sessionResponse = (
-      session: StoredSession,
-      cookie?: string,
-      sessionToken = sealSession(session),
-    ): Response => {
-      const refreshAt = session.llmIdentityToken && session.llmIdentityExpiresAt
-        ? new Date(Date.parse(session.llmIdentityExpiresAt) - REFRESH_LEAD_SECONDS * 1000).toISOString() : null;
-      const response = json(200, { success: true, data: {
-        session: publicOf(session), sessionToken, expiresAt: session.expiresAt, refreshAt,
-      } });
-      if (cookie) response.headers.append('set-cookie', cookie);
-      return response;
-    };
+  function sessionResponse(session: StoredSession, cookie?: string, sessionToken = sealSession(session)): Response {
+    const refreshAt = session.llmIdentityToken && session.llmIdentityExpiresAt
+      ? new Date(Date.parse(session.llmIdentityExpiresAt) - REFRESH_LEAD_SECONDS * 1000).toISOString() : null;
+    const response = json(200, { success: true, data: {
+      session: publicOf(session), sessionToken, expiresAt: session.expiresAt, refreshAt,
+    } });
+    if (cookie) response.headers.append('set-cookie', cookie);
+    return response;
+  }
 
-    const existingResponse = async (session: StoredSession): Promise<Response> => {
-      const outcome = await refreshIfDue(session);
-      if (outcome.kind === 'expired') {
-        const response = json(outcome.error.httpStatus, {
-          success: false, error: outcome.error.message, code: outcome.error.code,
-        });
-        response.headers.append('set-cookie', buildSessionCookie('', new Date(0).toISOString(), request));
-        return response;
-      }
-      if (outcome.kind === 'refreshed') {
-        const sealed = sealSession(outcome.session);
-        return sessionResponse(outcome.session, buildSessionCookie(sealed, outcome.session.expiresAt, request), sealed);
-      }
-      return sessionResponse(session);
-    };
-
-    if (!token) {
-      return existing ? existingResponse(existing) : json(200, { success: true, data: null });
-    }
-
-    let incoming: MythosSession;
-    try {
-      incoming = await verifyLaunchToken(token, { resolveListingIds: options.resolveListingIds });
-    } catch (err) {
-      if (existing && unverifiedJti(token) === existing.sessionJti) return existingResponse(existing);
-      if (err instanceof ProducerMismatchError) {
-        mythosLog.warn('session: producer mismatch', { listingId: err.listingId });
-        return json(401, { success: false, error: err.message, code: err.code });
-      }
-      if (err instanceof MythosConfigError) {
-        mythosLog.error('session: invalid SDK configuration', err);
-        return json(500, { success: false, error: err.message, code: 'CONFIG_ERROR' });
-      }
-      if (err instanceof InvalidLaunchTokenError || err instanceof errors.JOSEError) {
-        return json(401, { success: false, error: 'Invalid launch token', code: 'INVALID_LAUNCH_TOKEN' });
-      }
-      mythosLog.error('session: could not verify launch token (JWKS/network)', err);
-      return json(503, {
-        success: false,
-        error: 'Could not reach Mythos to verify the launch',
-        code: 'MYTHOS_UNREACHABLE',
+  async function existingResponse(session: StoredSession, request: Request): Promise<Response> {
+    const outcome = await refreshIfDue(session);
+    if (outcome.kind === 'expired') {
+      const response = json(outcome.error.httpStatus, {
+        success: false, error: outcome.error.message, code: outcome.error.code,
       });
+      response.headers.append('set-cookie', buildSessionCookie('', new Date(0).toISOString(), request));
+      return response;
     }
+    if (outcome.kind === 'refreshed') {
+      const sealed = sealSession(outcome.session);
+      return sessionResponse(outcome.session, buildSessionCookie(sealed, outcome.session.expiresAt, request), sealed);
+    }
+    return sessionResponse(session);
+  }
 
-    if (existing && existing.sessionJti === incoming.sessionJti) return existingResponse(existing);
+  function verificationFailure(token: string, err: unknown): Response {
+    if (err instanceof ProducerMismatchError) {
+      mythosLog.warn('session: producer mismatch', { listingId: err.listingId });
+      return launchError(token, 'verify_launch', 401, err.message, 'PRODUCER_MISMATCH');
+    }
+    if (err instanceof MythosConfigError) {
+      mythosLog.error('session: invalid SDK configuration');
+      return launchError(token, 'verify_launch', 500, err.message, 'CONFIG_ERROR');
+    }
+    if (err instanceof ListingNotRegisteredError) {
+      return launchError(token, 'verify_launch', 401, 'Invalid launch token', 'LISTING_NOT_REGISTERED');
+    }
+    if (err instanceof InvalidLaunchTokenError || err instanceof errors.JOSEError) {
+      return launchError(token, 'verify_launch', 401, 'Invalid launch token', 'INVALID_LAUNCH_TOKEN');
+    }
+    mythosLog.error('session: could not verify launch token (JWKS/network)',
+      new MythosUnreachableError('Could not reach Mythos to verify the launch'));
+    return launchError(token, 'verify_launch', 503, 'Could not reach Mythos to verify the launch', 'MYTHOS_UNREACHABLE');
+  }
 
+  async function consumeLaunch(token: string, incoming: MythosSession, request: Request): Promise<Response> {
     let consumeResponse: Response;
     try {
       consumeResponse = await consumeSession(incoming.sessionJti);
-    } catch (err) {
-      mythosLog.error('session: consume request failed', err);
-      return json(503, { success: false, error: 'Could not reach Mythos to consume the session', code: 'MYTHOS_UNREACHABLE' });
+    } catch {
+      mythosLog.error('session: consume request failed');
+      return launchError(token, 'consume', 503, 'Could not reach Mythos to consume the session', 'MYTHOS_UNREACHABLE');
     }
     if (consumeResponse.status === 409) {
       const consumed = new LaunchTokenConsumedError();
-      return json(consumed.httpStatus, { success: false, error: consumed.message, code: consumed.code });
+      return launchError(token, 'consume', consumed.httpStatus, consumed.message, 'TOKEN_ALREADY_CONSUMED');
     }
     if (!consumeResponse.ok) {
       const code = await readErrorCode(consumeResponse);
-      mythosLog.error(`session: consume returned ${consumeResponse.status}`, { code, jti: incoming.sessionJti });
+      mythosLog.error(`session: consume returned ${consumeResponse.status}`, {
+        code: code && isDiagnosticCode(code) ? code : 'UPSTREAM_ERROR',
+      });
       if (code === 'SESSION_EXPIRED') {
         const expired = new SessionExpiredError('Launch expired — relaunch from Mythos');
-        return json(expired.httpStatus, { success: false, error: expired.message, code: expired.code });
+        return launchError(token, 'consume', expired.httpStatus, expired.message, 'SESSION_EXPIRED');
       }
       const upstream = new MythosUpstreamError('Mythos consume failed', consumeResponse.status, code);
-      return json(upstream.httpStatus, { success: false, error: upstream.message, code: upstream.code });
+      return launchError(token, 'consume', upstream.httpStatus, upstream.message, 'UPSTREAM_ERROR');
     }
 
     let consumeBody: unknown = null;
@@ -332,12 +327,28 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
     if (!identity) mythosLog.warn('session: consume returned no LLM identity token; mythos.llm() may use fallback');
     const stored: StoredSession = {
       ...incoming,
+      isTest: readTestJti(token) !== undefined,
       ...(identity ?? {}),
       expiresAt: readSessionExpiresAt(consumeBody) ?? identity?.llmIdentityExpiresAt
         ?? new Date(Date.now() + DEFAULT_SESSION_TTL_SECONDS * 1000).toISOString(),
     };
     const sealed = sealSession(stored);
     return sessionResponse(stored, buildSessionCookie(sealed, stored.expiresAt, request), sealed);
+  }
+
+  async function handleSession(request: Request): Promise<Response> {
+    const token = extractLaunchToken(new URL(request.url).searchParams.get('lt'));
+    const existing = readStoredSession(request);
+    if (!token) return existing ? existingResponse(existing, request) : json(200, { success: true, data: null });
+    let incoming: MythosSession;
+    try {
+      incoming = await verifyLaunchToken(token, { resolveListingIds: options.resolveListingIds });
+    } catch (err) {
+      if (existing && unverifiedJti(token) === existing.sessionJti) return existingResponse(existing, request);
+      return verificationFailure(token, err);
+    }
+    if (existing && existing.sessionJti === incoming.sessionJti) return existingResponse(existing, request);
+    return consumeLaunch(token, incoming, request);
   }
 
   async function handle(request: Request): Promise<Response> {
@@ -383,6 +394,7 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
           chargeOptions.idempotencyKey,
         );
       } catch (err) {
+        reportSessionFailure(session, err, 'meter');
         if (err instanceof MythosError && err.httpStatus >= 500) {
           mythosLog.error('charge failed', { code: err.code, jti: session.sessionJti });
         }
@@ -395,20 +407,29 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
         if (llmOptions.fallback !== undefined) return llmOptions.fallback;
         throw new MythosError('An active Mythos session is required for LLM access', 'LLM_SESSION_REQUIRED');
       }
-      if (session && !session.llmIdentityToken) {
-        mythosLog.warn('llm: session has no LLM identity token (backend identity key misconfigured?)');
-        if (llmOptions.fallback !== undefined) return llmOptions.fallback;
-        throw new MythosError('The Mythos session is missing its LLM identity token', 'LLM_IDENTITY_REQUIRED');
+      try {
+        return await buildSessionLlm(session, llmOptions);
+      } catch (err) {
+        reportSessionFailure(session, err, 'llm');
+        throw err;
       }
-      const outcome = await refreshIfDue(session);
-      if (outcome.kind === 'expired') throw outcome.error;
-      const { llm: buildLlm } = await import('./llm');
-      // ponytail: the gateway client is an instance of the caller's own `openai` peer. Typing it as the
-      // caller's TClient avoids a CJS (index.d.ts) vs ESM (index.d.mts) OpenAI type clash in bundler projects.
-      return buildLlm(outcome.session, llmOptions) as unknown as TClient;
     },
     billing(completion) {
       return getLlmBillingMetadata(completion);
     },
   };
+
+  async function buildSessionLlm<TClient>(session: StoredSession, llmOptions: LlmOptions<TClient>): Promise<TClient> {
+    if (!session.llmIdentityToken) {
+      mythosLog.warn('llm: session has no LLM identity token (backend identity key misconfigured?)');
+      if (llmOptions.fallback !== undefined) return llmOptions.fallback;
+      throw new MythosError('The Mythos session is missing its LLM identity token', 'LLM_IDENTITY_REQUIRED');
+    }
+    const outcome = await refreshIfDue(session);
+    if (outcome.kind === 'expired') throw outcome.error;
+    const { llm: buildLlm } = await import('./llm');
+    // ponytail: the gateway client is an instance of the caller's own `openai` peer. Typing it as the
+    // caller's TClient avoids a CJS (index.d.ts) vs ESM (index.d.mts) OpenAI type clash in bundler projects.
+    return buildLlm(outcome.session, llmOptions) as unknown as TClient;
+  }
 }

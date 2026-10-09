@@ -18,6 +18,11 @@ class InvalidLaunchTokenError(MythosError):
         super().__init__(message, code, 401)
 
 
+class ListingNotRegisteredError(InvalidLaunchTokenError):
+    def __init__(self) -> None:
+        super().__init__("Invalid audience", "LISTING_NOT_REGISTERED")
+
+
 class ProducerMismatchError(InvalidLaunchTokenError):
     listing_id: str | None = None
 

@@ -5,6 +5,7 @@ import {
   type ConfirmChargeResult,
 } from './client';
 import type { MythosSession } from './types';
+import { showTestLaunchFailure } from './test-failure-overlay';
 
 export type MythosStatus = 'loading' | 'mythos' | 'standalone' | 'expired' | 'error';
 export type MythosClientSession = Pick<
@@ -284,6 +285,7 @@ function createClient(options: InitMythosOptions): MythosClient {
 
     const code = typeof body?.code === 'string' ? body.code : `HTTP_${response.status}`;
     const message = typeof body?.error === 'string' ? body.error : 'Session verification failed';
+    if (body?.success === false) showTestLaunchFailure(window.location.search, code);
     if (isRefresh && state.status === 'mythos' && !code.startsWith('SESSION_')) return retryRefresh();
     setState({
       status: code === 'SESSION_EXPIRED' || (isRefresh && code.startsWith('SESSION_')) ? 'expired' : 'error',

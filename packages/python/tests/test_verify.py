@@ -132,7 +132,9 @@ async def test_no_static_and_no_dynamic_listing_ids_raises_config_error(rsa_key_
     monkeypatch.delenv("MYTHOS_LISTING_IDS", raising=False)
     token = mint_token(rsa_key_pair["private"])
 
-    with pytest.raises(RuntimeError, match="MYTHOS_LISTING_ID"):
+    from mythos_sdk.errors import MythosConfigError
+
+    with pytest.raises(MythosConfigError, match="MYTHOS_LISTING_ID"):
         await verify_launch_token(token)
 
 

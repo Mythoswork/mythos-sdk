@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.1
+
+### Added
+- Node and Python report test-session failures with enum-only diagnostics (`code`, `step`, `sdk_version`). Real sessions never report. Reports run in the background, have a two-second timeout, and cannot change app responses or thrown billing errors.
+- Browser handshakes include `sdk_version`. Test launches show an in-iframe failure overlay with the diagnostic message and a Reload button for SDK-side failures.
+- Unregistered launch audiences use a dedicated `LISTING_NOT_REGISTERED` error marker.
+
+### Fixed
+- Producer mismatch logs use the handshake token's `sub` as the listing ID when `listingId` is absent.
+- The browser version constant is safe to bundle without Node built-ins and matches package metadata.
+
+### Release order
+- Publish 0.5.1 after backend diagnostics deployment, then update apps and frontend.
+
 ## 0.5.0
 
 ### Added

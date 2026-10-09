@@ -23,6 +23,13 @@ export class InvalidLaunchTokenError extends MythosError {
   }
 }
 
+export class ListingNotRegisteredError extends InvalidLaunchTokenError {
+  constructor() {
+    super('Invalid audience', 'LISTING_NOT_REGISTERED');
+    this.name = 'ListingNotRegisteredError';
+  }
+}
+
 export class ProducerMismatchError extends InvalidLaunchTokenError {
   listingId?: string;
 

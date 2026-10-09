@@ -184,7 +184,7 @@ async def test_handshake_binding(monkeypatch, rsa_key_pair, caplog, pkh, standal
     if pkh == OWN_HASH:
         assert response.status_code == 200
         assert response.json()["ok"] is True
-        assert response.json()["sdk_version"] == "0.5.0"
+        assert response.json()["sdk_version"] == "0.5.1"
         assert not caplog.records
     else:
         assert response.status_code == 401

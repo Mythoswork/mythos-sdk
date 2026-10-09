@@ -6,6 +6,7 @@ Every SDK error is a `MythosError`. Node errors expose `.code` and `.httpStatus`
 |---|---:|---|
 | `CONFIG_ERROR` | 500 | Bad or missing environment configuration; raised at startup by `createMythos()` |
 | `INVALID_LAUNCH_TOKEN` | 401 | Invalid launch token |
+| `LISTING_NOT_REGISTERED` | 401 | Launch audience is not registered with this app |
 | `PRODUCER_MISMATCH` | 401 | This app is bound to a different Mythos Producer. Check MYTHOS_KEY. |
 | `TOKEN_ALREADY_CONSUMED` | 401 | Launch token was reused |
 | `SESSION_REQUIRED` | 401 | `charge` was called without a session |
@@ -19,6 +20,8 @@ Every SDK error is a `MythosError`. Node errors expose `.code` and `.httpStatus`
 | `LLM_IDENTITY_REQUIRED` | — | `llm()` has no identity token and no fallback |
 
 ## Node mapping
+
+Test launches report only the [diagnostic codes and messages](../resources/troubleshooting.md#test-launch-diagnostics). Real sessions never report. The diagnostic request contains exactly `code`, `step`, and `sdk_version`; reporting failures and its two-second timeout do not alter app responses. `charge()` and `llm()` rethrow the original `MythosError` unchanged.
 
 `ProducerMismatchError` extends `InvalidLaunchTokenError` in both languages, preserving legacy invalid-token handling. Producer binding applies to launch, handshake and callback tokens; see the [configuration matrix](./configuration.md).
 

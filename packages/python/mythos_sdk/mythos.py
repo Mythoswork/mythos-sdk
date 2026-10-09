@@ -15,8 +15,11 @@ from .api_client import (
 )
 from .billing_metadata import MythosLlmBillingMetadata, get_llm_billing_metadata
 from .config import load_config
+from .constants.diagnostics import DiagnosticCode, DiagnosticStep
+from .diagnostics import read_test_jti, report_launch_failure, report_session_failure
 from .errors import (
     InvalidLaunchTokenError,
+    ListingNotRegisteredError,
     ProducerMismatchError,
     LaunchTokenConsumedError,
     MythosConfigError,
@@ -28,7 +31,7 @@ from .errors import (
 )
 from .logger import log_debug, log_error, log_warn
 from .producer_key import assert_producer_key_format, read_producer_key, warn_missing_producer_key_once
-from .session import open_session, seal_session
+from .session import StoredSession, open_session, seal_session
 from .types import MythosSession
 from .version import SDK_VERSION
 from .verify import verify_launch_token
@@ -38,6 +41,13 @@ SESSION_HEADER = "x-mythos-session"
 DEFAULT_SESSION_TTL_SECONDS = 1800
 REFRESH_LEAD_SECONDS = 300
 MIN_SESSION_SECRET_LENGTH = 32
+
+
+def _launch_error(
+    token: str, step: DiagnosticStep, status: int, message: str, code: DiagnosticCode,
+) -> tuple[int, dict[str, object], None, None]:
+    report_launch_failure(token, code, step)
+    return status, {"success": False, "error": message, "code": code}, None, None
 
 
 class RequestLike(Protocol):
@@ -70,7 +80,10 @@ class Mythos:
 
     @staticmethod
     def _public_session(session: MythosSession) -> MythosSession:
-        return replace(session, llmIdentityToken=None, llmIdentityExpiresAt=None)
+        return MythosSession(
+            userId=session.userId, email=session.email, displayName=session.displayName,
+            listingId=session.listingId, sessionJti=session.sessionJti,
+        )
 
     async def get_session(self, request: RequestLike) -> MythosSession | None:
         stored = self._read_stored_session(request)
@@ -94,6 +107,7 @@ class Mythos:
         try:
             return await meter_session(session.sessionJti, credits, reason, idempotency_key)
         except MythosError as err:
+            report_session_failure(session, err, "meter")
             if err.http_status >= 500:
                 log_error(f"charge failed: {err.code}; jti={session.sessionJti}")
             raise
@@ -107,9 +121,20 @@ class Mythos:
         base_url: str | None = None,
         timeout: float = 600.0,
     ) -> Any:
+        stored = self._read_stored_session(request)
+        try:
+            return await self._build_session_llm(stored, api_key, fallback, base_url, timeout)
+        except MythosError as err:
+            if stored:
+                report_session_failure(stored[0], err, "llm")
+            raise
+
+    async def _build_session_llm(
+        self, stored: tuple[MythosSession, str] | None, api_key: str | None,
+        fallback: object, base_url: str | None, timeout: float,
+    ) -> object:
         from .llm import llm as build_llm
 
-        stored = self._read_stored_session(request)
         session = stored[0] if stored else None
         if session is not None and not session.llmIdentityToken:
             log_warn("llm: session has no LLM identity token (backend identity key misconfigured?)")
@@ -202,44 +227,46 @@ class Mythos:
         except Exception as err:
             if existing and self._unverified_jti(launch_token) == existing[0].sessionJti:
                 return await self._existing_session_response(*existing)
-            if isinstance(err, ProducerMismatchError):
-                log_warn("session: producer mismatch", {"listingId": err.listing_id})
-                return 401, {"success": False, "error": str(err), "code": err.code}, None, None
-            if isinstance(err, MythosConfigError):
-                log_error("session: invalid SDK configuration", err)
-                return 500, {"success": False, "error": str(err), "code": "CONFIG_ERROR"}, None, None
-            if isinstance(err, (InvalidLaunchTokenError, JOSEError)):
-                return 401, {"success": False, "error": "Invalid launch token", "code": "INVALID_LAUNCH_TOKEN"}, None, None
-            log_error("session: could not verify launch token (JWKS/network)", err)
-            return 503, {
-                "success": False,
-                "error": "Could not reach Mythos to verify the launch",
-                "code": "MYTHOS_UNREACHABLE",
-            }, None, None
+            return self._verification_failure(launch_token, err)
 
         if existing and existing[0].sessionJti == incoming.sessionJti:
             return await self._existing_session_response(*existing)
+        return await self._consume_launch(launch_token, incoming)
 
+    @staticmethod
+    def _verification_failure(token: str, err: Exception) -> tuple[int, dict[str, object], None, None]:
+        if isinstance(err, ProducerMismatchError):
+            log_warn("session: producer mismatch", {"listingId": err.listing_id})
+            return _launch_error(token, "verify_launch", 401, str(err), "PRODUCER_MISMATCH")
+        if isinstance(err, MythosConfigError):
+            log_error("session: invalid SDK configuration")
+            return _launch_error(token, "verify_launch", 500, str(err), "CONFIG_ERROR")
+        if isinstance(err, ListingNotRegisteredError):
+            return _launch_error(token, "verify_launch", 401, "Invalid launch token", "LISTING_NOT_REGISTERED")
+        if isinstance(err, (InvalidLaunchTokenError, JOSEError)):
+            return _launch_error(token, "verify_launch", 401, "Invalid launch token", "INVALID_LAUNCH_TOKEN")
+        log_error("session: could not verify launch token (JWKS/network)")
+        return _launch_error(token, "verify_launch", 503, "Could not reach Mythos to verify the launch", "MYTHOS_UNREACHABLE")
+
+    async def _consume_launch(
+        self, launch_token: str, incoming: MythosSession,
+    ) -> tuple[int, dict[str, object], str | None, str | None]:
         try:
             consume_response = await consume_session(incoming.sessionJti)
-        except Exception as err:
-            log_error("session: consume request failed", err)
-            return 503, {
-                "success": False,
-                "error": "Could not reach Mythos to consume the session",
-                "code": "MYTHOS_UNREACHABLE",
-            }, None, None
+        except Exception:
+            log_error("session: consume request failed")
+            return _launch_error(launch_token, "consume", 503, "Could not reach Mythos to consume the session", "MYTHOS_UNREACHABLE")
         if consume_response.status_code == 409:
             error = LaunchTokenConsumedError()
-            return error.http_status, {"success": False, "error": str(error), "code": error.code}, None, None
+            return _launch_error(launch_token, "consume", error.http_status, str(error), "TOKEN_ALREADY_CONSUMED")
         if not (200 <= consume_response.status_code < 300):
             code = self._response_code(consume_response)
-            log_error(f"session: consume returned {consume_response.status_code}; code={code}; jti={incoming.sessionJti}")
+            log_error(f"session: consume returned {consume_response.status_code}")
             if code == "SESSION_EXPIRED":
                 error = SessionExpiredError("Launch expired — relaunch from Mythos")
-                return error.http_status, {"success": False, "error": str(error), "code": error.code}, None, None
+                return _launch_error(launch_token, "consume", error.http_status, str(error), "SESSION_EXPIRED")
             error = MythosUpstreamError("Mythos consume failed", consume_response.status_code, code)
-            return error.http_status, {"success": False, "error": str(error), "code": error.code}, None, None
+            return _launch_error(launch_token, "consume", error.http_status, str(error), "UPSTREAM_ERROR")
 
         try:
             consume_body = consume_response.json()
@@ -259,7 +286,8 @@ class Mythos:
         expires_at = read_session_expires_at(consume_body) or session.llmIdentityExpiresAt or (
             datetime.now(timezone.utc) + timedelta(seconds=DEFAULT_SESSION_TTL_SECONDS)
         ).isoformat()
-        return self._session_success(session, expires_at)
+        stored = StoredSession(**asdict(session), isTest=read_test_jti(launch_token) is not None)
+        return self._session_success(stored, expires_at)
 
     @staticmethod
     def _unverified_jti(token: str) -> str | None:

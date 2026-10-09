@@ -264,7 +264,7 @@ test.each(['handshake', 'listing-registered'])('web %s matching producer succeed
   const response = await sdk.handle(request(`.well-known/mythos-${endpoint}`, await mintToken(await ownHash(), { purpose })));
   expect(response.status).toBe(200);
   if (endpoint === 'handshake') {
-    expect(await response.json()).toEqual({ ok: true, sdk_version: '0.5.0' });
+    expect(await response.json()).toEqual({ ok: true, sdk_version: '0.5.1' });
     expect(onListingRegistered).not.toHaveBeenCalled();
   } else {
     expect(await response.json()).toEqual({ ok: true });
