@@ -42,5 +42,8 @@ def assert_producer_binding(payload: Mapping[str, object]) -> None:
         return
     error = ProducerMismatchError()
     listing_id = payload.get("listingId")
+    if listing_id is None:
+        # Handshake tokens carry the Listing ID in `sub`, not `listingId`.
+        listing_id = payload.get("sub")
     error.listing_id = listing_id if isinstance(listing_id, str) else None
     raise error

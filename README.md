@@ -73,9 +73,12 @@ app.include_router(mythos.router)
 ## Configuration
 
 ```dotenv
-MYTHOS_SESSION_SECRET=   # openssl rand -base64 32  (>= 32 chars)
-MYTHOS_KEY=              # Mythos dashboard → Settings → Mythos key
-MYTHOS_LISTING_ID=       # your static Listing ID, unless using a resolver
+# openssl rand -base64 32  (>= 32 chars)
+MYTHOS_SESSION_SECRET=
+# Mythos dashboard → Settings → Mythos key
+MYTHOS_KEY=
+# your static Listing ID, unless using a resolver
+MYTHOS_LISTING_ID=
 ```
 
 FastAPI also needs an explicit env loader, such as `uvicorn main:app --env-file .env` with `fastapi[standard]` installed.

@@ -31,7 +31,8 @@ class MythosConfig:
 ## Examples
 
 ```env
-MYTHOS_KEY=              # Mythos dashboard → Settings → Mythos key
+# Mythos dashboard → Settings → Mythos key
+MYTHOS_KEY=
 MYTHOS_LISTING_ID=abc-123
 MYTHOS_LISTING_IDS=abc-123,def-456
 MYTHOS_API_URL=http://localhost:5001

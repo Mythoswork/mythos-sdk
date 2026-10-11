@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
@@ -26,6 +27,9 @@ def _parse_env_file(path: Path) -> dict[str, str]:
         key, value = (part.strip() for part in line.split("=", 1))
         if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
             value = value[1:-1]
+        else:
+            # Match python-dotenv: `#` starts a comment only after whitespace.
+            value = re.sub(r"\s+#.*", "", value)
         values[key] = value
     return values
 

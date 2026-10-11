@@ -330,3 +330,14 @@ def test_public_mismatch_error_preserves_invalid_token_inheritance():
     assert error.http_status == 401
     assert error.code == "PRODUCER_MISMATCH"
     assert str(error) == PRODUCER_MISMATCH_MESSAGE
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [({"sub": "listing-h"}, "listing-h"), ({"sub": "user-a", "listingId": "listing-a"}, "listing-a")],
+)
+def test_mismatch_listing_id_falls_back_to_sub(monkeypatch, payload, expected):
+    monkeypatch.setenv("MYTHOS_KEY", OWN_KEY)
+    with pytest.raises(ProducerMismatchError) as caught:
+        producer_key.assert_producer_binding({**payload, "pkh": OTHER_HASH})
+    assert caught.value.listing_id == expected

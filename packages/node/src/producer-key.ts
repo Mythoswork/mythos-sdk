@@ -34,6 +34,8 @@ export function assertProducerBinding(payload: JWTPayload): void {
   const key = readProducerKey();
   if (!key || payload.pkh === hashProducerKey(key)) return;
   const error = new ProducerMismatchError();
-  error.listingId = typeof payload.listingId === 'string' ? payload.listingId : undefined;
+  // Handshake tokens carry the Listing ID in `sub`, not `listingId`.
+  const listingId = payload.listingId ?? payload.sub;
+  error.listingId = typeof listingId === 'string' ? listingId : undefined;
   throw error;
 }

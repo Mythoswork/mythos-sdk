@@ -131,8 +131,10 @@ Python uses `await mythos.charge(request, credits=1, reason="calculate")`, `awai
 | `MYTHOS_DEBUG=1` | Optional verbose diagnostics. |
 
 ```dotenv
-MYTHOS_SESSION_SECRET=   # openssl rand -base64 32  (>= 32 chars)
-MYTHOS_KEY=              # Mythos dashboard → Settings → Mythos key
+# openssl rand -base64 32  (>= 32 chars)
+MYTHOS_SESSION_SECRET=
+# Mythos dashboard → Settings → Mythos key
+MYTHOS_KEY=
 ```
 
 ### Producer binding (Node and Python)

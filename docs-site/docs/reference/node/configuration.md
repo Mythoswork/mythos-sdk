@@ -34,7 +34,8 @@ interface MythosConfig {
 ## Examples
 
 ```env
-MYTHOS_KEY=              # Mythos dashboard → Settings → Mythos key
+# Mythos dashboard → Settings → Mythos key
+MYTHOS_KEY=
 # Single listing
 MYTHOS_LISTING_ID=abc-123
 

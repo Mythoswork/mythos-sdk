@@ -15,8 +15,10 @@ npx @mythos-work/sdk init
 ```bash
 # .env.local
 MYTHOS_LISTING_ID=your-listing-id
-MYTHOS_SESSION_SECRET=                     # openssl rand -base64 32  (≥ 32 chars)
-MYTHOS_KEY=                                # Mythos dashboard → Settings → Mythos key
+# openssl rand -base64 32  (≥ 32 chars)
+MYTHOS_SESSION_SECRET=
+# Mythos dashboard → Settings → Mythos key
+MYTHOS_KEY=
 ```
 
 ## 3. Server: one file, one route

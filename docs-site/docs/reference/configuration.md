@@ -16,8 +16,10 @@
 Set secrets in the deployment host's environment, not only in a local env file. See the [deploy checklist](../getting-started/deploy-checklist.md).
 
 ```dotenv
-MYTHOS_SESSION_SECRET=   # openssl rand -base64 32  (>= 32 chars)
-MYTHOS_KEY=              # Mythos dashboard → Settings → Mythos key
+# openssl rand -base64 32  (>= 32 chars)
+MYTHOS_SESSION_SECRET=
+# Mythos dashboard → Settings → Mythos key
+MYTHOS_KEY=
 ```
 
 ## Producer binding (0.5.0)

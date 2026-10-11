@@ -15,8 +15,10 @@ npx @mythos-work/sdk init
 ```bash
 # .env
 MYTHOS_LISTING_ID=your-listing-id
-MYTHOS_SESSION_SECRET=                     # openssl rand -base64 32  (≥ 32 chars)
-MYTHOS_KEY=                                # Mythos dashboard → Settings → Mythos key
+# openssl rand -base64 32  (≥ 32 chars)
+MYTHOS_SESSION_SECRET=
+# Mythos dashboard → Settings → Mythos key
+MYTHOS_KEY=
 ```
 Node does not read `.env` on its own — step 5 starts the server with `--env-file`. In production, set these in your host's environment instead.
 

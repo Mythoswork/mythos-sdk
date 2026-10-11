@@ -239,3 +239,11 @@ def test_doctor_producer_key_states(tmp_path: Path, key: str | None, expected: s
         assert key not in output
     if key is None:
         assert output.endswith("6 passed, 0 failed")
+
+
+def test_parse_env_file_matches_python_dotenv_inline_comments(tmp_path: Path):
+    from mythos_sdk.__main__ import _parse_env_file
+
+    env_file = tmp_path / ".env"
+    env_file.write_text("A=abc#def\nB=abc # note\nC='x # y'\n")
+    assert _parse_env_file(env_file) == {"A": "abc#def", "B": "abc", "C": "x # y"}

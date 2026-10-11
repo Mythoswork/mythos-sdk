@@ -7,8 +7,10 @@ This guide describes the end-to-end flow for Mythos producers.
 Use `createMythos()` / `create_mythos()` and the SDK browser client. The SDK owns launch transport, sealed sessions, consume, handshake and callbacks. Start with [Express](../docs-site/docs/getting-started/quickstart-express.md), [Next.js](../docs-site/docs/getting-started/quickstart-nextjs-app.md) or [FastAPI](../docs-site/docs/getting-started/quickstart-fastapi.md). The primitive examples below are for existing low-level integrations.
 
 ```dotenv
-MYTHOS_SESSION_SECRET=   # openssl rand -base64 32  (>= 32 chars)
-MYTHOS_KEY=              # Mythos dashboard → Settings → Mythos key
+# openssl rand -base64 32  (>= 32 chars)
+MYTHOS_SESSION_SECRET=
+# Mythos dashboard → Settings → Mythos key
+MYTHOS_KEY=
 ```
 
 Copy the Producer key from the dashboard into deployment env. It prevents another Producer from auto-registering their Listing against your app. With a key, matching `pkh` accepts; missing or different `pkh` rejects with `ProducerMismatchError` / `PRODUCER_MISMATCH` (401). Without a key, static `MYTHOS_LISTING_ID(S)` launches are silent safe legacy configuration; dynamic launches, handshake and callbacks warn once per process. A resolver or callback warns at startup. Missing keys are soft in 0.5.0; required in 0.6.0. Update deployment env and redeploy after regeneration. See [configuration](../docs-site/docs/reference/configuration.md) for the exact warning, shared hash contract and literal vector.

@@ -26,6 +26,7 @@ function parseEnvFile(path: string): Record<string, string> {
       const closingQuote = value.indexOf(value[0], 1);
       if (closingQuote >= 1) value = value.slice(1, closingQuote);
     } else {
+      // Match Node dotenv: an unquoted value ends at the first `#`, even without whitespace.
       value = value.split('#')[0].trim();
     }
     values[key] = value;

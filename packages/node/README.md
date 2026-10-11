@@ -25,8 +25,10 @@ const billing = mythos.billing(completion);
 Set `MYTHOS_SESSION_SECRET` to a random secret of at least 32 characters (`openssl rand -base64 32`). Node.js 20+ is required. See [docs.mythos.work](https://docs.mythos.work) and the [migration guide](https://github.com/Mythoswork/mythos-sdk/blob/main/MIGRATION.md).
 
 ```dotenv
-MYTHOS_SESSION_SECRET=   # openssl rand -base64 32  (>= 32 chars)
-MYTHOS_KEY=              # Mythos dashboard → Settings → Mythos key
+# openssl rand -base64 32  (>= 32 chars)
+MYTHOS_SESSION_SECRET=
+# Mythos dashboard → Settings → Mythos key
+MYTHOS_KEY=
 ```
 
 `MYTHOS_KEY` binds launch, handshake and callback tokens to your Producer: matching `pkh` accepts; missing or different `pkh` rejects with `ProducerMismatchError` (`PRODUCER_MISMATCH`, 401). Without a key, static `MYTHOS_LISTING_ID(S)` launches are silent safe legacy configuration; dynamic launches, handshake and callbacks warn once per process. A resolver or callback without a key warns at startup. Missing keys are soft in 0.5.0; **required in 0.6.0**. Regeneration requires updating deployment env and redeploying. See [configuration and exact token contract](https://docs.mythos.work/reference/configuration).

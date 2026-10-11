@@ -102,6 +102,20 @@ test('mismatch error preserves legacy inheritance and both public exports', asyn
   expect((await import('../src/browser')).ProducerMismatchError).toBe(errors.ProducerMismatchError);
 });
 
+test('mismatch error takes the Listing ID from sub when listingId is absent (handshake tokens)', async () => {
+  const { assertProducerBinding } = await import('../src/producer-key');
+  const { ProducerMismatchError } = await import('../src/errors');
+  const pkh = await otherHash();
+  const caught = (payload: JWTPayload): unknown => {
+    try { assertProducerBinding(payload); } catch (error) { return error; }
+    return undefined;
+  };
+  const fromSub = caught({ sub: 'listing-h', pkh });
+  expect(fromSub).toBeInstanceOf(ProducerMismatchError);
+  expect(fromSub).toMatchObject({ listingId: 'listing-h' });
+  expect(caught({ sub: 'user-a', listingId: 'listing-a', pkh })).toMatchObject({ listingId: 'listing-a' });
+});
+
 test.each(['foo', 'mk_test', `mk_${'a'.repeat(31)}`, `mk_${'a'.repeat(33)}`, `mk_${'a'.repeat(31)}!`])(
   'startup rejects malformed key %s with exact config error', async (key) => {
     process.env.MYTHOS_KEY = key;

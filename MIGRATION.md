@@ -9,8 +9,10 @@ Version 0.1.1 moves launch consumption, encrypted session reuse, metering, hands
 Copy your key from Dashboard → Settings → Mythos key into the deployment's `MYTHOS_KEY`, then redeploy. Producer binding prevents another Producer from auto-registering their Listing against your app and earning through it.
 
 ```dotenv
-MYTHOS_SESSION_SECRET=   # openssl rand -base64 32  (>= 32 chars)
-MYTHOS_KEY=              # Mythos dashboard → Settings → Mythos key
+# openssl rand -base64 32  (>= 32 chars)
+MYTHOS_SESSION_SECRET=
+# Mythos dashboard → Settings → Mythos key
+MYTHOS_KEY=
 ```
 
 The key is a Mythos-generated, non-secret identifier: `mk_` plus 32 base64url characters. Regenerating it requires updating every deployment's environment and redeploying. A set but malformed key makes `createMythos()` / `create_mythos()` throw `MythosConfigError` with `MYTHOS_KEY is malformed. Copy it again from the Mythos dashboard.`
