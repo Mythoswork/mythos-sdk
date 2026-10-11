@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
 import httpx
+
+from .constants.producer_key import MISSING_PRODUCER_KEY_WARNING, PRODUCER_KEY_PATTERN
 
 
 USAGE = "Usage: python -m mythos_sdk doctor"
@@ -24,6 +27,9 @@ def _parse_env_file(path: Path) -> dict[str, str]:
         key, value = (part.strip() for part in line.split("=", 1))
         if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
             value = value[1:-1]
+        else:
+            # Match python-dotenv: `#` starts a comment only after whitespace.
+            value = re.sub(r"\s+#.*", "", value)
         values[key] = value
     return values
 
@@ -37,7 +43,7 @@ def _load_env(cwd: Path, process_env: Mapping[str, str]) -> dict[str, str]:
     return env
 
 
-REQUIRED_ENV = ("MYTHOS_SESSION_SECRET", "MYTHOS_LISTING_ID", "MYTHOS_LISTING_IDS")
+REQUIRED_ENV = ("MYTHOS_SESSION_SECRET", "MYTHOS_LISTING_ID", "MYTHOS_LISTING_IDS", "MYTHOS_KEY")
 
 
 def _only_in_env_file(cwd: Path, process_env: Mapping[str, str]) -> bool:
@@ -83,6 +89,15 @@ def doctor(
     env = _load_env(root, source_env)
     passed = 0
     failed = 0
+    producer_key = env.get("MYTHOS_KEY", "").strip()
+    if not producer_key:
+        write(f"⚠ {MISSING_PRODUCER_KEY_WARNING}")
+    elif PRODUCER_KEY_PATTERN.fullmatch(producer_key):
+        write("✔ MYTHOS_KEY is set")
+        passed += 1
+    else:
+        write("✖ MYTHOS_KEY is malformed")
+        failed += 1
 
     secret = env.get("MYTHOS_SESSION_SECRET", "")
     if secret:

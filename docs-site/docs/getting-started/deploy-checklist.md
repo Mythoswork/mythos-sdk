@@ -3,6 +3,7 @@
 Check every item in the deployed environment, not only on your laptop.
 
 - [ ] `MYTHOS_SESSION_SECRET` is at least 32 characters and is set in the host environment, such as Vercel.
+- [ ] `MYTHOS_KEY` is copied from Dashboard → Settings → Mythos key into the host environment. Missing is soft in 0.5.0 (static listing launches remain silent), required in 0.6.0. Update env and redeploy after key regeneration.
 - [ ] `MYTHOS_LISTING_ID` is set to the listing ID from the Mythos dashboard.
 - [ ] Express/FastAPI: variables are set in the host environment. `.env` files are not read in production unless your start command loads them (`node --env-file=.env`, `uvicorn --env-file .env`).
 - [ ] The app uses HTTPS; the session cookie requires `Secure`.

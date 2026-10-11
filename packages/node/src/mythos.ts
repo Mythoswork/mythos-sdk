@@ -5,6 +5,7 @@ import { getLlmBillingMetadata } from './billing-metadata';
 import { loadConfig } from './config';
 import {
   InvalidLaunchTokenError,
+  ProducerMismatchError,
   LaunchTokenConsumedError,
   MythosConfigError,
   MythosError,
@@ -14,6 +15,7 @@ import {
   SessionRequiredError,
 } from './errors';
 import { mythosLog } from './logger';
+import { assertProducerKeyFormat, readProducerKey, warnMissingProducerKeyOnce } from './producer-key';
 import { extractLaunchToken } from './query';
 import { openSession, sealSession, type StoredSession } from './session';
 import type { MythosSession } from './types';
@@ -129,6 +131,7 @@ function buildSessionCookie(token: string, expiresAt: string, request: Request):
 }
 
 export function createMythos(options: CreateMythosOptions = {}): Mythos {
+  assertProducerKeyFormat();
   const secret = process.env.MYTHOS_SESSION_SECRET;
   if (!secret) {
     throw new MythosConfigError('MYTHOS_SESSION_SECRET is not set. Generate one with: openssl rand -base64 32');
@@ -152,6 +155,7 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
     throw new MythosConfigError('MYTHOS_LISTING_ID (or MYTHOS_LISTING_IDS) is not set');
   }
   mythosLog.debug('createMythos: config ok', { apiUrl: config.apiUrl, listingIds: config.listingIds });
+  if (!readProducerKey() && (options.resolveListingIds || options.onListingRegistered)) warnMissingProducerKeyOnce();
 
   function readStoredSession(req: MythosRequestLike): StoredSession | null {
     const cookieToken = readCookie(req, MYTHOS_SESSION_COOKIE);
@@ -199,6 +203,10 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
       const { validateHandshakeToken } = await import('./handshake');
       await validateHandshakeToken(token);
     } catch (err) {
+      if (err instanceof ProducerMismatchError) {
+        mythosLog.warn('handshake: producer mismatch', { listingId: err.listingId });
+        return json(401, { error: 'Producer mismatch' });
+      }
       if (err instanceof errors.JOSEError) return json(401, { error: 'Invalid launch token' });
       mythosLog.error('handshake: validation failed', err);
       return json(503, { error: 'Service unavailable' });
@@ -217,6 +225,10 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
       const listingId = await validateListingCallbackToken(token);
       await options.onListingRegistered(listingId);
     } catch (err) {
+      if (err instanceof ProducerMismatchError) {
+        mythosLog.warn('listing-callback: producer mismatch', { listingId: err.listingId });
+        return json(401, { error: 'Producer mismatch' });
+      }
       if (err instanceof errors.JOSEError) return json(401, { error: 'Invalid listing callback token' });
       mythosLog.error('listing-callback: unexpected error', err);
       return json(503, { error: 'Service unavailable' });
@@ -267,6 +279,10 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
       incoming = await verifyLaunchToken(token, { resolveListingIds: options.resolveListingIds });
     } catch (err) {
       if (existing && unverifiedJti(token) === existing.sessionJti) return existingResponse(existing);
+      if (err instanceof ProducerMismatchError) {
+        mythosLog.warn('session: producer mismatch', { listingId: err.listingId });
+        return json(401, { success: false, error: err.message, code: err.code });
+      }
       if (err instanceof MythosConfigError) {
         mythosLog.error('session: invalid SDK configuration', err);
         return json(500, { success: false, error: err.message, code: 'CONFIG_ERROR' });

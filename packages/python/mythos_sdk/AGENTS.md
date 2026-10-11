@@ -104,7 +104,7 @@ const { approved: chatApproved } = await confirmCharge({ kind: 'llm', reason: 'c
 Non-React bundled apps import `initMythos` from `@mythos-work/sdk/client`. Unbundled pages use:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.4.0/dist/mythos-client.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.5.0/dist/mythos-client.global.js"></script>
 <script>const m = Mythos.initMythos(); m.ready.then(console.log);</script>
 ```
 
@@ -125,9 +125,39 @@ Python uses `await mythos.charge(request, credits=1, reason="calculate")`, `awai
 | Variable | Requirement |
 |---|---|
 | `MYTHOS_SESSION_SECRET` | Required, at least 32 characters. Generate with `openssl rand -base64 32`. |
+| `MYTHOS_KEY` | Copy from Dashboard → Settings → Mythos key. Missing is a soft warning for auto-registration in 0.5.0; required in 0.6.0. |
 | `MYTHOS_LISTING_ID` or `MYTHOS_LISTING_IDS` | Required unless using `resolveListingIds` / `resolve_listing_ids`. |
 | `MYTHOS_API_URL` | Optional; defaults to `https://api.mythos.work`. |
 | `MYTHOS_DEBUG=1` | Optional verbose diagnostics. |
+
+```dotenv
+# openssl rand -base64 32  (>= 32 chars)
+MYTHOS_SESSION_SECRET=
+# Mythos dashboard → Settings → Mythos key
+MYTHOS_KEY=
+```
+
+### Producer binding (Node and Python)
+
+`MYTHOS_KEY` is a Mythos-generated, non-secret identifier (`mk_` + 32 base64url characters). Keep it in server deployment configuration. Regenerating it requires updating the environment and redeploying. Startup rejects a malformed key with `MythosConfigError('MYTHOS_KEY is malformed. Copy it again from the Mythos dashboard.')`.
+
+Launch, handshake (`handshake-check`) and callback (`listing_registered`) tokens use the same `pkh`: base64url without padding of SHA-256 of UTF-8 bytes of the **full key string**, including `mk_`. The backend omits `pkh` when the owner has no key. Literal hash fixture (not a valid deployment key): `mk_test` → `7i08_9pmD6r4prkeKSsCnOFaCAduf8cz4ogjmhGlpG0`.
+
+| Key | Token `pkh` | Result |
+|---|---|---|
+| Set | Matches hash(key) | Accept |
+| Set | Different or missing | Reject with `ProducerMismatchError` / `PRODUCER_MISMATCH`, HTTP 401 |
+| Unset | Anything | Accept; warn once per process for launches outside static `MYTHOS_LISTING_ID(S)`, handshake or callback validation |
+
+Static listing launches without a key are safe legacy configuration and remain silent in 0.5.0. Configuring a resolver or registration callback without a key warns at startup (counts as the once). `MYTHOS_KEY` will be required in 0.6.0.
+
+Exact warning, with `[mythos]` prefix:
+
+> MYTHOS_KEY is not set: this app accepts Listings auto-registered by any Mythos Producer. Copy your key from the Mythos dashboard into MYTHOS_KEY. It will be required in 0.6.0.
+
+Session mismatch response: HTTP 401 `{"success":false,"error":"This app is bound to a different Mythos Producer. Check MYTHOS_KEY.","code":"PRODUCER_MISMATCH"}`. Handshake and callback: HTTP 401 `{"error":"Producer mismatch"}`; never invoke the registration callback on mismatch. Legacy middleware keeps its existing invalid-token 401 because `ProducerMismatchError` extends `InvalidLaunchTokenError`.
+
+Mismatch logs contain `<handshake|listing-callback|session>: producer mismatch` and `{ listingId }` only. Never log the key, `pkh`, or token.
 
 ## Verify
 
@@ -139,6 +169,7 @@ Run `npx @mythos-work/sdk doctor` (Python: `python -m mythos_sdk doctor`) and fi
 |---|---:|---|
 | `CONFIG_ERROR` | 500 | Missing or invalid configuration |
 | `INVALID_LAUNCH_TOKEN` | 401 | Invalid launch token |
+| `PRODUCER_MISMATCH` | 401 | The `MYTHOS_KEY` in this deployment belongs to a different Producer, or was regenerated. Copy the current key from the dashboard and redeploy. |
 | `TOKEN_ALREADY_CONSUMED` | 401 | Launch token reused |
 | `SESSION_REQUIRED` | 401 | Billable action has no session |
 | `SESSION_EXPIRED` | 401 | Session expired |

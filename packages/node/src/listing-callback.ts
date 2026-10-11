@@ -2,6 +2,8 @@ import { jwtVerify, errors } from 'jose';
 import type { RequestHandler } from 'express';
 import { getKeySet, getKeySetWithKidFallback } from './jwks-cache';
 import { mythosLog } from './logger';
+import { ProducerMismatchError } from './errors';
+import { assertProducerBinding, readProducerKey, warnMissingProducerKeyOnce } from './producer-key';
 
 const MYTHOS_ISSUER = 'mythos';
 const DEFAULT_API_URL = 'https://api.mythos.work';
@@ -28,6 +30,8 @@ export async function validateListingCallbackToken(token: string): Promise<strin
     );
   }
 
+  assertProducerBinding(payload);
+  if (!readProducerKey()) warnMissingProducerKeyOnce();
   return payload['listingId'] as string;
 }
 
@@ -46,7 +50,10 @@ export function listingCallbackRoute(
       const listingId = await validateListingCallbackToken(token);
       await onRegistered(listingId);
     } catch (err) {
-      if (err instanceof errors.JOSEError) {
+      if (err instanceof ProducerMismatchError) {
+        mythosLog.warn('listing-callback: producer mismatch', { listingId: err.listingId });
+        res.status(401).json({ error: 'Producer mismatch' });
+      } else if (err instanceof errors.JOSEError) {
         res.status(401).json({ error: 'Invalid listing callback token' });
       } else {
         mythosLog.error('listing-callback: unexpected error', err);

@@ -12,6 +12,9 @@ FastAPI projects can also run `python -m mythos_sdk doctor`. Fix every failed ch
 |---|---|
 | `CONFIG_ERROR` | Set a session secret of at least 32 characters and configure a listing ID or resolver. |
 | `INVALID_LAUNCH_TOKEN` | Launch from the Mythos dashboard and verify the listing ID. |
+| `PRODUCER_MISMATCH` | The `MYTHOS_KEY` in this deployment belongs to a different Producer, or was regenerated. Copy the current key from the dashboard and redeploy. |
+| `MYTHOS_KEY is malformed` | Copy the full `mk_` plus 32 base64url characters from Dashboard → Settings → Mythos key. |
+| `MYTHOS_KEY is not set` warning | Set the dashboard key in the host environment. This is soft in 0.5.0 and required in 0.6.0; static listing launches without a key remain silent. |
 | `TOKEN_ALREADY_CONSUMED` | Start a new launch; launch tokens are single-use. |
 | `SESSION_REQUIRED` | Use the session-aware browser client and open the app from Mythos. |
 | `SESSION_EXPIRED` | In an embedded app, the browser client requests a new launch automatically once. If `autoRelaunch: false` is configured, offer `relaunch()` instead. Confirm the dashboard handles `mythos:relaunch`; if expiry happens before eight hours, check backend refresh availability. |

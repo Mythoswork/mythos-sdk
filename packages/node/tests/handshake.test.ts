@@ -48,6 +48,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  delete process.env.MYTHOS_KEY;
   process.env.MYTHOS_API_URL = 'https://api.mythos.work';
 });
 

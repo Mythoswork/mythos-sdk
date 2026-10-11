@@ -31,5 +31,5 @@ The SDK handles launch token exchange, secure sessions, charge confirmation, wal
 ## Next steps
 
 - [Install the SDK](install.md)
-- [How it works](how-it-works.md)
+- [Launch sessions](../concepts/launch-sessions.md)
 - [Use with AI agents](../ai-agents.md)

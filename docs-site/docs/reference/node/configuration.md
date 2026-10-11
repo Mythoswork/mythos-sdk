@@ -10,11 +10,14 @@ Environment variables read by `@mythos-work/sdk`.
 
 | Variable             | Required | Default                   | Description                              |
 | ----------------------| ----------| ---------------------------| ------------------------------------------|
+| `MYTHOS_KEY` | Soft in 0.5.0; required in 0.6.0 | — | Dashboard → Settings → Mythos key; binds launch, handshake and callback tokens |
 | `MYTHOS_LISTING_ID`  | No*      | —                         | Single listing ID                        |
 | `MYTHOS_LISTING_IDS` | No*      | —                         | Comma-separated IDs; overrides single ID |
 | `MYTHOS_API_URL`     | No       | `https://api.mythos.work` | Mythos API base URL                      |
 
 \*Not required if `resolveListingIds` returns at least one ID.
+
+With a key, missing or mismatched `pkh` rejects with `ProducerMismatchError`. Without a key, static listing launches remain silent; dynamic launches, handshake and callbacks warn once per process. See the [shared binding contract](../configuration.md).
 
 ## loadConfig
 
@@ -31,6 +34,8 @@ interface MythosConfig {
 ## Examples
 
 ```env
+# Mythos dashboard → Settings → Mythos key
+MYTHOS_KEY=
 # Single listing
 MYTHOS_LISTING_ID=abc-123
 

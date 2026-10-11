@@ -1,20 +1,28 @@
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { tmpdir } from 'os';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
 import { main, USAGE } from '../src/cli';
 import { agents } from '../src/cli/agents';
 import { doctor } from '../src/cli/doctor';
 import { init } from '../src/cli/init';
+import { MISSING_PRODUCER_KEY_WARNING } from '../src/constants/producer-key.constants';
 
 const VALID_ENV = {
   MYTHOS_SESSION_SECRET: 's'.repeat(32),
   MYTHOS_LISTING_ID: 'listing-1',
 };
 
+const fixtures: string[] = [];
+
 function fixture(): string {
-  return mkdtempSync(join(tmpdir(), 'mythos-cli-'));
+  const cwd = mkdtempSync(join(__dirname, '.mythos-cli-'));
+  fixtures.push(cwd);
+  return cwd;
 }
+
+afterEach(() => {
+  for (const cwd of fixtures.splice(0)) rmSync(cwd, { recursive: true, force: true });
+});
 
 function jsonResponse(status: number, payload: unknown): Response {
   return new Response(JSON.stringify(payload), { status, headers: { 'content-type': 'application/json' } });
@@ -50,6 +58,7 @@ test('init scaffolds a Next.js App Router project and preserves existing files',
     .toContain("from '../../../../lib/mythos'");
   const env = readFileSync(join(cwd, '.env.local'), 'utf8');
   expect(env).toContain('MYTHOS_LISTING_ID=');
+  expect(env).toContain('# copy from Mythos dashboard → Settings → Mythos key\nMYTHOS_KEY=\n');
   expect(env.match(/MYTHOS_SESSION_SECRET=(.+)/)?.[1].length).toBeGreaterThanOrEqual(32);
 
   writeFileSync(libraryPath, '// keep me\n');
@@ -158,6 +167,7 @@ test('doctor passes all checks in order', async () => {
 
   expect(result).toBe(0);
   expect(output).toEqual([
+    `⚠ ${MISSING_PRODUCER_KEY_WARNING}`,
     '✔ MYTHOS_SESSION_SECRET is set',
     '✔ MYTHOS_SESSION_SECRET is at least 32 chars',
     '✔ 1 Mythos listing ID(s) configured',
@@ -270,4 +280,64 @@ test('doctor does not warn about .env files for Next.js, which loads them itself
 
   await doctor({ cwd, env: {}, fetch: successfulFetch(), write: output.push.bind(output) });
   expect(output.some((line) => line.includes('found only in .env'))).toBe(false);
+});
+
+test.each([
+  [undefined, `⚠ ${MISSING_PRODUCER_KEY_WARNING}`, 0],
+  ['  ', `⚠ ${MISSING_PRODUCER_KEY_WARNING}`, 0],
+  [`mk_${'a'.repeat(32)}`, '✔ MYTHOS_KEY is set', 0],
+  [`  mk_${'a'.repeat(32)}  `, '✔ MYTHOS_KEY is set', 0],
+  ['foo', '✖ MYTHOS_KEY is malformed', 1],
+])('doctor reports key state without disclosing the value: %s', async (key, expected, status) => {
+  const output: string[] = [];
+  const result = await doctor({
+    cwd: validExpressProject(), env: { ...VALID_ENV, MYTHOS_KEY: key },
+    fetch: successfulFetch(), write: output.push.bind(output),
+  });
+  expect(result).toBe(status);
+  expect(output).toContain(expected);
+  if (key?.trim()) expect(output.join('\n')).not.toContain(key.trim());
+});
+
+test.each([
+  ['next-app', { dependencies: { next: '15.0.0' } }, '.env.local'],
+  ['next-pages', { dependencies: { next: '15.0.0' } }, '.env.local'],
+  ['express-js', { dependencies: { express: '4.0.0' } }, '.env'],
+  ['express-ts', { dependencies: { express: '4.0.0' } }, '.env'],
+  ['fastapi', {}, '.env'],
+] as const)('init %s adds the key placeholder once; doctor reads it as missing', async (framework, packageJson, envFile) => {
+  const cwd = fixture();
+  writeFileSync(join(cwd, 'package.json'), JSON.stringify(packageJson));
+  if (framework === 'next-app') mkdirSync(join(cwd, 'app'));
+  if (framework === 'express-ts') writeFileSync(join(cwd, 'tsconfig.json'), '{}');
+  if (framework === 'fastapi') writeFileSync(join(cwd, 'pyproject.toml'), 'dependencies = ["fastapi"]');
+  const envPath = join(cwd, envFile);
+  const original = `MYTHOS_SESSION_SECRET=${'s'.repeat(32)}\nMYTHOS_LISTING_ID=listing-1\n# keep this\n`;
+  writeFileSync(envPath, original);
+  await init({ cwd, env: {}, fetch: successfulFetch(), write: jest.fn() });
+  const content = readFileSync(envPath, 'utf8');
+  expect(content.startsWith(original)).toBe(true);
+  expect(content).toContain('# copy from Mythos dashboard → Settings → Mythos key\nMYTHOS_KEY=\n');
+  await init({ cwd, env: {}, fetch: successfulFetch(), write: jest.fn() });
+  expect(readFileSync(envPath, 'utf8')).toBe(content);
+  const output: string[] = [];
+  await doctor({ cwd, env: {}, fetch: successfulFetch(), write: output.push.bind(output) });
+  expect(output).toContain(`⚠ ${MISSING_PRODUCER_KEY_WARNING}`);
+  expect(output).not.toContain('✖ MYTHOS_KEY is malformed');
+});
+
+test('init preserves an existing key and doctor respects process precedence over commented env values', async () => {
+  const cwd = validExpressProject();
+  const key = `mk_${'b'.repeat(32)}`;
+  const content = `MYTHOS_SESSION_SECRET=${'s'.repeat(32)}\nMYTHOS_LISTING_ID=listing-1\nMYTHOS_KEY="${key}" # dashboard\n`;
+  writeFileSync(join(cwd, '.env'), content);
+  await init({ cwd, env: {}, fetch: successfulFetch(), write: jest.fn() });
+  expect(readFileSync(join(cwd, '.env'), 'utf8')).toBe(content);
+  const fromFile: string[] = [];
+  expect(await doctor({ cwd, env: {}, fetch: successfulFetch(), write: fromFile.push.bind(fromFile) })).toBe(0);
+  expect(fromFile).toContain('✔ MYTHOS_KEY is set');
+  expect(fromFile.join('\n')).not.toContain(key);
+  const overridden: string[] = [];
+  expect(await doctor({ cwd, env: { ...VALID_ENV, MYTHOS_KEY: '' }, fetch: successfulFetch(), write: overridden.push.bind(overridden) })).toBe(0);
+  expect(overridden).toContain(`⚠ ${MISSING_PRODUCER_KEY_WARNING}`);
 });

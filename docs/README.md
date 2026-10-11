@@ -12,25 +12,26 @@ Official SDK packages for integrating Producer apps with the [Mythos](https://my
 ## What the SDK does
 
 1. **Verify launch tokens** — ES256 JWKS-backed verification of the `?lt=` token Mythos embeds in the redirect URL
-2. **Enforce single-use semantics** — middleware automatically calls `/consume` (ADR-0003); Producers cannot skip this
-3. **Report usage** — `reportUsage()` / `report_usage()` debits the Consumer's Mythos wallet after billable actions
-4. **Publish handshake** — `handshakeRoute()` / `handshake_router` for the Mythos publish gate
-5. **Listing callback** — `listingCallbackRoute()` / `create_listing_callback_handler` for dynamic listing ID registration
+2. **Own sessions** — `createMythos()` / `create_mythos()` consumes launch tokens once and manages sealed sessions
+3. **Bill usage** — browser `confirmCharge` followed by server `charge`; LLM usage settles after the response
+4. **Bind Producers** — launch, handshake and listing callback tokens are checked against your `MYTHOS_KEY`
 
 ## Choose your path
 
 | Goal | Start here |
 |------|------------|
-| Integrate in 10 minutes (Node) | [Quickstart: Node.js](../docs-site/docs/getting-started/quickstart-node.md) |
-| Integrate in 10 minutes (Python) | [Quickstart: Python](../docs-site/docs/getting-started/quickstart-python.md) |
-| Wire up with an AI agent | [AI integration prompt](../docs-site/docs/guides/ai-integration-prompt.md) |
-| Understand the full flow | [How it works](../docs-site/docs/getting-started/how-it-works.md) |
+| Integrate in 10 minutes (Node) | [Express](../docs-site/docs/getting-started/quickstart-express.md) · [Next.js](../docs-site/docs/getting-started/quickstart-nextjs-app.md) |
+| Integrate in 10 minutes (Python) | [FastAPI](../docs-site/docs/getting-started/quickstart-fastapi.md) |
+| Wire up with an AI agent | [AGENTS.md](../AGENTS.md) |
+| Understand the full flow | [Launch sessions](../docs-site/docs/concepts/launch-sessions.md) |
 | Look up an API symbol | [Node.js reference](../docs-site/docs/reference/node/overview.md) · [Python reference](../docs-site/docs/reference/python/overview.md) |
 
 ## Configuration
 
 | Env var | Required | Default | Description |
 |---------|----------|---------|-------------|
+| `MYTHOS_SESSION_SECRET` | Yes | — | At least 32 characters; generate with `openssl rand -base64 32` |
+| `MYTHOS_KEY` | Soft in 0.5.0; required in 0.6.0 | — | Dashboard → Settings → Mythos key; see [binding matrix](../docs-site/docs/reference/configuration.md) |
 | `MYTHOS_LISTING_ID` | Yes* | — | Your listing ID from the Mythos dashboard |
 | `MYTHOS_LISTING_IDS` | Yes* | — | Comma-separated listing IDs (overrides single ID) |
 | `MYTHOS_API_URL` | No | `https://api.mythos.work` | API base URL override |

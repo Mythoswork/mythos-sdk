@@ -5,6 +5,7 @@ jest.mock('express', () => {
 test('root SDK and createMythos do not require Express, while web handshake still works', async () => {
   process.env.MYTHOS_SESSION_SECRET = 'x'.repeat(32);
   process.env.MYTHOS_LISTING_ID = 'listing-abc';
+  delete process.env.MYTHOS_KEY;
   process.env.MYTHOS_API_URL = 'https://api.mythos.work';
 
   const { createMythos } = await import('../src/index');

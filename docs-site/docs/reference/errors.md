@@ -6,6 +6,7 @@ Every SDK error is a `MythosError`. Node errors expose `.code` and `.httpStatus`
 |---|---:|---|
 | `CONFIG_ERROR` | 500 | Bad or missing environment configuration; raised at startup by `createMythos()` |
 | `INVALID_LAUNCH_TOKEN` | 401 | Invalid launch token |
+| `PRODUCER_MISMATCH` | 401 | This app is bound to a different Mythos Producer. Check MYTHOS_KEY. |
 | `TOKEN_ALREADY_CONSUMED` | 401 | Launch token was reused |
 | `SESSION_REQUIRED` | 401 | `charge` was called without a session |
 | `SESSION_EXPIRED` | 401 | Session expired |
@@ -18,6 +19,17 @@ Every SDK error is a `MythosError`. Node errors expose `.code` and `.httpStatus`
 | `LLM_IDENTITY_REQUIRED` | — | `llm()` has no identity token and no fallback |
 
 ## Node mapping
+
+`ProducerMismatchError` extends `InvalidLaunchTokenError` in both languages, preserving legacy invalid-token handling. Producer binding applies to launch, handshake and callback tokens; see the [configuration matrix](./configuration.md).
+
+| Endpoint | HTTP | Mismatch body |
+|---|---|---|
+| Session (`handleSession` / Python session route) | 401 | `{"success":false,"error":"This app is bound to a different Mythos Producer. Check MYTHOS_KEY.","code":"PRODUCER_MISMATCH"}` |
+| Handshake | 401 | `{"error":"Producer mismatch"}` |
+| Listing callback | 401 | `{"error":"Producer mismatch"}`; registration callback is not invoked |
+| Legacy `requireLaunchToken` / `require_launch_token` | 401 | Existing invalid-token response |
+
+The backend surfaces `Producer mismatch` to the Producer; preserve this exact copy. Logs contain only the endpoint's `producer mismatch` message and `listingId`, never the key, `pkh` or token.
 
 ```ts
 if (err instanceof MythosError) res.status(err.httpStatus).json({ success: false, error: err.message, code: err.code });

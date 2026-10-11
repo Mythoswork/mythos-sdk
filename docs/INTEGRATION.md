@@ -2,6 +2,19 @@
 
 This guide describes the end-to-end flow for Mythos producers.
 
+## Current integration (0.5.0)
+
+Use `createMythos()` / `create_mythos()` and the SDK browser client. The SDK owns launch transport, sealed sessions, consume, handshake and callbacks. Start with [Express](../docs-site/docs/getting-started/quickstart-express.md), [Next.js](../docs-site/docs/getting-started/quickstart-nextjs-app.md) or [FastAPI](../docs-site/docs/getting-started/quickstart-fastapi.md). The primitive examples below are for existing low-level integrations.
+
+```dotenv
+# openssl rand -base64 32  (>= 32 chars)
+MYTHOS_SESSION_SECRET=
+# Mythos dashboard → Settings → Mythos key
+MYTHOS_KEY=
+```
+
+Copy the Producer key from the dashboard into deployment env. It prevents another Producer from auto-registering their Listing against your app. With a key, matching `pkh` accepts; missing or different `pkh` rejects with `ProducerMismatchError` / `PRODUCER_MISMATCH` (401). Without a key, static `MYTHOS_LISTING_ID(S)` launches are silent safe legacy configuration; dynamic launches, handshake and callbacks warn once per process. A resolver or callback warns at startup. Missing keys are soft in 0.5.0; required in 0.6.0. Update deployment env and redeploy after regeneration. See [configuration](../docs-site/docs/reference/configuration.md) for the exact warning, shared hash contract and literal vector.
+
 ## Launch flow
 
 1. A consumer launches your app from the Mythos marketplace.
@@ -65,7 +78,7 @@ await report_usage(jti, credits=5, idempotency_key="export-job-123")
 
 Register `/.well-known/mythos-handshake` so Mythos can verify your SDK is installed. Handshake tokens use `purpose: handshake-check` and are separate from launch tokens.
 
-Only `MYTHOS_API_URL` is required for handshake — listing ID is not needed.
+Handshake does not need a listing ID. `MYTHOS_API_URL` defaults to `https://api.mythos.work`; a configured `MYTHOS_KEY` must match the token's `pkh`, otherwise the response is HTTP 401 `{"error":"Producer mismatch"}`. Without a key, handshake validation warns once in 0.5.0.
 
 ## JWT claims (launch tokens)
 
@@ -78,11 +91,13 @@ Only `MYTHOS_API_URL` is required for handshake — listing ID is not needed.
 | `jti` | `sessionJti` | Used for consume and meter |
 | `aud` | — | Must include your listing ID |
 | `iss` | — | Must be `mythos` |
+| `pkh` | — | Must match the hash of `MYTHOS_KEY` when a key is configured; also used by handshake and callback tokens |
 
 ## Troubleshooting
 
 | Symptom | Likely cause |
 |---------|--------------|
+| `PRODUCER_MISMATCH` | The `MYTHOS_KEY` in this deployment belongs to a different Producer, or was regenerated. Copy the current key from the dashboard and redeploy. |
 | 401 Invalid launch token | Expired token, wrong listing ID, or bad signature |
 | 401 Token already consumed | User refreshed with same `?lt=` or replay attack |
 | 500 config error | `MYTHOS_LISTING_ID` not set |

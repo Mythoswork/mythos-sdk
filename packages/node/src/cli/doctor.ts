@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
+import { MISSING_PRODUCER_KEY_WARNING, PRODUCER_KEY_PATTERN } from '../constants/producer-key.constants';
 
 export type Framework = 'next-app' | 'next-pages' | 'express' | 'fastapi' | null;
 
@@ -21,7 +22,13 @@ function parseEnvFile(path: string): Record<string, string> {
     const separator = line.indexOf('=');
     const key = line.slice(0, separator).trim();
     let value = line.slice(separator + 1).trim();
-    if (value.length >= 2 && value[0] === value.at(-1) && (value[0] === '"' || value[0] === "'")) value = value.slice(1, -1);
+    if (value.startsWith('"') || value.startsWith("'")) {
+      const closingQuote = value.indexOf(value[0], 1);
+      if (closingQuote >= 1) value = value.slice(1, closingQuote);
+    } else {
+      // Match Node dotenv: an unquoted value ends at the first `#`, even without whitespace.
+      value = value.split('#')[0].trim();
+    }
     values[key] = value;
   }
   return values;
@@ -35,7 +42,7 @@ function loadEnv(cwd: string, processEnv: NodeJS.ProcessEnv): Record<string, str
   };
 }
 
-const REQUIRED_ENV = ['MYTHOS_SESSION_SECRET', 'MYTHOS_LISTING_ID', 'MYTHOS_LISTING_IDS'];
+const REQUIRED_ENV = ['MYTHOS_SESSION_SECRET', 'MYTHOS_LISTING_ID', 'MYTHOS_LISTING_IDS', 'MYTHOS_KEY'];
 
 // Next.js loads .env files itself; Express/FastAPI servers only see what the start command exports.
 function isOnlyInEnvFile(cwd: string, processEnv: NodeJS.ProcessEnv): boolean {
@@ -143,6 +150,16 @@ export async function doctor(options: DoctorOptions = {}): Promise<number> {
   const write = options.write ?? ((line: string) => process.stdout.write(`${line}\n`));
   let passed = 0;
   let failed = 0;
+  const producerKey = env.MYTHOS_KEY?.trim();
+  if (!producerKey) {
+    write(`⚠ ${MISSING_PRODUCER_KEY_WARNING}`);
+  } else if (PRODUCER_KEY_PATTERN.test(producerKey)) {
+    write('✔ MYTHOS_KEY is set');
+    passed += 1;
+  } else {
+    write('✖ MYTHOS_KEY is malformed');
+    failed += 1;
+  }
 
   const secret = env.MYTHOS_SESSION_SECRET ?? '';
   if (secret) {

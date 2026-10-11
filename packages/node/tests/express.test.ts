@@ -9,6 +9,7 @@ import { createMythos } from '../src/mythos';
 let server: Server | null = null;
 
 beforeEach(() => {
+  delete process.env.MYTHOS_KEY;
   process.env.MYTHOS_SESSION_SECRET = 'x'.repeat(32);
   delete process.env.MYTHOS_LISTING_ID;
   delete process.env.MYTHOS_LISTING_IDS;
