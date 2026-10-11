@@ -74,7 +74,8 @@ function appendEnv(cwd: string, framework: Exclude<Framework, null>, write: (lin
   const lines = ['# Mythos'];
   if (!hasListingId) lines.push('MYTHOS_LISTING_ID=');
   if (!hasSecret) lines.push(`MYTHOS_SESSION_SECRET=${randomBytes(32).toString('base64')}`);
-  if (!hasProducerKey) lines.push('MYTHOS_KEY=   # copy from Mythos dashboard → Settings → Mythos key');
+  // Comment on its own line: python-dotenv would read `KEY=   # note` as the value "# note".
+  if (!hasProducerKey) lines.push('# copy from Mythos dashboard → Settings → Mythos key', 'MYTHOS_KEY=');
   const separator = existing && !existing.endsWith('\n') ? '\n' : '';
   writeFileSync(path, `${existing}${separator}${lines.join('\n')}\n`, 'utf8');
   write(`Added MYTHOS_* to ${filename} (fill MYTHOS_LISTING_ID from the Mythos dashboard)`);

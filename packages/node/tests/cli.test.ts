@@ -58,7 +58,7 @@ test('init scaffolds a Next.js App Router project and preserves existing files',
     .toContain("from '../../../../lib/mythos'");
   const env = readFileSync(join(cwd, '.env.local'), 'utf8');
   expect(env).toContain('MYTHOS_LISTING_ID=');
-  expect(env).toContain('MYTHOS_KEY=   # copy from Mythos dashboard → Settings → Mythos key');
+  expect(env).toContain('# copy from Mythos dashboard → Settings → Mythos key\nMYTHOS_KEY=\n');
   expect(env.match(/MYTHOS_SESSION_SECRET=(.+)/)?.[1].length).toBeGreaterThanOrEqual(32);
 
   writeFileSync(libraryPath, '// keep me\n');
@@ -317,7 +317,7 @@ test.each([
   await init({ cwd, env: {}, fetch: successfulFetch(), write: jest.fn() });
   const content = readFileSync(envPath, 'utf8');
   expect(content.startsWith(original)).toBe(true);
-  expect(content).toContain('MYTHOS_KEY=   # copy from Mythos dashboard → Settings → Mythos key');
+  expect(content).toContain('# copy from Mythos dashboard → Settings → Mythos key\nMYTHOS_KEY=\n');
   await init({ cwd, env: {}, fetch: successfulFetch(), write: jest.fn() });
   expect(readFileSync(envPath, 'utf8')).toBe(content);
   const output: string[] = [];
