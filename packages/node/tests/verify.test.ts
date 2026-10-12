@@ -118,7 +118,7 @@ test('wrong aud rejected', async () => {
     .setExpirationTime('5m')
     .sign(privateKey);
 
-  await expect(verifyLaunchToken(token)).rejects.toMatchObject({ code: 'INVALID_LAUNCH_TOKEN' });
+  await expect(verifyLaunchToken(token)).rejects.toMatchObject({ code: 'LISTING_NOT_REGISTERED' });
 });
 
 test('resolveListingIds allows aud not in static list', async () => {

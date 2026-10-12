@@ -12,6 +12,7 @@ Mythos lets users buy credits once and spend them across apps. The SDK handles l
 - Express/FastAPI do not load `.env` automatically; Next.js does. Make sure the process actually loads the env file.
 - Map `MythosError` with `.httpStatus`; Python uses `.http_status`.
 - Sessions last up to 8 h and refresh automatically; never cache `llm()` clients across requests.
+- Test launches report diagnostics; real sessions never do. Reports contain only `code`, `step`, and `sdk_version`; they are best-effort background calls with a two-second timeout.
 
 ## Pick Your Framework
 
@@ -104,7 +105,7 @@ const { approved: chatApproved } = await confirmCharge({ kind: 'llm', reason: 'c
 Non-React bundled apps import `initMythos` from `@mythos-work/sdk/client`. Unbundled pages use:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.5.0/dist/mythos-client.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.5.1/dist/mythos-client.global.js"></script>
 <script>const m = Mythos.initMythos(); m.ready.then(console.log);</script>
 ```
 
@@ -169,6 +170,7 @@ Run `npx @mythos-work/sdk doctor` (Python: `python -m mythos_sdk doctor`) and fi
 |---|---:|---|
 | `CONFIG_ERROR` | 500 | Missing or invalid configuration |
 | `INVALID_LAUNCH_TOKEN` | 401 | Invalid launch token |
+| `LISTING_NOT_REGISTERED` | 401 | Launch audience is not registered with this app |
 | `PRODUCER_MISMATCH` | 401 | The `MYTHOS_KEY` in this deployment belongs to a different Producer, or was regenerated. Copy the current key from the dashboard and redeploy. |
 | `TOKEN_ALREADY_CONSUMED` | 401 | Launch token reused |
 | `SESSION_REQUIRED` | 401 | Billable action has no session |

@@ -10,6 +10,7 @@ const SEALED_PREFIX = 'v1.';
 
 export interface StoredSession extends MythosSession {
   expiresAt: string;
+  isTest?: boolean;
 }
 
 function getSessionKey(): Buffer {

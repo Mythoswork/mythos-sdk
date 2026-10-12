@@ -2,7 +2,7 @@ import base64
 import hashlib
 import json
 import os
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -11,6 +11,11 @@ from .errors import MythosConfigError
 from .types import MythosSession
 
 NONCE_LENGTH = 12
+
+
+@dataclass
+class StoredSession(MythosSession):
+    isTest: bool | None = None
 
 
 def _get_session_key() -> bytes:
@@ -102,6 +107,7 @@ def open_session(token: str) -> tuple[MythosSession, str] | None:
             parsed_expiry = parsed_expiry.replace(tzinfo=timezone.utc)
         if parsed_expiry <= datetime.now(timezone.utc):
             return None
-        return MythosSession(**payload), expires_at
+        session_type = StoredSession if "isTest" in payload else MythosSession
+        return session_type(**payload), expires_at
     except Exception:
         return None

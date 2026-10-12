@@ -3,6 +3,30 @@ import {
   resetMythosClientForTests,
   type MythosClient,
 } from '../src/mythos-client';
+import { SignJWT, generateKeyPair } from 'jose';
+import { DIAGNOSTIC_MESSAGES } from '../src/constants/diagnostics.constants';
+import { renderTestFailureOverlay } from '../src/client';
+
+interface FakeElement {
+  tagName: string;
+  id: string;
+  textContent: string;
+  style: { cssText: string };
+  children: FakeElement[];
+  events: Map<string, () => void>;
+  append(...elements: FakeElement[]): number;
+  addEventListener(type: string, callback: () => void): Map<string, () => void>;
+}
+
+function fakeElement(tagName: string): FakeElement {
+  const children: FakeElement[] = [];
+  const events = new Map<string, () => void>();
+  return {
+    tagName, id: '', textContent: '', style: { cssText: '' }, children, events,
+    append: (...elements: FakeElement[]) => children.push(...elements),
+    addEventListener: (type: string, callback: () => void) => events.set(type, callback),
+  };
+}
 
 type MessageListener = (event: { data: unknown; source: unknown; origin: string }) => void;
 
@@ -36,6 +60,9 @@ function installFakeWindow(options: FakeWindowOptions = {}) {
   const parentCalls: Array<{ data: unknown; origin: string }> = [];
   const documentListeners = new Map<string, () => void>();
   const doc = {
+    body: fakeElement('body'),
+    createElement: fakeElement,
+    getElementById: (id: string): unknown => doc.body.children.find((element) => element.id === id),
     hidden: false,
     addEventListener: (type: string, listener: () => void) => documentListeners.set(type, listener),
     removeEventListener: (type: string) => documentListeners.delete(type),
@@ -43,7 +70,7 @@ function installFakeWindow(options: FakeWindowOptions = {}) {
   const fetchMock = jest.fn<Promise<Response>, [RequestInfo | URL, RequestInit?]>();
   const win = {
     parent: undefined as unknown,
-    location: { search: options.search ?? '', href: 'https://app.test/calculator', origin: 'https://app.test' },
+    location: { search: options.search ?? '', href: 'https://app.test/calculator', origin: 'https://app.test', reload: jest.fn() },
     crypto: { randomUUID: () => 'request-1' },
     fetch: fetchMock,
     sessionStorage: {
@@ -84,6 +111,8 @@ function installFakeWindow(options: FakeWindowOptions = {}) {
   (globalThis as { document?: unknown }).document = doc;
 
   return {
+    document: doc,
+    reload: win.location.reload,
     fetchMock,
     parentCalls,
     storage: values,
@@ -97,6 +126,77 @@ function installFakeWindow(options: FakeWindowOptions = {}) {
     },
   };
 }
+
+async function signedTestSearch(testClaim: unknown): Promise<string> {
+  const { privateKey } = await generateKeyPair('ES256');
+  const token = await new SignJWT({ test: testClaim, jti: 'browser-test' })
+    .setProtectedHeader({ alg: 'ES256' }).sign(privateKey);
+  return `?lt=${encodeURIComponent(token)}`;
+}
+
+test.each([
+  'CONFIG_ERROR', 'PRODUCER_MISMATCH', 'INVALID_LAUNCH_TOKEN',
+  'LISTING_NOT_REGISTERED', 'MYTHOS_UNREACHABLE', 'UPSTREAM_ERROR',
+] as const)('test launch %s displays exact fixed overlay with Reload', async (code) => {
+  const fake = installFakeWindow({ search: await signedTestSearch(true) });
+  fake.fetchMock.mockResolvedValueOnce(response({ success: false, code, error: 'server message' }, 401));
+  try {
+    expect((await initMythos().ready).error).toEqual({ code, message: 'server message' });
+    const overlay = fake.document.body.children[0];
+    expect(overlay.style.cssText).toContain('position:fixed;inset:0;');
+    expect(overlay.children.map((element) => element.textContent)).toEqual([
+      'Mythos test launch failed', DIAGNOSTIC_MESSAGES[code], code, 'Reload',
+    ]);
+    expect(overlay.children[2].tagName).toBe('code');
+    overlay.children[3].events.get('click')?.();
+    expect(fake.reload).toHaveBeenCalledTimes(1);
+    renderTestFailureOverlay(code);
+    expect(fake.document.body.children).toHaveLength(1);
+  } finally {
+    fake.restore();
+  }
+});
+
+test.each([false, undefined, 'true', 1])('consumer/non-literal test claim %s never displays overlay', async (claim) => {
+  const fake = installFakeWindow({ search: await signedTestSearch(claim) });
+  fake.fetchMock.mockResolvedValueOnce(response({ success: false, code: 'PRODUCER_MISMATCH' }, 401));
+  try {
+    expect((await initMythos().ready).status).toBe('error');
+    expect(fake.document.body.children).toHaveLength(0);
+  } finally {
+    fake.restore();
+  }
+});
+
+test.each(['SESSION_EXPIRED', 'TOKEN_ALREADY_CONSUMED', 'NETWORK_ERROR', '__proto__'])('test token non-SDK failure %s never displays overlay', async (code) => {
+  const fake = installFakeWindow({ search: await signedTestSearch(true) });
+  fake.fetchMock.mockResolvedValueOnce(response({ success: false, code }, 401));
+  try {
+    await initMythos().ready;
+    expect(fake.document.body.children).toHaveLength(0);
+  } finally {
+    fake.restore();
+  }
+});
+
+test('cross-site cookie-less iframe retains header fallback with unavailable storage', async () => {
+  const fake = installFakeWindow({ search: await signedTestSearch(true), storageThrows: true });
+  fake.fetchMock.mockResolvedValueOnce(response(sessionBody('sealed-session')))
+    .mockResolvedValueOnce(response({ success: true, data: null }))
+    .mockResolvedValueOnce(response({ success: true }));
+  try {
+    const client = initMythos({ expectedOrigin: 'https://dashboard.mythos.work' });
+    expect((await client.ready).status).toBe('mythos');
+    await client.fetch('/api/action', { method: 'POST', headers: { 'x-app': 'retained' } });
+    const headers = new Headers(fake.fetchMock.mock.calls[2][1]?.headers);
+    expect(headers.get('X-Mythos-Session')).toBe('sealed-session');
+    expect(headers.get('x-app')).toBe('retained');
+    expect(headers.has('cookie')).toBe(false);
+    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.5.1' }, origin: 'https://dashboard.mythos.work' }]);
+  } finally {
+    fake.restore();
+  }
+});
 
 function initialiseWithExistingCookie(fake: ReturnType<typeof installFakeWindow>): MythosClient {
   fake.storage.set('mythos:transport', 'cookie');
@@ -137,7 +237,7 @@ test('first session uses cookie mode when the one-time probe finds the same sess
     expect(new Headers(fake.fetchMock.mock.calls[1][1]?.headers).has('X-Mythos-Session')).toBe(false);
     expect(fake.storage.get('mythos:transport')).toBe('cookie');
     expect(fake.storage.has('mythos:session-token')).toBe(false);
-    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake' }, origin: '*' }]);
+    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.5.1' }, origin: '*' }]);
   } finally {
     fake.restore();
   }

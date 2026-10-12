@@ -1,7 +1,7 @@
 import { jwtVerify, errors, type JWTPayload } from 'jose';
 import { getKeySet, getKeySetWithKidFallback } from './jwks-cache';
 import { loadConfig } from './config';
-import { InvalidLaunchTokenError, MythosConfigError } from './errors';
+import { InvalidLaunchTokenError, ListingNotRegisteredError, MythosConfigError } from './errors';
 import type { MythosSession } from './types';
 import { assertProducerBinding, readProducerKey, warnMissingProducerKeyOnce } from './producer-key';
 
@@ -24,7 +24,7 @@ function validateAudience(payload: JWTPayload, listingIds: string[]): void {
   }
   const audValues = Array.isArray(aud) ? aud : [aud];
   if (!audValues.some((value) => listingIds.includes(value))) {
-    throw new InvalidLaunchTokenError('Invalid audience');
+    throw new ListingNotRegisteredError();
   }
 }
 
