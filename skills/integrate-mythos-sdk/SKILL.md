@@ -15,6 +15,8 @@ description: Integrate the Mythos SDK (launch, sessions, credit charges, LLM bil
 8. Map every `MythosError` to `err.httpStatus` (Python: `err.http_status`) and `err.code`.
 9. Express/FastAPI do not load `.env` automatically: start with `node --env-file=.env server.js` or `uvicorn main:app --env-file .env`.
 10. Run `npx @mythos-work/sdk doctor` (Python: `python -m mythos_sdk doctor`) until every ✖ is fixed.
+11. The Listing's Callback URL is the **full** endpoint (e.g. `https://app.example.com/.well-known/mythos-listing-registered`), POSTed exactly as entered; the handshake is derived from the Launch URL. See "URLs Mythos Calls" in `AGENTS.md`.
+12. For real wiring, read the reference apps: https://github.com/Mythoswork/mythos-sdk-node-js-mock-integration-app (Next.js) and https://github.com/Mythoswork/mythos-sdk-python-mock-integration-app (FastAPI).
 
 ## Deployment environment (0.5.0)
 
