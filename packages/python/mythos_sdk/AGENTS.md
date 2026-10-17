@@ -80,6 +80,33 @@ app.include_router(mythos.router)
 
 Run with `uvicorn main:app --env-file .env` (needs `fastapi[standard]`), or set the variables in the host environment.
 
+## URLs Mythos Calls
+
+The Producer enters two URLs on the Listing. Once the SDK is mounted as shown above, it serves every route below. Do not write these handlers yourself.
+
+| Listing field | Enter | Mythos calls | Served by |
+|---|---|---|---|
+| Launch URL | The page users open, e.g. `https://app.example.com` | Loads it in an iframe with `?lt=<launch token>`; the page's browser client then calls `/api/mythos/session` | `useMythos()` / `initMythos()` + `mythos.handlers` / `mythos.router` |
+| (derived from Launch URL) | Nothing | `GET <Launch URL>/.well-known/mythos-handshake?lt=…` before publish | Next.js rewrite → `/api/mythos/handshake`; `mythosExpress`; `mythos.router` |
+| Callback URL (optional) | The **full** endpoint URL, e.g. `https://app.example.com/.well-known/mythos-listing-registered` | `POST <Callback URL>?lt=…` when the Listing is created. The URL is used exactly as entered; no path is appended | `createMythos({ onListingRegistered })` / `create_mythos(on_listing_registered=…)` |
+
+- The handshake path is appended to the full Launch URL. A Launch URL with a path (`https://app.example.com/calc`) is checked at `https://app.example.com/calc/.well-known/mythos-handshake`.
+- The callback must return HTTP 200. The SDK does that after `onListingRegistered(listingId)` resolves. Make the callback idempotent (upsert, not append).
+- The callback only matters with `resolveListingIds` / `resolve_listing_ids`: store the ID in `onListingRegistered` and return the stored IDs from the resolver. With a static `MYTHOS_LISTING_ID`, leave Callback URL empty.
+- On serverless hosts (Vercel), the callback and session routes may run in different instances. Store Listing IDs in shared storage (Redis/DB), not memory or `/tmp`.
+- Callback URL must be HTTPS in production.
+
+## Reference Implementations
+
+These complete working apps run on the current SDK. Read them for real wiring, especially the callback:
+
+| Stack | Repository | Look at |
+|---|---|---|
+| Next.js (Pages Router) | https://github.com/Mythoswork/mythos-sdk-node-js-mock-integration-app | `lib/mythos.ts` (`onListingRegistered` + `resolveListingIds`), `lib/listing-ids-store.ts` (Redis with file fallback), `pages/api/mythos/[...mythos].ts`, `next.config.ts` rewrites, `pages/calculator.tsx` (`useMythos`), `pages/api/calculate.ts` (`mythos.charge`), `pages/api/chat.ts` (`mythos.llm`) |
+| FastAPI | https://github.com/Mythoswork/mythos-sdk-python-mock-integration-app | `main.py` (`create_mythos(on_listing_registered=…)`, `app.include_router(mythos.router)`, `mythos.charge`, `mythos.llm`), `listing_ids_store.py` |
+
+Copy patterns, not whole apps. The mocks also include test-harness routes (`harness/*`) that real apps do not need.
+
 ## Browser
 
 React apps use the shared client without a Provider:
