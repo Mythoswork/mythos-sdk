@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `charge` accepts `usd` (decimal string, up to 4 dp) as an alternative to `credits`; new `usdToCredits` / `usd_to_credits` helpers. 1 credit = $0.0001.
+
 ## 0.5.1
 
 ### Added

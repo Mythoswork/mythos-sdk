@@ -1,5 +1,6 @@
 import { MythosError } from './errors';
 import type { CreateMythosOptions } from './mythos';
+export { usdToCredits } from './usd';
 
 export {
   MythosError,

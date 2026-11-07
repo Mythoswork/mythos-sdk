@@ -64,7 +64,7 @@ Returns `MythosSession | None`.
 
 ```ts
 const result = await mythos.charge(req, {
-  credits: 1,
+  usd: '0.15',
   reason: 'calculate',
   idempotencyKey,
   consentId,
@@ -76,12 +76,14 @@ Returns `{ chargeId, sessionMeteredTotal }`. `reason`, `idempotencyKey`, and `co
 ```python
 result = await mythos.charge(
     request,
-    credits=1,
+    usd="0.15",
     reason="calculate",
     idempotency_key=idempotency_key,
     consent_id=consent_id,
 )
 ```
+
+Charge with either `credits` or `usd`, not both. `usd` is a decimal string with at most 4 decimal places (1 credit = $0.0001, so `"0.15"` = 1,500 credits). The amount you charge is what you earn; the user pays it plus Mythos's 20% platform fee. Use `usdToCredits` (`usd_to_credits` in Python) to show the same amount in `confirmCharge`.
 
 ## `llm`
 

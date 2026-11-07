@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from jose import jwt
 from httpx import ASGITransport
 
-from mythos_sdk.errors import MythosConfigError, SessionExpiredError, SessionRequiredError
+from mythos_sdk.errors import MythosConfigError, MythosError, SessionExpiredError, SessionRequiredError
 from mythos_sdk.mythos import SESSION_COOKIE, SESSION_HEADER, create_mythos
 from mythos_sdk.session import open_session, seal_session
 from mythos_sdk.types import MythosSession
@@ -184,6 +184,22 @@ async def test_header_session_transport_and_charge_result(monkeypatch):
     assert charge.charge_id == "k-1"
     assert charge.session_metered_total == 3
     assert client.post.await_args_list[-1].kwargs["json"]["charge_id"] == "k-1"
+
+
+async def test_charge_usd_and_invalid_amounts_fail_before_session(monkeypatch):
+    monkeypatch.setenv("MYTHOS_SESSION_SECRET", "x" * 32)
+    sdk = create_mythos()
+    token = seal_session(SESSION, "2099-01-01T00:00:00Z")
+    with patch("mythos_sdk.mythos.meter_session", new_callable=AsyncMock) as meter:
+        await sdk.charge(request_like(session_header=token), usd="0.15", idempotency_key="usd-key")
+        meter.assert_awaited_once_with("jti-1", 1500, None, "usd-key")
+        meter.reset_mock()
+        for options in ({}, {"credits": 1, "usd": "0.15"}, {"usd": 0.15}):
+            with pytest.raises(MythosError) as error:
+                await sdk.charge(request_like(), **options)
+            assert error.value.code == "INVALID_CHARGE_AMOUNT"
+            assert error.value.http_status == 400
+        meter.assert_not_awaited()
 
 
 async def test_consume_409_maps_to_token_consumed(monkeypatch, rsa_key_pair):

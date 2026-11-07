@@ -33,6 +33,7 @@ from .logger import log_debug, log_error, log_warn
 from .producer_key import assert_producer_key_format, read_producer_key, warn_missing_producer_key_once
 from .session import StoredSession, open_session, seal_session
 from .types import MythosSession
+from .usd import usd_to_credits
 from .version import SDK_VERSION
 from .verify import verify_launch_token
 
@@ -93,11 +94,16 @@ class Mythos:
         self,
         request: RequestLike,
         *,
-        credits: int,
+        credits: int | None = None,
+        usd: str | None = None,
         reason: str | None = None,
         idempotency_key: str | None = None,
         consent_id: str | None = None,
     ) -> MeterResult:
+        if (credits is None) == (usd is None):
+            raise MythosError("Pass exactly one of credits or usd", "INVALID_CHARGE_AMOUNT", 400)
+        resolved_credits = usd_to_credits(usd) if usd is not None else credits
+        assert resolved_credits is not None
         stored = self._read_stored_session(request)
         if stored is None:
             raise SessionRequiredError()
@@ -105,7 +111,7 @@ class Mythos:
         if consent_id:
             log_debug("charge: consentId accepted (enforcement deferred to Phase 4)")
         try:
-            return await meter_session(session.sessionJti, credits, reason, idempotency_key)
+            return await meter_session(session.sessionJti, resolved_credits, reason, idempotency_key)
         except MythosError as err:
             report_session_failure(session, err, "meter")
             if err.http_status >= 500:
