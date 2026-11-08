@@ -2,6 +2,8 @@ import re
 
 from .errors import MythosError
 
+# Mirrors the Mythos backend rate (CREDITS_PER_CENT = 100, i.e. 1 credit = $0.0001). Credits are a fixed unit;
+# if the backend ever changes it, update this, billing.constants.ts and conformance/usd-credits-v1.json together.
 CREDITS_PER_USD = 10_000
 _MAX_CREDITS = 9_007_199_254_740_991
 _INVALID = 'usd must be a decimal string with at most 4 decimal places, e.g. "0.15"'

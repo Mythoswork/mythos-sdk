@@ -2,7 +2,7 @@ import os
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import asdict, replace
 from datetime import datetime, timedelta, timezone
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 from urllib.parse import urlsplit
 
 import httpx
@@ -102,8 +102,7 @@ class Mythos:
     ) -> MeterResult:
         if (credits is None) == (usd is None):
             raise MythosError("Pass exactly one of credits or usd", "INVALID_CHARGE_AMOUNT", 400)
-        resolved_credits = usd_to_credits(usd) if usd is not None else credits
-        assert resolved_credits is not None
+        resolved_credits = usd_to_credits(usd) if usd is not None else cast(int, credits)
         stored = self._read_stored_session(request)
         if stored is None:
             raise SessionRequiredError()
