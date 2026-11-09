@@ -10,7 +10,7 @@ from jose import jwt
 from jose.exceptions import JOSEError
 
 from .api_client import (
-    MeterResult, consume_session, meter_session, read_identity_fields,
+    MeterResult, _validate_credits, consume_session, meter_session, read_identity_fields,
     read_session_expires_at, refresh_session,
 )
 from .billing_metadata import MythosLlmBillingMetadata, get_llm_billing_metadata
@@ -104,7 +104,9 @@ class Mythos:
             raise MythosError("Pass exactly one of credits or usd", "INVALID_CHARGE_AMOUNT", 400)
         if usd is not None:
             assert_usd(usd)
-        amount = usd if usd is not None else cast(int, credits)
+        else:
+            _validate_credits(credits)
+        amount: int | dict[str, str] = {"usd": usd} if usd is not None else cast(int, credits)
         stored = self._read_stored_session(request)
         if stored is None:
             raise SessionRequiredError()

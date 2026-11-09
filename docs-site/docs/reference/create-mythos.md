@@ -71,7 +71,7 @@ const result = await mythos.charge(req, {
 });
 ```
 
-Returns `{ chargeId, sessionMeteredTotal }`. `reason`, `idempotencyKey`, and `consentId` are optional.
+Returns `{ chargeId, sessionMeteredTotal, creditsCharged }`. `reason`, `idempotencyKey`, and `consentId` are optional.
 
 ```python
 result = await mythos.charge(
@@ -83,7 +83,7 @@ result = await mythos.charge(
 )
 ```
 
-Charge with either `credits` or `usd`, not both. `usd` is a decimal string with at most 4 decimal places (for example `"0.15"`); Mythos converts it to credits on the server at the current rate, and the result's `credits_charged` tells you how many credits were used. The amount you charge is what you earn; the user pays it plus Mythos's 20% platform fee. Pass the same `{ usd }` to `confirmCharge` so the approval popup shows the dollar amount.
+Charge with either `credits` or `usd`, not both. `usd` is a decimal string with at most 4 decimal places (for example `"0.15"`); Mythos converts it to credits on the server at the current rate, and the result's `creditsCharged` (Python: `credits_charged`) tells you how many credits were used. The amount you charge is what you earn; the user pays it plus Mythos's 20% platform fee. Pass the same `{ usd }` to `confirmCharge` so the approval popup shows the dollar amount.
 
 ## `llm`
 

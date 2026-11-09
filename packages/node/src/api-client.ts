@@ -46,7 +46,7 @@ export async function readErrorCode(res: Response): Promise<string | undefined> 
 export interface MeterResult {
   chargeId: string;
   sessionMeteredTotal: number | null;
-  credits_charged?: number;
+  creditsCharged?: number;
 }
 
 export function readIdentityFields(
@@ -158,6 +158,6 @@ export async function meterSession(
   return {
     chargeId: resolvedChargeId,
     sessionMeteredTotal: typeof total === 'number' && Number.isSafeInteger(total) ? total : null,
-    ...(typeof charged === 'number' && Number.isSafeInteger(charged) ? { credits_charged: charged } : {}),
+    ...(typeof charged === 'number' && Number.isSafeInteger(charged) ? { creditsCharged: charged } : {}),
   };
 }

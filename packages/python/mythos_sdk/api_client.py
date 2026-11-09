@@ -106,17 +106,20 @@ async def consume_session(jti: str) -> Any:
 
 async def meter_session(
     jti: str,
-    credits: int | str,
+    credits: int | dict[str, str],
     reason: str | None = None,
     charge_id: str | None = None,
 ) -> MeterResult:
-    if isinstance(credits, str):
-        assert_usd(credits)
+    # USD must be explicit ({"usd": "0.15"}): a bare string is never read as dollars.
+    if isinstance(credits, dict):
+        assert_usd(credits.get("usd"))
+        amount_field: dict[str, Any] = {"usd": credits["usd"]}
     else:
         _validate_credits(credits)
+        amount_field = {"credits": credits}
     config = load_config()
     resolved_charge_id = charge_id if charge_id is not None else str(uuid.uuid4())
-    body: dict[str, Any] = {"usd" if isinstance(credits, str) else "credits": credits, "charge_id": resolved_charge_id}
+    body: dict[str, Any] = {**amount_field, "charge_id": resolved_charge_id}
     if reason is not None:
         body["reason"] = reason
 

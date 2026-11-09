@@ -498,8 +498,8 @@ test('client confirmation forwards USD and rejects ambiguous amounts before post
     fake.dispatchMessage({ type: 'mythos:confirm-charge-response', requestId: request?.requestId, approved: true });
     await pending;
     const count = fake.parentCalls.length;
-    expect(() => client.confirmCharge({ credits: 1, usd: '0.15' } as never)).toThrow('Pass exactly one');
-    expect(() => client.confirmCharge({} as never)).toThrow('Pass exactly one');
+    await expect(client.confirmCharge({ credits: 1, usd: '0.15' } as never)).rejects.toThrow('Pass exactly one');
+    await expect(client.confirmCharge({} as never)).rejects.toThrow('Pass exactly one');
     expect(fake.parentCalls).toHaveLength(count);
   } finally {
     fake.restore();

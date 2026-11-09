@@ -332,6 +332,13 @@ function createClient(options: InitMythosOptions): MythosClient {
   };
 
   const confirmCharge = (charge: ConfirmChargeOptions): Promise<ConfirmChargeResult> => {
+    try {
+      return requestConfirm(charge);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  };
+  const requestConfirm = (charge: ConfirmChargeOptions): Promise<ConfirmChargeResult> => {
     let amount: number | { usd: string } = 0; // LLM dialog ignores the numeric placeholder.
     if (charge.kind !== 'llm') {
       if ((charge.credits !== undefined) === (charge.usd !== undefined)) {

@@ -79,7 +79,9 @@ export function requestChargeConfirmation(
   kind: MythosChargeKind = 'generic',
   expectedOrigin?: string,
 ): Promise<ConfirmChargeResult> {
-  if (typeof amount !== 'number') assertUsd(amount?.usd);
+  if (typeof amount !== 'number') {
+    try { assertUsd(amount?.usd); } catch (err) { return Promise.reject(err); }
+  }
   return new Promise((resolve) => {
     if (window === window.parent) {
       console.warn('[mythos-client] not embedded in a parent frame — skipping charge.');

@@ -36,7 +36,7 @@ test('meterSession sends USD unchanged and exposes charged credits', async () =>
   const result = await meterSession('jti-001', { usd: '0.15' }, 'page-view', 'key');
   const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
   expect(body).toEqual({ usd: '0.15', charge_id: 'key', reason: 'page-view' });
-  expect(result.credits_charged).toBe(1500);
+  expect(result.creditsCharged).toBe(1500);
 });
 
 test('meterSession URL-encodes jti', async () => {
