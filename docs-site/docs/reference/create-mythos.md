@@ -83,7 +83,7 @@ result = await mythos.charge(
 )
 ```
 
-Charge with either `credits` or `usd`, not both. `usd` is a decimal string with at most 4 decimal places (1 credit = $0.0001, so `"0.15"` = 1,500 credits). The amount you charge is what you earn; the user pays it plus Mythos's 20% platform fee. Use `usdToCredits` (`usd_to_credits` in Python) to show the same amount in `confirmCharge`.
+Charge with either `credits` or `usd`, not both. `usd` is a decimal string with at most 4 decimal places (for example `"0.15"`); Mythos converts it to credits on the server at the current rate, and the result's `credits_charged` tells you how many credits were used. The amount you charge is what you earn; the user pays it plus Mythos's 20% platform fee. Pass the same `{ usd }` to `confirmCharge` so the approval popup shows the dollar amount.
 
 ## `llm`
 

@@ -8,6 +8,7 @@
 // the same literals and risking drift.
 
 import { SDK_VERSION } from './version';
+import { assertUsd } from './usd';
 
 export { renderTestFailureOverlay } from './test-failure-overlay';
 
@@ -72,12 +73,13 @@ export function sendHandshake(expectedOrigin?: string): void {
  * confirmation UX against an unexpected embedding frame.
  */
 export function requestChargeConfirmation(
-  credits: number,
+  amount: number | { usd: string },
   reason?: string,
   timeoutMs: number = DEFAULT_CONFIRM_TIMEOUT_MS,
   kind: MythosChargeKind = 'generic',
   expectedOrigin?: string,
 ): Promise<ConfirmChargeResult> {
+  if (typeof amount !== 'number') assertUsd(amount?.usd);
   return new Promise((resolve) => {
     if (window === window.parent) {
       console.warn('[mythos-client] not embedded in a parent frame — skipping charge.');
@@ -127,7 +129,7 @@ export function requestChargeConfirmation(
     window.addEventListener('message', onMessage);
     try {
       window.parent.postMessage(
-        { type: MYTHOS_CONFIRM_CHARGE_REQUEST_TYPE, requestId, credits, reason, kind },
+        { type: MYTHOS_CONFIRM_CHARGE_REQUEST_TYPE, requestId, ...(typeof amount === 'number' ? { credits: amount } : { usd: amount.usd }), reason, kind },
         expectedOrigin ?? '*',
       );
     } catch {
@@ -138,16 +140,15 @@ export function requestChargeConfirmation(
 }
 
 export async function confirmCharge(
-  credits: number,
+  amount: number | { usd: string },
   reason?: string,
   timeoutMs: number = DEFAULT_CONFIRM_TIMEOUT_MS,
   kind: MythosChargeKind = 'generic',
   expectedOrigin?: string,
 ): Promise<boolean> {
-  const { approved } = await requestChargeConfirmation(credits, reason, timeoutMs, kind, expectedOrigin);
+  const { approved } = await requestChargeConfirmation(amount, reason, timeoutMs, kind, expectedOrigin);
   return approved;
 }
 
 export { initMythos } from './mythos-client';
 export type { ConfirmChargeOptions, InitMythosOptions, MythosClient, MythosClientState, MythosStatus } from './mythos-client';
-export { usdToCredits } from './usd';

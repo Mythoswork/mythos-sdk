@@ -192,7 +192,7 @@ async def test_charge_usd_and_invalid_amounts_fail_before_session(monkeypatch):
     token = seal_session(SESSION, "2099-01-01T00:00:00Z")
     with patch("mythos_sdk.mythos.meter_session", new_callable=AsyncMock) as meter:
         await sdk.charge(request_like(session_header=token), usd="0.15", idempotency_key="usd-key")
-        meter.assert_awaited_once_with("jti-1", 1500, None, "usd-key")
+        meter.assert_awaited_once_with("jti-1", "0.15", None, "usd-key")
         meter.reset_mock()
         for options in ({}, {"credits": 1, "usd": "0.15"}, {"usd": 0.15}):
             with pytest.raises(MythosError) as error:

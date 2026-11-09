@@ -5,6 +5,8 @@ import {
   type ConfirmChargeResult,
 } from './client';
 import type { MythosSession } from './types';
+import { MythosError } from './errors';
+import { assertUsd } from './usd';
 import { showTestLaunchFailure } from './test-failure-overlay';
 
 export type MythosStatus = 'loading' | 'mythos' | 'standalone' | 'expired' | 'error';
@@ -31,7 +33,8 @@ export interface InitMythosOptions {
  * settled after the response), so `kind: 'llm'` takes no credits.
  */
 export type ConfirmChargeOptions =
-  | { kind?: 'generic'; credits: number; reason?: string }
+  | { kind?: 'generic'; credits: number; usd?: never; reason?: string }
+  | { kind?: 'generic'; usd: string; credits?: never; reason?: string }
   | { kind: 'llm'; reason?: string };
 
 export interface MythosClient {
@@ -328,14 +331,25 @@ function createClient(options: InitMythosOptions): MythosClient {
     return response;
   };
 
-  const confirmCharge = (charge: ConfirmChargeOptions): Promise<ConfirmChargeResult> =>
-    requestChargeConfirmation(
-      charge.kind === 'llm' ? 0 : charge.credits, // ponytail: dashboard requires a numeric field; its LLM dialog ignores it
+  const confirmCharge = (charge: ConfirmChargeOptions): Promise<ConfirmChargeResult> => {
+    let amount: number | { usd: string } = 0; // LLM dialog ignores the numeric placeholder.
+    if (charge.kind !== 'llm') {
+      if ((charge.credits !== undefined) === (charge.usd !== undefined)) {
+        throw new MythosError('Pass exactly one of credits or usd', 'INVALID_CHARGE_AMOUNT', 400);
+      }
+      if (charge.usd !== undefined) {
+        assertUsd(charge.usd);
+        amount = { usd: charge.usd };
+      } else amount = charge.credits!;
+    }
+    return requestChargeConfirmation(
+      amount,
       charge.reason,
       options.confirmTimeoutMs ?? DEFAULT_CONFIRM_TIMEOUT_MS,
       charge.kind ?? 'generic',
       options.expectedOrigin,
     );
+  };
 
   const subscribe = (listener: () => void): (() => void) => {
     listeners.add(listener);

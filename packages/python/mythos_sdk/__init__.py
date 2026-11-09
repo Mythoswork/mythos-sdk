@@ -26,7 +26,6 @@ from .mythos import Mythos, create_mythos
 from .report_usage import report_usage
 from .session import decode_session, encode_session
 from .types import MythosSession
-from .usd import usd_to_credits
 from .verify import verify_launch_token
 
 
@@ -61,7 +60,6 @@ def __getattr__(name: str) -> object:
 
 
 __all__ = [
-    "usd_to_credits",
     "verify_launch_token",
     "create_mythos",
     "Mythos",

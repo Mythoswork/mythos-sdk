@@ -182,7 +182,9 @@ test('charge converts USD and rejects invalid amounts before reading a session',
   const body = await launch.json() as { data: { sessionToken: string } };
   await sdk.charge(sessionRequest('https://app.test', undefined, body.data.sessionToken), { usd: '0.15', idempotencyKey: 'usd-key' });
   const call = jest.mocked(global.fetch).mock.calls.find(([input]) => String(input).endsWith('/meter'));
-  expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({ credits: 1500, charge_id: 'usd-key' });
+  const meterBody = JSON.parse(String(call?.[1]?.body));
+  expect(meterBody).toMatchObject({ usd: '0.15', charge_id: 'usd-key' });
+  expect(meterBody).not.toHaveProperty('credits');
   jest.mocked(global.fetch).mockClear();
   for (const options of [{}, { credits: 1, usd: '0.15' }, { usd: 0.15 }]) {
     await expect(sdk.charge(sessionRequest('https://app.test'), options as never))

@@ -15,12 +15,14 @@ from .errors import (
     SessionNotFoundError,
 )
 from .http import get_http_client
+from .usd import assert_usd
 
 
 @dataclass(frozen=True)
 class MeterResult:
     charge_id: str
     session_metered_total: int | None
+    credits_charged: int | None = None
 
 
 @dataclass(frozen=True)
@@ -104,14 +106,17 @@ async def consume_session(jti: str) -> Any:
 
 async def meter_session(
     jti: str,
-    credits: int,
+    credits: int | str,
     reason: str | None = None,
     charge_id: str | None = None,
 ) -> MeterResult:
-    _validate_credits(credits)
+    if isinstance(credits, str):
+        assert_usd(credits)
+    else:
+        _validate_credits(credits)
     config = load_config()
     resolved_charge_id = charge_id if charge_id is not None else str(uuid.uuid4())
-    body: dict[str, Any] = {"credits": credits, "charge_id": resolved_charge_id}
+    body: dict[str, Any] = {"usd" if isinstance(credits, str) else "credits": credits, "charge_id": resolved_charge_id}
     if reason is not None:
         body["reason"] = reason
 
@@ -147,4 +152,6 @@ async def meter_session(
     data = response_body.get("data") if isinstance(response_body, dict) else None
     total = data.get("session_metered_total") if isinstance(data, dict) else None
     session_total = total if isinstance(total, int) and not isinstance(total, bool) and total >= 0 else None
-    return MeterResult(charge_id=resolved_charge_id, session_metered_total=session_total)
+    charged = data.get("credits_charged") if isinstance(data, dict) else None
+    return MeterResult(charge_id=resolved_charge_id, session_metered_total=session_total,
+                       credits_charged=charged if isinstance(charged, int) and not isinstance(charged, bool) else None)

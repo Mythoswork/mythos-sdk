@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Added
-- `charge` accepts `usd` (decimal string, up to 4 dp) as an alternative to `credits`; new `usdToCredits` / `usd_to_credits` helpers. 1 credit = $0.0001.
+- `charge` accepts `usd` (decimal string, up to 4 dp) as an alternative to `credits`; the backend converts at its current rate and returns `credits_charged`. `confirmCharge({ usd })` shows the USD amount. Release the SDK only after backend `feat/meter-usd` is deployed.
 
 ## 0.5.1
 

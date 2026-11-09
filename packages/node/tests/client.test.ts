@@ -156,6 +156,18 @@ test('confirmCharge posts the confirm-charge request with credits and reason', a
   }
 });
 
+test('confirmCharge posts USD without credits', async () => {
+  const fake = installFakeWindow(true);
+  try {
+    const pending = confirmCharge({ usd: '0.15' }, 'calculate');
+    expect(fake.parentCalls[0].data).toEqual({ type: 'mythos:confirm-charge', requestId: 'fixed-request-id', usd: '0.15', reason: 'calculate', kind: 'generic' });
+    fake.dispatchResponse({ type: 'mythos:confirm-charge-response', requestId: 'fixed-request-id', approved: true });
+    expect(await pending).toBe(true);
+  } finally {
+    fake.restore();
+  }
+});
+
 test('confirmCharge posts kind "llm" when explicitly requested', async () => {
   const fake = installFakeWindow(true);
   try {

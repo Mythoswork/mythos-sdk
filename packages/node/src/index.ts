@@ -1,5 +1,4 @@
 export { verifyLaunchToken } from './verify';
-export { usdToCredits } from './usd';
 export { requireLaunchToken } from './middleware';
 export { reportUsage } from './reportUsage';
 export { handshakeRoute } from './handshake';

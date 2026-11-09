@@ -31,6 +31,14 @@ test('meterSession uses provided idempotency key as charge_id', async () => {
   expect(body.charge_id).toBe('fixed-charge-id');
 });
 
+test('meterSession sends USD unchanged and exposes charged credits', async () => {
+  (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ data: { credits_charged: 1500 } }) });
+  const result = await meterSession('jti-001', { usd: '0.15' }, 'page-view', 'key');
+  const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+  expect(body).toEqual({ usd: '0.15', charge_id: 'key', reason: 'page-view' });
+  expect(result.credits_charged).toBe(1500);
+});
+
 test('meterSession URL-encodes jti', async () => {
   await meterSession('jti/with/slashes', 1);
 
