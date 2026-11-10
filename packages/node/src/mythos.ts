@@ -1,6 +1,6 @@
 import { decodeJwt, errors } from 'jose';
 
-import { consumeSession, meterSession, readErrorCode, readIdentityFields, readSessionExpiresAt, refreshSession, type MeterResult } from './api-client';
+import { consumeSession, meterSession, readCreditsPerUsd, readErrorCode, readIdentityFields, readSessionExpiresAt, refreshSession, type MeterResult } from './api-client';
 import { getLlmBillingMetadata } from './billing-metadata';
 import { loadConfig } from './config';
 import { readTestJti, reportLaunchFailure, reportSessionFailure } from './diagnostics';
@@ -252,6 +252,7 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
       ? new Date(Date.parse(session.llmIdentityExpiresAt) - REFRESH_LEAD_SECONDS * 1000).toISOString() : null;
     const response = json(200, { success: true, data: {
       session: publicOf(session), sessionToken, expiresAt: session.expiresAt, refreshAt,
+      creditsPerUsd: session.creditsPerUsd ?? null,
     } });
     if (cookie) response.headers.append('set-cookie', cookie);
     return response;
@@ -330,6 +331,7 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
       ...incoming,
       isTest: readTestJti(token) !== undefined,
       ...(identity ?? {}),
+      creditsPerUsd: readCreditsPerUsd(consumeBody),
       expiresAt: readSessionExpiresAt(consumeBody) ?? identity?.llmIdentityExpiresAt
         ?? new Date(Date.now() + DEFAULT_SESSION_TTL_SECONDS * 1000).toISOString(),
     };

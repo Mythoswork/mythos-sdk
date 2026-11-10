@@ -74,6 +74,12 @@ export interface SessionRefreshResult {
   sessionExpiresAt: string;
 }
 
+export function readCreditsPerUsd(body: unknown): number | undefined {
+  if (!isRecord(body) || !isRecord(body['data'])) return undefined;
+  const rate = body['data']['credits_per_usd'];
+  return typeof rate === 'number' && Number.isSafeInteger(rate) && rate > 0 ? rate : undefined;
+}
+
 /** An old backend responds with 404 without a code; keep the existing session in that case. */
 export async function refreshSession(jti: string, identityToken: string): Promise<SessionRefreshResult | null> {
   let res: Response;

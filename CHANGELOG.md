@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Added
-- `charge` accepts `usd` (decimal string, up to 4 dp) as an alternative to `credits`; the backend converts at its current rate and returns `credits_charged`. `confirmCharge({ usd })` shows the USD amount. Release the SDK only after backend `feat/meter-usd` is deployed.
+- `charge` accepts `usd` (decimal string, up to 4 dp) as an alternative to `credits`; the backend converts at its current rate and returns `credits_charged`. With an `initMythos`/`useMythos` session, `confirmCharge({ usd })` converts exactly using the session's `creditsPerUsd` rate and the popup shows credits. Missing rates reject with `USD_RATE_UNAVAILABLE`; standalone client confirmation remains credits-only. Node and Python preserve the optional consume rate across session refresh. Release order: deploy the backend consume rate and backend#269, then merge and tag the SDK.
 
 ## 0.5.1
 

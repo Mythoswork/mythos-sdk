@@ -384,6 +384,31 @@ def refreshed_response(status: int = 200, code: str | None = None) -> httpx.Resp
     return httpx.Response(status, json=body)
 
 
+@pytest.mark.parametrize("rate", [10000, None, True, "10000", 0, -1, 1.5])
+async def test_consume_rate_is_validated_sealed_and_preserved_on_refresh(monkeypatch, rsa_key_pair, rate):
+    monkeypatch.setenv("MYTHOS_SESSION_SECRET", "x" * 32)
+    data = {
+        "llm_identity_token": "identity",
+        "llm_identity_expires_at": (datetime.now(timezone.utc) + timedelta(minutes=2)).isoformat(),
+    }
+    if rate is not None:
+        data["credits_per_usd"] = rate
+    post = AsyncMock(side_effect=[httpx.Response(200, json={"data": data}), refreshed_response()])
+    sdk = create_mythos()
+    with mock_jwks(rsa_key_pair), patch("mythos_sdk.api_client.get_http_client") as client:
+        client.return_value.post = post
+        status, body, token, _expiry = await sdk.handle_session(request_like(lt=mint_launch_token(rsa_key_pair["private"])))
+        expected = 10000 if rate == 10000 else None
+        assert status == 200
+        assert body["data"]["creditsPerUsd"] == expected
+        assert open_session(token)[0].credits_per_usd == expected
+        status, body, rewritten, _expiry = await sdk.handle_session(request_like(cookie=token))
+    assert status == 200
+    assert body["data"]["creditsPerUsd"] == expected
+    assert open_session(rewritten)[0].credits_per_usd == expected
+    assert post.await_count == 2
+
+
 async def test_session_route_refresh_rewrites_cookie(monkeypatch):
     monkeypatch.setenv("MYTHOS_SESSION_SECRET", "x" * 32)
     sdk = create_mythos()

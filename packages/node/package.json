@@ -59,7 +59,7 @@
   },
   "scripts": {
     "build": "tsc && npm run build:global",
-    "build:global": "esbuild src/client-global.ts --bundle --format=iife --global-name=Mythos --target=es2019 --minify --outfile=dist/mythos-client.global.js",
+    "build:global": "esbuild src/client-global.ts --bundle --format=iife --global-name=Mythos --target=es2020 --minify --outfile=dist/mythos-client.global.js",
     "test": "jest",
     "prepublishOnly": "node ../../scripts/sync-agents.mjs && npm run build"
   },

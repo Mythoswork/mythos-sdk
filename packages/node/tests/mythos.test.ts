@@ -315,6 +315,27 @@ const refreshPayload = () => ({ success: true, data: {
   session_expires_at: new Date(Date.now() + 8 * 60 * 60_000).toISOString(),
 } });
 
+test.each([10000, undefined, null, true, '10000', 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+  'consume rate %p is validated, sealed and preserved on refresh', async (rate) => {
+    const sdk = await createSdk();
+    jest.mocked(global.fetch).mockResolvedValueOnce(new Response(JSON.stringify({ data: {
+      llm_identity_token: 'identity',
+      llm_identity_expires_at: new Date(Date.now() + 2 * 60_000).toISOString(),
+      credits_per_usd: rate,
+    } })));
+    const first = await sdk.handle(sessionRequest(`https://app.test/api/mythos/session?lt=${await createTestToken('rate')}`));
+    const body = await first.json() as { data: { creditsPerUsd: number | null; sessionToken: string } };
+    const expected = rate === 10000 ? 10000 : null;
+    expect(body.data.creditsPerUsd).toBe(expected);
+    const { openSession } = await import('../src/session');
+    expect(openSession(body.data.sessionToken)?.creditsPerUsd ?? null).toBe(expected);
+    jest.mocked(global.fetch).mockResolvedValueOnce(new Response(JSON.stringify(refreshPayload())));
+    const refreshed = await sdk.handle(sessionRequest('https://app.test/api/mythos/session', cookiePair(first)));
+    expect(await refreshed.json()).toMatchObject({ data: { creditsPerUsd: expected } });
+    expect(openSession(cookiePair(refreshed).split('=')[1])?.creditsPerUsd ?? null).toBe(expected);
+  },
+);
+
 test('session route refreshes a near-expiry identity and sets a new cookie and refreshAt', async () => {
   const sdk = await createSdk();
   jest.mocked(global.fetch).mockResolvedValueOnce(new Response(JSON.stringify(refreshPayload())));

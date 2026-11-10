@@ -11,7 +11,7 @@ from jose.exceptions import JOSEError
 
 from .api_client import (
     MeterResult, _validate_credits, consume_session, meter_session, read_identity_fields,
-    read_session_expires_at, refresh_session,
+    read_session_expires_at, read_credits_per_usd, refresh_session,
 )
 from .billing_metadata import MythosLlmBillingMetadata, get_llm_billing_metadata
 from .config import load_config
@@ -211,6 +211,7 @@ class Mythos:
             "data": {
                 "session": asdict(self._public_session(session)),
                 "sessionToken": session_token,
+                "creditsPerUsd": session.credits_per_usd,
                 "expiresAt": expires_at,
                 "refreshAt": refresh_at,
             },
@@ -295,6 +296,7 @@ class Mythos:
         expires_at = read_session_expires_at(consume_body) or session.llmIdentityExpiresAt or (
             datetime.now(timezone.utc) + timedelta(seconds=DEFAULT_SESSION_TTL_SECONDS)
         ).isoformat()
+        session = replace(session, credits_per_usd=read_credits_per_usd(consume_body))
         stored = StoredSession(**asdict(session), isTest=read_test_jti(launch_token) is not None)
         return self._session_success(stored, expires_at)
 

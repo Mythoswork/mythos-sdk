@@ -83,7 +83,9 @@ result = await mythos.charge(
 )
 ```
 
-Charge with either `credits` or `usd`, not both. `usd` is a decimal string with at most 4 decimal places (for example `"0.15"`); Mythos converts it to credits on the server at the current rate, and the result's `creditsCharged` (Python: `credits_charged`) tells you how many credits were used. The amount you charge is what you earn; the user pays it plus Mythos's 20% platform fee. Pass the same `{ usd }` to `confirmCharge` so the approval popup shows the dollar amount.
+Charge with either `credits` or `usd`, not both. `usd` is a decimal string with at most 4 decimal places (for example `"0.15"`); Mythos converts it to credits on the server at the current rate, and the result's `creditsCharged` (Python: `credits_charged`) tells you how many credits were used. The amount you charge is what you earn; the user pays it plus Mythos's 20% platform fee.
+
+Pass the same `{ usd }` to `confirmCharge` through an `initMythos`/`useMythos` session. The browser converts it exactly using the session's backend-provided `creditsPerUsd` rate; the approval popup shows **credits**, not dollars. A missing rate rejects with `USD_RATE_UNAVAILABLE` (503), and fractional-credit or unsafe amounts reject with `INVALID_CHARGE_AMOUNT` (400), without posting a confirmation. Older backends and sessions still support credits. The standalone `client` confirmation functions accept credits only.
 
 ## `llm`
 

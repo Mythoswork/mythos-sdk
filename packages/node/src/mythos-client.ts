@@ -6,7 +6,7 @@ import {
 } from './client';
 import type { MythosSession } from './types';
 import { MythosError } from './errors';
-import { assertUsd } from './usd';
+import { assertUsd, usdToCreditsAtRate } from './usd';
 import { showTestLaunchFailure } from './test-failure-overlay';
 
 export type MythosStatus = 'loading' | 'mythos' | 'standalone' | 'expired' | 'error';
@@ -48,7 +48,7 @@ export interface MythosClient {
 
 interface SessionResponseBody {
   success?: boolean;
-  data?: { session?: MythosClientSession; sessionToken?: string; refreshAt?: string | null; expiresAt?: string | null } | null;
+  data?: { session?: MythosClientSession; sessionToken?: string; refreshAt?: string | null; expiresAt?: string | null; creditsPerUsd?: number | null } | null;
   code?: string;
   error?: string;
 }
@@ -130,6 +130,7 @@ function createClient(options: InitMythosOptions): MythosClient {
   let expiryTimer: ReturnType<typeof setTimeout> | undefined;
   let refreshAt: number | null = null;
   let expiresAt: number | null = null;
+  let creditsPerUsd: number | null = null;
   let relaunched = false;
   let disposed = false;
 
@@ -156,6 +157,7 @@ function createClient(options: InitMythosOptions): MythosClient {
     const shouldRelaunch = state.status !== 'expired' && next.status === 'expired' &&
       options.autoRelaunch !== false && !relaunched && isEmbedded();
     state = next;
+    if (next.session === null) creditsPerUsd = null;
     if (next.status === 'expired') {
       clearTimers();
       storageRemove(TRANSPORT_KEY);
@@ -264,6 +266,8 @@ function createClient(options: InitMythosOptions): MythosClient {
         storageRemove(TOKEN_KEY);
       }
 
+      const rate = body.data.creditsPerUsd;
+      creditsPerUsd = typeof rate === 'number' && Number.isSafeInteger(rate) && rate > 0 ? rate : null;
       setState({ status: 'mythos', session, error: null });
       clearTimers();
       refreshAt = typeof body.data.refreshAt === 'string' ? Date.parse(body.data.refreshAt) : null;
@@ -339,14 +343,17 @@ function createClient(options: InitMythosOptions): MythosClient {
     }
   };
   const requestConfirm = (charge: ConfirmChargeOptions): Promise<ConfirmChargeResult> => {
-    let amount: number | { usd: string } = 0; // LLM dialog ignores the numeric placeholder.
+    let amount = 0; // LLM dialog ignores the numeric placeholder.
     if (charge.kind !== 'llm') {
       if ((charge.credits !== undefined) === (charge.usd !== undefined)) {
         throw new MythosError('Pass exactly one of credits or usd', 'INVALID_CHARGE_AMOUNT', 400);
       }
       if (charge.usd !== undefined) {
         assertUsd(charge.usd);
-        amount = { usd: charge.usd };
+        if (creditsPerUsd === null) {
+          throw new MythosError('USD rate unavailable for this session', 'USD_RATE_UNAVAILABLE', 503);
+        }
+        amount = usdToCreditsAtRate(charge.usd, creditsPerUsd);
       } else amount = charge.credits!;
     }
     return requestChargeConfirmation(

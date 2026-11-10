@@ -56,6 +56,12 @@ def _read_code(body: object) -> str | None:
     return code if isinstance(code, str) else None
 
 
+def read_credits_per_usd(body: object) -> int | None:
+    data = body.get("data") if isinstance(body, dict) else None
+    value = data.get("credits_per_usd") if isinstance(data, dict) else None
+    return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else None
+
+
 async def refresh_session(jti: str, identity_token: str) -> SessionRefreshResult | None:
     config = load_config()
     try:
