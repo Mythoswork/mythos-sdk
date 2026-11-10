@@ -10,7 +10,7 @@ Environment variables read by `@mythos-work/sdk`.
 
 | Variable             | Required | Default                   | Description                              |
 | ----------------------| ----------| ---------------------------| ------------------------------------------|
-| `MYTHOS_KEY` | Soft in 0.5.0; required in 0.6.0 | — | Dashboard → Settings → Mythos key; binds launch, handshake and callback tokens |
+| `MYTHOS_KEY` | Soft (missing key warns); required in a future release | — | Dashboard → Settings → Mythos key; binds launch, handshake and callback tokens |
 | `MYTHOS_LISTING_ID`  | No*      | —                         | Single listing ID                        |
 | `MYTHOS_LISTING_IDS` | No*      | —                         | Comma-separated IDs; overrides single ID |
 | `MYTHOS_API_URL`     | No       | `https://api.mythos.work` | Mythos API base URL                      |

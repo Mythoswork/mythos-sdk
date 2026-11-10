@@ -47,7 +47,7 @@ const app = express();
 const mythos = createMythos();
 app.use(express.json());
 app.use(mythosExpress(mythos));
-// Billable handlers: await mythos.charge(req, { credits: 1, reason: 'calculate' });
+// Billable handlers: await mythos.charge(req, { usd: 0.15, reason: 'calculate', consentId });
 // Browser must approve via confirmCharge first.
 ```
 
@@ -66,9 +66,11 @@ from fastapi import FastAPI
 app = FastAPI()
 mythos = create_mythos()
 app.include_router(mythos.router)
-# Billable handlers: await mythos.charge(request, credits=1, reason="calculate")
+# Billable handlers: await mythos.charge(request, usd=0.15, reason="calculate", consent_id=consent_id)
 # Browser must approve via confirmCharge first.
 ```
+
+Use `confirmCharge({ usd: 0.15, reason: 'calculate' })` in an `initMythos` / `useMythos` browser session before the matching server charge. Alternatively, use `credits: 1500` (Python: `credits=1500`) directly in both. USD accepts positive numbers or exact decimal strings with at most 4 decimal places; Python also accepts `Decimal`. Computed floats such as `0.1 + 0.2` are rejected, never rounded: round first or pass a string. Mythos converts USD on the server and returns `creditsCharged` (Python: `credits_charged`). The popup shows credits using the session rate; an absent rate rejects with `USD_RATE_UNAVAILABLE`. Standalone client confirmation is credits-only.
 
 ## Configuration
 
@@ -86,7 +88,7 @@ FastAPI also needs an explicit env loader, such as `uvicorn main:app --env-file 
 | Env var              | Required | Default                   | Description                                   |
 | ----------------------| ----------| ---------------------------| -----------------------------------------------|
 | `MYTHOS_SESSION_SECRET` | Yes | — | At least 32 characters; server-side session secret |
-| `MYTHOS_KEY` | Soft in 0.5.0 | — | Dashboard Producer key; required in 0.6.0 |
+| `MYTHOS_KEY` | Soft (missing key warns) | — | Dashboard Producer key; required in a future release |
 | `MYTHOS_LISTING_ID`  | Yes*     | —                         | Your listing ID                               |
 | `MYTHOS_LISTING_IDS` | Yes*     | —                         | Comma-separated listing IDs (overrides above) |
 | `MYTHOS_API_URL`     | No       | `https://api.mythos.work` | API base URL override                         |

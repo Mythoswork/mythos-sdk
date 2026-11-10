@@ -7,7 +7,7 @@ Mythos lets users buy credits once and spend them across apps. The SDK handles l
 - Use `createMythos()` in Node or `create_mythos()` in Python.
 - Never parse `lt`, set Mythos cookies, or call `/consume` or `/meter` directly.
 - Never store Mythos tokens yourself. Do not use `localStorage` or `sessionStorage`; the SDK owns transport.
-- Always call browser `confirmCharge` before a billable action, then call server `charge` after approval.
+- Always call browser `confirmCharge` before a billable action, then server `charge` after approval; fixed-price actions use the same `usd` amount in both.
 - LLM calls are usage-based: `confirmCharge({ kind: 'llm', reason })` takes no credits; billing settles after the response.
 - Express/FastAPI do not load `.env` automatically; Next.js does. Make sure the process actually loads the env file.
 - Map `MythosError` with `.httpStatus`; Python uses `.http_status`.
@@ -123,7 +123,7 @@ if (status === 'loading') return <p>Loading...</p>;
 if (status === 'standalone') return <OwnLogin />;
 if (status === 'expired') return <button onClick={relaunch}>Relaunch</button>;
 if (status === 'error') return <p>{error?.message}</p>;
-const { approved, consentId } = await confirmCharge({ credits: 1, reason: 'calculate' });
+const { approved, consentId } = await confirmCharge({ usd: 0.15, reason: 'calculate' });
 if (approved) await fetch('/api/calculate', { method: 'POST' });
 // LLM chat: usage-based, no credits
 const { approved: chatApproved } = await confirmCharge({ kind: 'llm', reason: 'chat' });
@@ -140,20 +140,24 @@ Non-React bundled apps import `initMythos` from `@mythos-work/sdk/client`. Unbun
 
 ```ts
 import OpenAI from 'openai';
-await mythos.charge(req, { credits: 1, reason: 'calculate' });
+await mythos.charge(req, { usd: 0.15, reason: 'calculate', consentId });
 const fallback = new OpenAI({ apiKey: process.env.PRODUCER_OPENAI_API_KEY });
 const client = await mythos.llm(req, { apiKey: process.env.PRODUCER_OPENAI_API_KEY, fallback });
 const billing = mythos.billing(completion);
 ```
 
-Python uses `await mythos.charge(request, credits=1, reason="calculate")`, `await mythos.llm(request, api_key=producer_api_key)`, and `mythos.billing(completion)`.
+Python uses `await mythos.charge(request, usd=0.15, reason="calculate", consent_id=consent_id)`, `await mythos.llm(request, api_key=producer_api_key)`, and `mythos.billing(completion)`.
+
+Alternatively, charge credits directly with `credits: 1500` (Python: `credits=1500`), using the same amount for confirmation. Pass exactly one of `usd` or `credits`. `usd` accepts a positive number or exact decimal string with at most 4 decimal places (Python also accepts `Decimal`). Computed floats such as `0.1 + 0.2` are rejected, never rounded: round first with `Number(x.toFixed(2))` / `round(x, 2)`, or pass a string. Mythos converts USD on the server; the meter result exposes `creditsCharged` / `credits_charged`.
+
+The approval popup shows credits. USD confirmation requires an `initMythos` / `useMythos` session rate; an absent rate rejects with `USD_RATE_UNAVAILABLE`. The standalone `@mythos-work/sdk/client` confirmation accepts credits only.
 
 ## Environment
 
 | Variable | Requirement |
 |---|---|
 | `MYTHOS_SESSION_SECRET` | Required, at least 32 characters. Generate with `openssl rand -base64 32`. |
-| `MYTHOS_KEY` | Copy from Dashboard → Settings → Mythos key. Missing is a soft warning for auto-registration in 0.5.0; required in 0.6.0. |
+| `MYTHOS_KEY` | Copy from Dashboard → Settings → Mythos key. Missing is a soft warning for auto-registration; required in a future release. |
 | `MYTHOS_LISTING_ID` or `MYTHOS_LISTING_IDS` | Required unless using `resolveListingIds` / `resolve_listing_ids`. |
 | `MYTHOS_API_URL` | Optional; defaults to `https://api.mythos.work`. |
 | `MYTHOS_DEBUG=1` | Optional verbose diagnostics. |
@@ -177,11 +181,11 @@ Launch, handshake (`handshake-check`) and callback (`listing_registered`) tokens
 | Set | Different or missing | Reject with `ProducerMismatchError` / `PRODUCER_MISMATCH`, HTTP 401 |
 | Unset | Anything | Accept; warn once per process for launches outside static `MYTHOS_LISTING_ID(S)`, handshake or callback validation |
 
-Static listing launches without a key are safe legacy configuration and remain silent in 0.5.0. Configuring a resolver or registration callback without a key warns at startup (counts as the once). `MYTHOS_KEY` will be required in 0.6.0.
+Static listing launches without a key are safe legacy configuration and remain silent. Configuring a resolver or registration callback without a key warns at startup (counts as the once). `MYTHOS_KEY` is soft and will be required in a future release.
 
 Exact warning, with `[mythos]` prefix:
 
-> MYTHOS_KEY is not set: this app accepts Listings auto-registered by any Mythos Producer. Copy your key from the Mythos dashboard into MYTHOS_KEY. It will be required in 0.6.0.
+> MYTHOS_KEY is not set: this app accepts Listings auto-registered by any Mythos Producer. Copy your key from the Mythos dashboard into MYTHOS_KEY. It will be required in a future release.
 
 Session mismatch response: HTTP 401 `{"success":false,"error":"This app is bound to a different Mythos Producer. Check MYTHOS_KEY.","code":"PRODUCER_MISMATCH"}`. Handshake and callback: HTTP 401 `{"error":"Producer mismatch"}`; never invoke the registration callback on mismatch. Legacy middleware keeps its existing invalid-token 401 because `ProducerMismatchError` extends `InvalidLaunchTokenError`.
 

@@ -23,11 +23,11 @@ The key is a Mythos-generated, non-secret identifier: `mk_` plus 32 base64url ch
 | Set | Different or missing | Reject with `ProducerMismatchError`, code `PRODUCER_MISMATCH`, HTTP 401 |
 | Unset | Anything | Accept. A launch whose Listing is not in static `MYTHOS_LISTING_ID(S)` warns once per process. Handshake and callback validation without a key also warn once. |
 
-The static `MYTHOS_LISTING_ID(S)` launch path needs no key in 0.5.0: it is safe legacy configuration and accepts silently. Configuring `resolveListingIds` / `resolve_listing_ids` or `onListingRegistered` / `on_listing_registered` without a key emits the warning at startup, counting as the once-per-process warning. Missing keys are a soft warning in 0.5.0; **`MYTHOS_KEY` will be required in 0.6.0**.
+The static `MYTHOS_LISTING_ID(S)` launch path needs no key: it is safe legacy configuration and accepts silently. Configuring `resolveListingIds` / `resolve_listing_ids` or `onListingRegistered` / `on_listing_registered` without a key emits the warning at startup, counting as the once-per-process warning. Missing keys are a soft warning; **`MYTHOS_KEY` will be required in a future release**.
 
 Exact warning (logged with the `[mythos]` prefix):
 
-> MYTHOS_KEY is not set: this app accepts Listings auto-registered by any Mythos Producer. Copy your key from the Mythos dashboard into MYTHOS_KEY. It will be required in 0.6.0.
+> MYTHOS_KEY is not set: this app accepts Listings auto-registered by any Mythos Producer. Copy your key from the Mythos dashboard into MYTHOS_KEY. It will be required in a future release.
 
 ### Shared token contract and errors
 
@@ -125,7 +125,7 @@ The legacy `confirmCharge(credits, reason)` still returns a boolean. The new `my
 | SDK | `@mythos-work/sdk@0.1.1` | `mythos-sdk[fastapi,llm]==0.1.1` |
 | Runtime | Node.js 20 or newer | Python 3.11 or newer |
 | Required env | `MYTHOS_SESSION_SECRET`, at least 32 characters; `MYTHOS_LISTING_ID` or `MYTHOS_LISTING_IDS`, unless dynamic listing IDs are configured | Same |
-| Producer binding (0.5.0) | `MYTHOS_KEY` from Dashboard → Settings → Mythos key; soft warning if absent with auto-registration, required in 0.6.0 | Same |
+| Producer binding (0.5.0) | `MYTHOS_KEY` from Dashboard → Settings → Mythos key; soft warning if absent with auto-registration, required in a future release | Same |
 | Secret generation | `openssl rand -base64 32` | `openssl rand -base64 32` |
 
 `MYTHOS_API_URL` defaults to `https://api.mythos.work`. Invalid or missing required configuration fails when the SDK object is created, naming the environment variable.

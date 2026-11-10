@@ -13,7 +13,7 @@ MYTHOS_SESSION_SECRET=
 MYTHOS_KEY=
 ```
 
-Copy the Producer key from the dashboard into deployment env. It prevents another Producer from auto-registering their Listing against your app. With a key, matching `pkh` accepts; missing or different `pkh` rejects with `ProducerMismatchError` / `PRODUCER_MISMATCH` (401). Without a key, static `MYTHOS_LISTING_ID(S)` launches are silent safe legacy configuration; dynamic launches, handshake and callbacks warn once per process. A resolver or callback warns at startup. Missing keys are soft in 0.5.0; required in 0.6.0. Update deployment env and redeploy after regeneration. See [configuration](../docs-site/docs/reference/configuration.md) for the exact warning, shared hash contract and literal vector.
+Copy the Producer key from the dashboard into deployment env. It prevents another Producer from auto-registering their Listing against your app. With a key, matching `pkh` accepts; missing or different `pkh` rejects with `ProducerMismatchError` / `PRODUCER_MISMATCH` (401). Without a key, static `MYTHOS_LISTING_ID(S)` launches are silent safe legacy configuration; dynamic launches, handshake and callbacks warn once per process. A resolver or callback warns at startup. Missing keys are soft; required in a future release. Update deployment env and redeploy after regeneration. See [configuration](../docs-site/docs/reference/configuration.md) for the warning, shared hash contract and literal vector.
 
 ## Launch flow
 
@@ -78,7 +78,7 @@ await report_usage(jti, credits=5, idempotency_key="export-job-123")
 
 Register `/.well-known/mythos-handshake` so Mythos can verify your SDK is installed. Handshake tokens use `purpose: handshake-check` and are separate from launch tokens.
 
-Handshake does not need a listing ID. `MYTHOS_API_URL` defaults to `https://api.mythos.work`; a configured `MYTHOS_KEY` must match the token's `pkh`, otherwise the response is HTTP 401 `{"error":"Producer mismatch"}`. Without a key, handshake validation warns once in 0.5.0.
+Handshake does not need a listing ID. `MYTHOS_API_URL` defaults to `https://api.mythos.work`; a configured `MYTHOS_KEY` must match the token's `pkh`, otherwise the response is HTTP 401 `{"error":"Producer mismatch"}`. Without a key, handshake validation emits a soft warning once per process; the key becomes required in a future release.
 
 ## JWT claims (launch tokens)
 

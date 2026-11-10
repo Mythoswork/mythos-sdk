@@ -31,7 +31,7 @@ Official SDK packages for integrating Producer apps with the [Mythos](https://my
 | Env var | Required | Default | Description |
 |---------|----------|---------|-------------|
 | `MYTHOS_SESSION_SECRET` | Yes | — | At least 32 characters; generate with `openssl rand -base64 32` |
-| `MYTHOS_KEY` | Soft in 0.5.0; required in 0.6.0 | — | Dashboard → Settings → Mythos key; see [binding matrix](../docs-site/docs/reference/configuration.md) |
+| `MYTHOS_KEY` | Soft (missing key warns); required in a future release | — | Dashboard → Settings → Mythos key; see [binding matrix](../docs-site/docs/reference/configuration.md) |
 | `MYTHOS_LISTING_ID` | Yes* | — | Your listing ID from the Mythos dashboard |
 | `MYTHOS_LISTING_IDS` | Yes* | — | Comma-separated listing IDs (overrides single ID) |
 | `MYTHOS_API_URL` | No | `https://api.mythos.work` | API base URL override |

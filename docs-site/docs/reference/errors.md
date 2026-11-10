@@ -14,6 +14,8 @@ Every SDK error is a `MythosError`. Node errors expose `.code` and `.httpStatus`
 | `INSUFFICIENT_FUNDS` | 402 | Wallet balance is too low |
 | `SESSION_NOT_FOUND` | 404 | Session does not exist |
 | `INVALID_USAGE` | 400 | Invalid charge input, such as non-integer credits |
+| `INVALID_CHARGE_AMOUNT` | 400 | Both or neither of `credits` / `usd`; invalid USD format, nonpositive value, more than 4 decimal places, computed float, out-of-range amount, or USD that is not a whole number of credits |
+| `USD_RATE_UNAVAILABLE` | 503 | `confirmCharge({ usd })` has no session rate: no Mythos session or an old backend |
 | `UPSTREAM_ERROR` | 502 | Mythos returned an upstream error |
 | `MYTHOS_UNREACHABLE` | 503 | Mythos could not be reached |
 | `LLM_SESSION_REQUIRED` | — | `llm()` has no session and no fallback |

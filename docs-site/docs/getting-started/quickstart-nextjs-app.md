@@ -23,7 +23,7 @@ MYTHOS_KEY=
 ```
 
 ## 3. Server: one file, one route
-Missing `MYTHOS_KEY` is soft in 0.5.0; static listing launches remain silent, while dynamic registration, handshake and callbacks warn once per process. It will be required in 0.6.0. Update deployment env after key regeneration. See the [binding matrix](../reference/configuration.md).
+Missing `MYTHOS_KEY` is soft; static listing launches remain silent, while dynamic registration, handshake and callbacks warn once per process. It will be required in a future release. Update deployment env after key regeneration. See the [binding matrix](../reference/configuration.md).
 
 | Troubleshooting code | Fix |
 |---|---|
@@ -47,16 +47,16 @@ async rewrites() { return [
 ]; }
 ```
 
-## 4. Charge credits
+## 4. Charge USD
 ```ts
 // app/api/calculate/route.ts
 import { MythosError } from '@mythos-work/sdk';
 import { mythos } from '@/lib/mythos';
 
 export async function POST(req: Request) {
-  const { a, b } = await req.json();
+  const { a, b, consentId } = await req.json();
   try {
-    await mythos.charge(req, { credits: 1, reason: 'calculate' });
+    await mythos.charge(req, { usd: 0.15, reason: 'calculate', consentId });
     return Response.json({ success: true, data: { result: a + b } });
   } catch (err) {
     if (err instanceof MythosError) return Response.json({ success: false, code: err.code }, { status: err.httpStatus });
@@ -78,12 +78,14 @@ export default function Calculator() {
   if (status === 'error') return <p>Something went wrong.</p>;
 
   async function calculate() {
-    const { approved } = await confirmCharge({ credits: 1, reason: '1 + 2' });
-    if (approved) await fetch('/api/calculate', { method: 'POST', body: JSON.stringify({ a: 1, b: 2 }) });
+    const { approved, consentId } = await confirmCharge({ usd: 0.15, reason: 'calculate' });
+    if (approved) await fetch('/api/calculate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ a: 1, b: 2, consentId }) });
   }
-  return <button onClick={calculate}>Hi {session?.displayName} — calculate (1 credit)</button>;
+  return <button onClick={calculate}>Hi {session?.displayName} — calculate ($0.15)</button>;
 }
 ```
+
+The popup shows credits using the session rate; the server charges the same USD amount. Alternatively, use `credits: 1500` directly in both calls. See [USD confirmation](./browser-client.md#confirm-a-usd-charge) for decimal validation and `USD_RATE_UNAVAILABLE`.
 
 ## Check it
 ```bash

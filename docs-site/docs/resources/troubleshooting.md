@@ -32,7 +32,7 @@ SDK-side session failures in a test launch show a fixed overlay titled **Mythos 
 | Error or symptom | Fix |
 |---|---|
 | `MYTHOS_KEY is malformed` | Copy the full `mk_` plus 32 base64url characters from Dashboard → Settings → Mythos key. |
-| `MYTHOS_KEY is not set` warning | Set the dashboard key in the host environment. This is soft in 0.5.0 and required in 0.6.0; static listing launches without a key remain silent. |
+| `MYTHOS_KEY is not set` warning | Set the dashboard key in the host environment. This is soft (a missing key warns) and required in a future release; static listing launches without a key remain silent. |
 | `SESSION_NOT_FOUND` | Relaunch to establish a current session. |
 | `INVALID_USAGE` | Send integer credits and valid charge options. |
 | `LLM_SESSION_REQUIRED` / `LLM_IDENTITY_REQUIRED` | Launch through Mythos or supply an LLM fallback. |
