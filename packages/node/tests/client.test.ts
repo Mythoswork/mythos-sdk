@@ -206,7 +206,7 @@ test('sendHandshake posts the handshake message to the parent frame', () => {
   const fake = installFakeWindow(true);
   try {
     sendHandshake();
-    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.5.1' }, origin: '*' }]);
+    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.6.0' }, origin: '*' }]);
   } finally {
     fake.restore();
   }

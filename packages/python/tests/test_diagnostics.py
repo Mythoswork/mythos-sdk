@@ -83,7 +83,7 @@ def assert_report(calls, code, step):
     assert request.method == "POST"
     assert "authorization" not in request.headers
     assert "cookie" not in request.headers
-    assert json.loads(request.content) == {"code": code, "step": step, "sdk_version": "0.5.1"}
+    assert json.loads(request.content) == {"code": code, "step": step, "sdk_version": "0.6.0"}
     assert request.extensions["timeout"] == dict.fromkeys(("connect", "read", "write", "pool"), 2.0)
 
 
@@ -352,7 +352,7 @@ async def test_handshake_sub_fallback_logs_listing_only(network, rsa_key_pair, c
 def test_release_metadata_and_exact_message_maps_match():
     python_root = Path(__file__).resolve().parents[1]
     root = python_root.parents[1]
-    assert SDK_VERSION == tomllib.loads((python_root / "pyproject.toml").read_text())["project"]["version"] == "0.5.1"
+    assert SDK_VERSION == tomllib.loads((python_root / "pyproject.toml").read_text())["project"]["version"] == "0.6.0"
     node = (root / "packages/node/src/constants/diagnostics.constants.ts").read_text()
     docs = (root / "docs-site/docs/resources/troubleshooting.md").read_text()
     assert len(DIAGNOSTIC_MESSAGES) == 10

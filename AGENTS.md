@@ -132,7 +132,7 @@ const { approved: chatApproved } = await confirmCharge({ kind: 'llm', reason: 'c
 Non-React bundled apps import `initMythos` from `@mythos-work/sdk/client`. Unbundled pages use:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.5.1/dist/mythos-client.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.6.0/dist/mythos-client.global.js"></script>
 <script>const m = Mythos.initMythos(); m.ready.then(console.log);</script>
 ```
 

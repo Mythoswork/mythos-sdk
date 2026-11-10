@@ -1,9 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 
 ### Added
-- `charge` accepts `usd` (decimal string, up to 4 dp) as an alternative to `credits`; the backend converts at its current rate and returns `credits_charged`. With an `initMythos`/`useMythos` session, `confirmCharge({ usd })` converts exactly using the session's `creditsPerUsd` rate and the popup shows credits. Missing rates reject with `USD_RATE_UNAVAILABLE`; standalone client confirmation remains credits-only. Node and Python preserve the optional consume rate across session refresh. Release order: deploy the backend consume rate and backend#269, then merge and tag the SDK.
+- `charge` accepts `usd: 0.15` (number or exact decimal string, up to 4 dp; Python also accepts `Decimal`) as an alternative to `credits`; numbers are stringified without rounding, and computed floats such as `0.1 + 0.2` are rejected with a rounding hint. The wire value remains a string; the backend converts at its current rate and returns `credits_charged`. With an `initMythos`/`useMythos` session, `confirmCharge({ usd: 0.15 })` converts exactly using the session's `creditsPerUsd` rate and the popup shows credits. Missing rates reject with `USD_RATE_UNAVAILABLE`; standalone client confirmation remains credits-only. Node and Python preserve the optional consume rate across session refresh.
 
 ## 0.5.1
 
