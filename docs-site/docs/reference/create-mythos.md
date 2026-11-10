@@ -64,7 +64,7 @@ Returns `MythosSession | None`.
 
 ```ts
 const result = await mythos.charge(req, {
-  usd: '0.15',
+  usd: 0.15,
   reason: 'calculate',
   idempotencyKey,
   consentId,
@@ -76,14 +76,14 @@ Returns `{ chargeId, sessionMeteredTotal, creditsCharged }`. `reason`, `idempote
 ```python
 result = await mythos.charge(
     request,
-    usd="0.15",
+    usd=0.15,
     reason="calculate",
     idempotency_key=idempotency_key,
     consent_id=consent_id,
 )
 ```
 
-Charge with either `credits` or `usd`, not both. `usd` is a decimal string with at most 4 decimal places (for example `"0.15"`); Mythos converts it to credits on the server at the current rate, and the result's `creditsCharged` (Python: `credits_charged`) tells you how many credits were used. The amount you charge is what you earn; the user pays it plus Mythos's 20% platform fee.
+Charge with either `credits` or `usd`, not both. `usd` accepts a number (for example `0.15`); an exact decimal string such as `"0.15"` works too. Python also accepts `Decimal`. Values must be positive plain decimals with at most 4 decimal places. Computed floats such as `0.1 + 0.2` are rejected, never rounded: round them first (`Number(x.toFixed(2))` in JavaScript or `round(x, 2)` in Python), or pass an exact string. Numbers must not exceed `9007199254740991`. The SDK sends a string to Mythos, which converts it to credits on the server at the current rate; the result's `creditsCharged` (Python: `credits_charged`) tells you how many credits were used. The amount you charge is what you earn; the user pays it plus Mythos's 20% platform fee.
 
 Pass the same `{ usd }` to `confirmCharge` through an `initMythos`/`useMythos` session. The browser converts it exactly using the session's backend-provided `creditsPerUsd` rate; the approval popup shows **credits**, not dollars. A missing rate rejects with `USD_RATE_UNAVAILABLE` (503), and fractional-credit or unsafe amounts reject with `INVALID_CHARGE_AMOUNT` (400), without posting a confirmation. Older backends and sessions still support credits. The standalone `client` confirmation functions accept credits only.
 

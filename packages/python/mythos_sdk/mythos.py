@@ -2,6 +2,7 @@ import os
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import asdict, replace
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any, Protocol, cast
 from urllib.parse import urlsplit
 
@@ -33,7 +34,7 @@ from .logger import log_debug, log_error, log_warn
 from .producer_key import assert_producer_key_format, read_producer_key, warn_missing_producer_key_once
 from .session import StoredSession, open_session, seal_session
 from .types import MythosSession
-from .usd import assert_usd
+from .usd import normalize_usd
 from .version import SDK_VERSION
 from .verify import verify_launch_token
 
@@ -95,7 +96,7 @@ class Mythos:
         request: RequestLike,
         *,
         credits: int | None = None,
-        usd: str | None = None,
+        usd: str | int | float | Decimal | None = None,
         reason: str | None = None,
         idempotency_key: str | None = None,
         consent_id: str | None = None,
@@ -103,10 +104,10 @@ class Mythos:
         if (credits is None) == (usd is None):
             raise MythosError("Pass exactly one of credits or usd", "INVALID_CHARGE_AMOUNT", 400)
         if usd is not None:
-            assert_usd(usd)
+            normalized_usd = normalize_usd(usd)
         else:
             _validate_credits(credits)
-        amount: int | dict[str, str] = {"usd": usd} if usd is not None else cast(int, credits)
+        amount: int | dict[str, str] = {"usd": normalized_usd} if usd is not None else cast(int, credits)
         stored = self._read_stored_session(request)
         if stored is None:
             raise SessionRequiredError()

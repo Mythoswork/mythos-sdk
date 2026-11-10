@@ -27,7 +27,7 @@ import { SDK_VERSION } from './version';
 import { verifyLaunchToken } from './verify';
 import type OpenAI from 'openai';
 import type { LlmOptions, MythosLlmBillingMetadata } from './llm';
-import { assertUsd } from './usd';
+import { normalizeUsd } from './usd';
 
 export type HeaderBag = Headers | Record<string, string | string[] | undefined>;
 
@@ -48,7 +48,7 @@ export interface CreateMythosOptions {
 
 export type PublicSession = Pick<MythosSession, 'userId' | 'email' | 'displayName' | 'listingId' | 'sessionJti'>;
 
-export type ChargeAmount = { credits: number; usd?: never } | { usd: string; credits?: never };
+export type ChargeAmount = { credits: number; usd?: never } | { usd: number | string; credits?: never };
 export type ChargeOptions = ChargeAmount & {
   reason?: string;
   idempotencyKey?: string;
@@ -389,14 +389,14 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
       if ((chargeOptions.credits !== undefined) === (chargeOptions.usd !== undefined)) {
         throw new MythosError('Pass exactly one of credits or usd', 'INVALID_CHARGE_AMOUNT', 400);
       }
-      if (chargeOptions.usd !== undefined) assertUsd(chargeOptions.usd);
+      const usd = chargeOptions.usd !== undefined ? normalizeUsd(chargeOptions.usd) : undefined;
       const session = readStoredSession(req);
       if (!session) throw new SessionRequiredError();
       if (chargeOptions.consentId) mythosLog.debug('charge: consentId accepted (enforcement deferred to Phase 4)');
       try {
         return await meterSession(
           session.sessionJti,
-          chargeOptions.usd !== undefined ? { usd: chargeOptions.usd } : chargeOptions.credits!,
+          usd !== undefined ? { usd } : chargeOptions.credits!,
           chargeOptions.reason,
           chargeOptions.idempotencyKey,
         );

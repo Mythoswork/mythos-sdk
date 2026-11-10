@@ -1,5 +1,22 @@
 import { MythosError } from './errors';
 
+export function normalizeUsd(usd: unknown): string {
+  if (typeof usd === 'number') {
+    if (!Number.isFinite(usd) || usd <= 0 || usd > Number.MAX_SAFE_INTEGER) {
+      throw new MythosError('usd must be a positive finite number within the safe integer limit', 'INVALID_CHARGE_AMOUNT', 400);
+    }
+    const value = String(usd);
+    try {
+      assertUsd(value);
+    } catch {
+      throw new MythosError(`usd ${value} is not a plain decimal with at most 4 decimal places; round it first (e.g. Number(x.toFixed(2))) or pass a string`, 'INVALID_CHARGE_AMOUNT', 400);
+    }
+    return value;
+  }
+  assertUsd(usd as string);
+  return usd as string;
+}
+
 export function assertUsd(usd: string): void {
   const invalid = 'usd must be a decimal string with at most 4 decimal places, e.g. "0.15"';
   if (typeof usd !== 'string' || !/^\d+(\.\d{1,4})?(?![\s\S])/.test(usd)) {

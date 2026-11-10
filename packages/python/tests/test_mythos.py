@@ -186,15 +186,16 @@ async def test_header_session_transport_and_charge_result(monkeypatch):
     assert client.post.await_args_list[-1].kwargs["json"]["charge_id"] == "k-1"
 
 
-async def test_charge_usd_and_invalid_amounts_fail_before_session(monkeypatch):
+@pytest.mark.parametrize('usd', [0.15, '0.15'])
+async def test_charge_usd_and_invalid_amounts_fail_before_session(monkeypatch, usd):
     monkeypatch.setenv("MYTHOS_SESSION_SECRET", "x" * 32)
     sdk = create_mythos()
     token = seal_session(SESSION, "2099-01-01T00:00:00Z")
     with patch("mythos_sdk.mythos.meter_session", new_callable=AsyncMock) as meter:
-        await sdk.charge(request_like(session_header=token), usd="0.15", idempotency_key="usd-key")
+        await sdk.charge(request_like(session_header=token), usd=usd, idempotency_key="usd-key")
         meter.assert_awaited_once_with("jti-1", {"usd": "0.15"}, None, "usd-key")
         meter.reset_mock()
-        for options in ({}, {"credits": 1, "usd": "0.15"}, {"usd": 0.15}):
+        for options in ({}, {"credits": 1, "usd": "0.15"}, {"usd": 0.1 + 0.2}, {"usd": True}, {"usd": float("nan")}, {"usd": 1e16 * 1000}):
             with pytest.raises(MythosError) as error:
                 await sdk.charge(request_like(), **options)
             assert error.value.code == "INVALID_CHARGE_AMOUNT"
@@ -203,6 +204,16 @@ async def test_charge_usd_and_invalid_amounts_fail_before_session(monkeypatch):
         with pytest.raises(InvalidUsageError):
             await sdk.charge(request_like(session_header=token), credits="1500")  # type: ignore[arg-type]
         meter.assert_not_awaited()
+
+
+async def test_charge_decimal_usd_is_a_string_on_the_wire(monkeypatch):
+    from decimal import Decimal
+    monkeypatch.setenv("MYTHOS_SESSION_SECRET", "x" * 32)
+    sdk = create_mythos()
+    token = seal_session(SESSION, "2099-01-01T00:00:00Z")
+    with patch("mythos_sdk.mythos.meter_session", new_callable=AsyncMock) as meter:
+        await sdk.charge(request_like(session_header=token), usd=Decimal("0.15"))
+        meter.assert_awaited_once_with("jti-1", {"usd": "0.15"}, None, None)
 
 
 async def test_consume_409_maps_to_token_consumed(monkeypatch, rsa_key_pair):

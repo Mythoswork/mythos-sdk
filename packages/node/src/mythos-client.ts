@@ -6,7 +6,7 @@ import {
 } from './client';
 import type { MythosSession } from './types';
 import { MythosError } from './errors';
-import { assertUsd, usdToCreditsAtRate } from './usd';
+import { normalizeUsd, usdToCreditsAtRate } from './usd';
 import { showTestLaunchFailure } from './test-failure-overlay';
 
 export type MythosStatus = 'loading' | 'mythos' | 'standalone' | 'expired' | 'error';
@@ -34,7 +34,7 @@ export interface InitMythosOptions {
  */
 export type ConfirmChargeOptions =
   | { kind?: 'generic'; credits: number; usd?: never; reason?: string }
-  | { kind?: 'generic'; usd: string; credits?: never; reason?: string }
+  | { kind?: 'generic'; usd: number | string; credits?: never; reason?: string }
   | { kind: 'llm'; reason?: string };
 
 export interface MythosClient {
@@ -349,11 +349,11 @@ function createClient(options: InitMythosOptions): MythosClient {
         throw new MythosError('Pass exactly one of credits or usd', 'INVALID_CHARGE_AMOUNT', 400);
       }
       if (charge.usd !== undefined) {
-        assertUsd(charge.usd);
+        const usd = normalizeUsd(charge.usd);
         if (creditsPerUsd === null) {
           throw new MythosError('USD rate unavailable for this session', 'USD_RATE_UNAVAILABLE', 503);
         }
-        amount = usdToCreditsAtRate(charge.usd, creditsPerUsd);
+        amount = usdToCreditsAtRate(usd, creditsPerUsd);
       } else amount = charge.credits!;
     }
     return requestChargeConfirmation(

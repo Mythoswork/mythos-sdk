@@ -176,17 +176,17 @@ test('header-only session transport supports getSession and charge', async () =>
   expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({ charge_id: 'k-1', credits: 1 });
 });
 
-test('charge converts USD and rejects invalid amounts before reading a session', async () => {
+test.each([0.15, '0.15'])('charge normalizes USD %p and rejects invalid amounts before reading a session', async (usd) => {
   const sdk = await createSdk();
   const launch = await sdk.handle(sessionRequest(`https://app.test/api/mythos/session?lt=${await createTestToken('j1')}`));
   const body = await launch.json() as { data: { sessionToken: string } };
-  await sdk.charge(sessionRequest('https://app.test', undefined, body.data.sessionToken), { usd: '0.15', idempotencyKey: 'usd-key' });
+  await sdk.charge(sessionRequest('https://app.test', undefined, body.data.sessionToken), { usd, idempotencyKey: 'usd-key' });
   const call = jest.mocked(global.fetch).mock.calls.find(([input]) => String(input).endsWith('/meter'));
   const meterBody = JSON.parse(String(call?.[1]?.body));
   expect(meterBody).toMatchObject({ usd: '0.15', charge_id: 'usd-key' });
   expect(meterBody).not.toHaveProperty('credits');
   jest.mocked(global.fetch).mockClear();
-  for (const options of [{}, { credits: 1, usd: '0.15' }, { usd: 0.15 }]) {
+  for (const options of [{}, { credits: 1, usd: '0.15' }, { usd: 0.1 + 0.2 }]) {
     await expect(sdk.charge(sessionRequest('https://app.test'), options as never))
       .rejects.toMatchObject({ code: 'INVALID_CHARGE_AMOUNT', httpStatus: 400 });
   }

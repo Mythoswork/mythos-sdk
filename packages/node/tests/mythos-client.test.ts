@@ -192,7 +192,7 @@ test('cross-site cookie-less iframe retains header fallback with unavailable sto
     expect(headers.get('X-Mythos-Session')).toBe('sealed-session');
     expect(headers.get('x-app')).toBe('retained');
     expect(headers.has('cookie')).toBe(false);
-    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.5.1' }, origin: 'https://dashboard.mythos.work' }]);
+    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.6.0' }, origin: 'https://dashboard.mythos.work' }]);
   } finally {
     fake.restore();
   }
@@ -237,7 +237,7 @@ test('first session uses cookie mode when the one-time probe finds the same sess
     expect(new Headers(fake.fetchMock.mock.calls[1][1]?.headers).has('X-Mythos-Session')).toBe(false);
     expect(fake.storage.get('mythos:transport')).toBe('cookie');
     expect(fake.storage.has('mythos:session-token')).toBe(false);
-    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.5.1' }, origin: '*' }]);
+    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.6.0' }, origin: '*' }]);
   } finally {
     fake.restore();
   }
@@ -492,7 +492,7 @@ test('client confirmation converts USD to credits and rejects ambiguous amounts 
   const client = initMythos();
   try {
     await client.ready;
-    const pending = client.confirmCharge({ usd: '0.15', reason: 'calculate' });
+    const pending = client.confirmCharge({ usd: 0.15, reason: 'calculate' });
     const request = fake.parentCalls.map((call) => call.data as Record<string, unknown>)
       .find((data) => data.type === 'mythos:confirm-charge');
     expect(request).toMatchObject({ credits: 1500, kind: 'generic', reason: 'calculate' });
@@ -501,6 +501,7 @@ test('client confirmation converts USD to credits and rejects ambiguous amounts 
     await pending;
     const count = fake.parentCalls.length;
     await expect(client.confirmCharge({ credits: 1, usd: '0.15' } as never)).rejects.toThrow('Pass exactly one');
+    await expect(client.confirmCharge({ usd: 0.1 + 0.2 })).rejects.toMatchObject({ code: 'INVALID_CHARGE_AMOUNT' });
     await expect(client.confirmCharge({} as never)).rejects.toThrow('Pass exactly one');
     expect(fake.parentCalls).toHaveLength(count);
   } finally {
