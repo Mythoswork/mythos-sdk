@@ -7,7 +7,7 @@ import type { CreateMythosOptions } from '../src/mythos';
 
 const OWN_KEY = `mk_${'a'.repeat(32)}`;
 const OTHER_KEY = `mk_${'b'.repeat(32)}`;
-const WARNING = 'MYTHOS_KEY is not set: this app accepts Listings auto-registered by any Mythos Producer. Copy your key from the Mythos dashboard into MYTHOS_KEY. It will be required in 0.6.0.';
+const WARNING = 'MYTHOS_KEY is not set: this app accepts Listings auto-registered by any Mythos Producer. Copy your key from the Mythos dashboard into MYTHOS_KEY. It will be required in a future release.';
 const MISMATCH_BODY = {
   success: false,
   error: 'This app is bound to a different Mythos Producer. Check MYTHOS_KEY.',
