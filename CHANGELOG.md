@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0
+
+### Added
+- `charge` accepts `usd: 0.15` (number or exact decimal string, up to 4 dp; Python also accepts `Decimal`) as an alternative to `credits`; numbers are stringified without rounding, and computed floats such as `0.1 + 0.2` are rejected with a rounding hint. The wire value remains a string; the backend converts at its current rate and returns `credits_charged`. With an `initMythos`/`useMythos` session, `confirmCharge({ usd: 0.15 })` converts exactly using the session's `creditsPerUsd` rate and the popup shows credits. Missing rates reject with `USD_RATE_UNAVAILABLE`; standalone client confirmation remains credits-only. Node and Python preserve the optional consume rate across session refresh.
+
+### Changed
+- `MYTHOS_KEY` is still optional. The requirement announced in 0.5.x is deferred to a future release, and the missing-key warning now says so.
+- The browser global bundle (`mythos-client.global.js`) targets ES2020 instead of ES2019 because USD confirmation uses `BigInt`. It needs Safari 14 or later.
+
 ## 0.5.1
 
 ### Added

@@ -9,6 +9,7 @@ import {
   SessionNotFoundError,
 } from './errors';
 import type { MythosSession } from './types';
+import { assertUsd } from './usd';
 
 function encodeJti(jti: string): string {
   return encodeURIComponent(jti);
@@ -45,6 +46,7 @@ export async function readErrorCode(res: Response): Promise<string | undefined> 
 export interface MeterResult {
   chargeId: string;
   sessionMeteredTotal: number | null;
+  creditsCharged?: number;
 }
 
 export function readIdentityFields(
@@ -70,6 +72,12 @@ export interface SessionRefreshResult {
   llmIdentityToken: string;
   llmIdentityExpiresAt: string;
   sessionExpiresAt: string;
+}
+
+export function readCreditsPerUsd(body: unknown): number | undefined {
+  if (!isRecord(body) || !isRecord(body['data'])) return undefined;
+  const rate = body['data']['credits_per_usd'];
+  return typeof rate === 'number' && Number.isSafeInteger(rate) && rate > 0 ? rate : undefined;
 }
 
 /** An old backend responds with 404 without a code; keep the existing session in that case. */
@@ -112,15 +120,16 @@ export async function consumeSession(jti: string): Promise<Response> {
 
 export async function meterSession(
   jti: string,
-  credits: number,
+  amount: number | { usd: string },
   reason?: string,
   chargeId?: string,
 ): Promise<MeterResult> {
-  validateCredits(credits);
+  if (typeof amount === 'number') validateCredits(amount);
+  else assertUsd(amount.usd);
   const resolvedChargeId = chargeId ?? randomUUID();
 
   const body: Record<string, unknown> = {
-    credits,
+    ...(typeof amount === 'number' ? { credits: amount } : { usd: amount.usd }),
     charge_id: resolvedChargeId,
   };
   if (reason !== undefined) {
@@ -151,8 +160,10 @@ export async function meterSession(
   }
   const data = isRecord(responseBody) && isRecord(responseBody['data']) ? responseBody['data'] : null;
   const total = data?.['session_metered_total'];
+  const charged = data?.['credits_charged'];
   return {
     chargeId: resolvedChargeId,
     sessionMeteredTotal: typeof total === 'number' && Number.isSafeInteger(total) ? total : null,
+    ...(typeof charged === 'number' && Number.isSafeInteger(charged) ? { creditsCharged: charged } : {}),
   };
 }

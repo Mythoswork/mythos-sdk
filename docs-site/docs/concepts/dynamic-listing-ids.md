@@ -2,7 +2,7 @@
 
 Dynamic listing IDs let one deployment accept listings created after the app was deployed.
 
-Set `MYTHOS_KEY` from Dashboard → Settings → Mythos key before accepting auto-registration. The SDK checks the same `pkh` binding on callback, handshake and launch tokens; a mismatch is HTTP 401 and never reaches the registration callback. Without a key, a resolver or callback emits a once-per-process startup warning in 0.5.0. The key will be required in 0.6.0. See the [binding matrix and exact warning](../reference/configuration.md).
+Set `MYTHOS_KEY` from Dashboard → Settings → Mythos key before accepting auto-registration. The SDK checks the same `pkh` binding on callback, handshake and launch tokens; a mismatch is HTTP 401 and never reaches the registration callback. Without a key, a resolver or callback emits a soft once-per-process startup warning. The key will be required in a future release. See the [binding matrix and warning](../reference/configuration.md).
 
 ## Node
 

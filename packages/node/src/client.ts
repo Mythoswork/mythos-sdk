@@ -72,7 +72,7 @@ export function sendHandshake(expectedOrigin?: string): void {
  * confirmation UX against an unexpected embedding frame.
  */
 export function requestChargeConfirmation(
-  credits: number,
+  amount: number,
   reason?: string,
   timeoutMs: number = DEFAULT_CONFIRM_TIMEOUT_MS,
   kind: MythosChargeKind = 'generic',
@@ -127,7 +127,7 @@ export function requestChargeConfirmation(
     window.addEventListener('message', onMessage);
     try {
       window.parent.postMessage(
-        { type: MYTHOS_CONFIRM_CHARGE_REQUEST_TYPE, requestId, credits, reason, kind },
+        { type: MYTHOS_CONFIRM_CHARGE_REQUEST_TYPE, requestId, credits: amount, reason, kind },
         expectedOrigin ?? '*',
       );
     } catch {
@@ -138,13 +138,13 @@ export function requestChargeConfirmation(
 }
 
 export async function confirmCharge(
-  credits: number,
+  amount: number,
   reason?: string,
   timeoutMs: number = DEFAULT_CONFIRM_TIMEOUT_MS,
   kind: MythosChargeKind = 'generic',
   expectedOrigin?: string,
 ): Promise<boolean> {
-  const { approved } = await requestChargeConfirmation(credits, reason, timeoutMs, kind, expectedOrigin);
+  const { approved } = await requestChargeConfirmation(amount, reason, timeoutMs, kind, expectedOrigin);
   return approved;
 }
 

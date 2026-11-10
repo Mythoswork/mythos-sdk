@@ -41,6 +41,16 @@ async def test_meter_session_uses_provided_charge_id():
     assert body["charge_id"] == "fixed-charge-id"
 
 
+async def test_meter_session_sends_usd_unchanged_and_exposes_credits():
+    response = httpx.Response(200, json={"data": {"credits_charged": 1500}}, request=httpx.Request("POST", "https://api.mythos.work/"))
+    mock_post = AsyncMock(return_value=response)
+    with patch("mythos_sdk.api_client.get_http_client") as mock_client:
+        mock_client.return_value.post = mock_post
+        result = await meter_session("jti-001", {"usd": "0.15"}, "page-view", "key")
+    assert mock_post.await_args.kwargs["json"] == {"usd": "0.15", "reason": "page-view", "charge_id": "key"}
+    assert result.credits_charged == 1500
+
+
 async def test_meter_session_url_encodes_jti():
     response = httpx.Response(200, json={}, request=httpx.Request("POST", "https://api.mythos.work/"))
     mock_post = AsyncMock(return_value=response)
@@ -112,3 +122,8 @@ async def test_refresh_session_network_error():
         client.return_value.post = AsyncMock(side_effect=httpx.ConnectError("offline"))
         with pytest.raises(MythosUnreachableError):
             await refresh_session("jti", "old")
+
+
+async def test_numeric_string_credits_is_rejected_not_sent_as_usd():
+    with pytest.raises(InvalidUsageError):
+        await meter_session("jti-001", "1500")  # type: ignore[arg-type]

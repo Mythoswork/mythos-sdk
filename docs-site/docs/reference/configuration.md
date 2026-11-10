@@ -5,7 +5,7 @@
 | Variable | Required | Description |
 |---|---|---|
 | `MYTHOS_SESSION_SECRET` | Yes | Session secret of at least 32 characters. Generate with `openssl rand -base64 32`. |
-| `MYTHOS_KEY` | Soft in 0.5.0; required in 0.6.0 | Copy from Dashboard → Settings → Mythos key. Binds tokens to this Producer. |
+| `MYTHOS_KEY` | Soft (missing key warns); required in a future release | Copy from Dashboard → Settings → Mythos key. Binds tokens to this Producer. |
 | `MYTHOS_LISTING_ID` | Yes* | One listing ID from the Mythos dashboard. |
 | `MYTHOS_LISTING_IDS` | Yes* | Comma-separated listing IDs. |
 | `MYTHOS_API_URL` | No | Mythos API origin. Defaults to `https://api.mythos.work`. |
@@ -41,11 +41,11 @@ pkh=7i08_9pmD6r4prkeKSsCnOFaCAduf8cz4ogjmhGlpG0
 | Set | Different or missing | Reject with `ProducerMismatchError`, `PRODUCER_MISMATCH`, HTTP 401 |
 | Unset | Anything | Accept; warn once per process if a launch Listing is outside static `MYTHOS_LISTING_ID(S)`. Handshake and callback validation without a key also warn once. |
 
-Static `MYTHOS_LISTING_ID(S)` launches without a key are safe legacy configuration and remain silent in 0.5.0. A configured `resolveListingIds` / `resolve_listing_ids` or `onListingRegistered` / `on_listing_registered` without a key warns at startup, counting as the once. Missing keys are a soft warning in 0.5.0; **`MYTHOS_KEY` will be required in 0.6.0**.
+Static `MYTHOS_LISTING_ID(S)` launches without a key are safe legacy configuration and remain silent. A configured `resolveListingIds` / `resolve_listing_ids` or `onListingRegistered` / `on_listing_registered` without a key warns at startup, counting as the once. Missing keys are a soft warning; **`MYTHOS_KEY` will be required in a future release**.
 
 Exact warning (with the `[mythos]` prefix):
 
-> MYTHOS_KEY is not set: this app accepts Listings auto-registered by any Mythos Producer. Copy your key from the Mythos dashboard into MYTHOS_KEY. It will be required in 0.6.0.
+> MYTHOS_KEY is not set: this app accepts Listings auto-registered by any Mythos Producer. Copy your key from the Mythos dashboard into MYTHOS_KEY. It will be required in a future release.
 
 A malformed configured key makes `createMythos()` / `create_mythos()` throw `MythosConfigError` with `MYTHOS_KEY is malformed. Copy it again from the Mythos dashboard.` Deploy backend P1 before configuring a key: older tokens with no `pkh` are rejected when a key is set.
 

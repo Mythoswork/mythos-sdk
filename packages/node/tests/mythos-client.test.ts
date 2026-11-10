@@ -192,7 +192,7 @@ test('cross-site cookie-less iframe retains header fallback with unavailable sto
     expect(headers.get('X-Mythos-Session')).toBe('sealed-session');
     expect(headers.get('x-app')).toBe('retained');
     expect(headers.has('cookie')).toBe(false);
-    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.5.1' }, origin: 'https://dashboard.mythos.work' }]);
+    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.6.0' }, origin: 'https://dashboard.mythos.work' }]);
   } finally {
     fake.restore();
   }
@@ -237,7 +237,7 @@ test('first session uses cookie mode when the one-time probe finds the same sess
     expect(new Headers(fake.fetchMock.mock.calls[1][1]?.headers).has('X-Mythos-Session')).toBe(false);
     expect(fake.storage.get('mythos:transport')).toBe('cookie');
     expect(fake.storage.has('mythos:session-token')).toBe(false);
-    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.5.1' }, origin: '*' }]);
+    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.6.0' }, origin: '*' }]);
   } finally {
     fake.restore();
   }
@@ -485,6 +485,45 @@ test('LLM charge confirmation needs no credits and sends a numeric placeholder',
   }
 });
 
+test('client confirmation converts USD to credits and rejects ambiguous amounts before posting', async () => {
+  const fake = installFakeWindow();
+  fake.storage.set('mythos:transport', 'cookie');
+  fake.fetchMock.mockResolvedValueOnce(response({ ...sessionBody(), data: { ...sessionBody().data, creditsPerUsd: 10000 } }));
+  const client = initMythos();
+  try {
+    await client.ready;
+    const pending = client.confirmCharge({ usd: 0.15, reason: 'calculate' });
+    const request = fake.parentCalls.map((call) => call.data as Record<string, unknown>)
+      .find((data) => data.type === 'mythos:confirm-charge');
+    expect(request).toMatchObject({ credits: 1500, kind: 'generic', reason: 'calculate' });
+    expect(request).not.toHaveProperty('usd');
+    fake.dispatchMessage({ type: 'mythos:confirm-charge-response', requestId: request?.requestId, approved: true });
+    await pending;
+    const count = fake.parentCalls.length;
+    await expect(client.confirmCharge({ credits: 1, usd: '0.15' } as never)).rejects.toThrow('Pass exactly one');
+    await expect(client.confirmCharge({ usd: 0.1 + 0.2 })).rejects.toMatchObject({ code: 'INVALID_CHARGE_AMOUNT' });
+    await expect(client.confirmCharge({} as never)).rejects.toThrow('Pass exactly one');
+    expect(fake.parentCalls).toHaveLength(count);
+  } finally {
+    fake.restore();
+  }
+});
+
+test.each([undefined, null, 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])('USD confirmation without a valid session rate %p posts nothing', async (rate) => {
+  const fake = installFakeWindow({ storage: { 'mythos:transport': 'cookie' } });
+  fake.fetchMock.mockResolvedValueOnce(response({ ...sessionBody(), data: { ...sessionBody().data, creditsPerUsd: rate } }));
+  try {
+    const client = initMythos();
+    await client.ready;
+    const count = fake.parentCalls.length;
+    await expect(client.confirmCharge({ usd: '0.15' })).rejects.toMatchObject({ code: 'USD_RATE_UNAVAILABLE', httpStatus: 503 });
+    await expect(client.confirmCharge({ usd: 'invalid' })).rejects.toMatchObject({ code: 'INVALID_CHARGE_AMOUNT' });
+    expect(fake.parentCalls).toHaveLength(count);
+  } finally {
+    fake.restore();
+  }
+});
+
 test('client charge confirmation fails closed on timeout', async () => {
   const fake = installFakeWindow();
   fake.storage.set('mythos:transport', 'cookie');
@@ -495,6 +534,51 @@ test('client charge confirmation fails closed on timeout', async () => {
     await expect(client.confirmCharge({ credits: 2 })).resolves.toEqual({ approved: false });
   } finally {
     fake.restore();
+  }
+});
+
+test('session expiry clears the USD rate before another confirmation', async () => {
+  const fake = installFakeWindow({ storage: { 'mythos:transport': 'cookie' } });
+  fake.fetchMock.mockResolvedValueOnce(response({ ...sessionBody(), data: { ...sessionBody().data, creditsPerUsd: 10000 } }))
+    .mockResolvedValueOnce(response({ code: 'SESSION_EXPIRED' }, 401));
+  try {
+    const client = initMythos();
+    await client.ready;
+    await client.fetch('/api/action');
+    const count = fake.parentCalls.length;
+    await expect(client.confirmCharge({ usd: '0.15' })).rejects.toMatchObject({ code: 'USD_RATE_UNAVAILABLE' });
+    expect(fake.parentCalls).toHaveLength(count);
+  } finally {
+    fake.restore();
+  }
+});
+
+test('successful refresh replaces the USD rate, including clearing an absent rate', async () => {
+  jest.useFakeTimers();
+  const fake = installFakeWindow({ storage: { 'mythos:transport': 'cookie' } });
+  const body = (rate?: number) => response({ ...sessionBody(), data: {
+    ...sessionBody().data, creditsPerUsd: rate, refreshAt: new Date(Date.now() + 1000).toISOString(),
+  } });
+  fake.fetchMock.mockResolvedValueOnce(body(10000)).mockResolvedValueOnce(body(3)).mockResolvedValueOnce(body());
+  try {
+    const client = initMythos();
+    await client.ready;
+    await jest.advanceTimersByTimeAsync(1000);
+    const count = fake.parentCalls.length;
+    await expect(client.confirmCharge({ usd: '0.0001' })).rejects.toMatchObject({ code: 'INVALID_CHARGE_AMOUNT' });
+    await expect(client.confirmCharge({ usd: '9007199254740992' })).rejects.toMatchObject({ code: 'INVALID_CHARGE_AMOUNT' });
+    expect(fake.parentCalls).toHaveLength(count);
+    const pending = client.confirmCharge({ usd: '1' });
+    expect(fake.parentCalls[fake.parentCalls.length - 1]?.data).toMatchObject({ credits: 3 });
+    fake.dispatchMessage({ type: 'mythos:confirm-charge-response', requestId: 'request-1', approved: true });
+    await pending;
+    await jest.advanceTimersByTimeAsync(60000);
+    const refreshedCount = fake.parentCalls.length;
+    await expect(client.confirmCharge({ usd: '1' })).rejects.toMatchObject({ code: 'USD_RATE_UNAVAILABLE' });
+    expect(fake.parentCalls).toHaveLength(refreshedCount);
+  } finally {
+    fake.restore();
+    jest.useRealTimers();
   }
 });
 

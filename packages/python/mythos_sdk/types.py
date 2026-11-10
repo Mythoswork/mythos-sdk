@@ -10,3 +10,4 @@ class MythosSession:
     sessionJti: str
     llmIdentityToken: str | None = None
     llmIdentityExpiresAt: str | None = None
+    credits_per_usd: int | None = None

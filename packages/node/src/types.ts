@@ -6,6 +6,7 @@ export interface MythosSession {
   sessionJti: string;
   llmIdentityToken?: string;
   llmIdentityExpiresAt?: string;
+  creditsPerUsd?: number;
 }
 
 export interface MythosConfig {

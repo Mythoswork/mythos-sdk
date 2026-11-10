@@ -23,7 +23,7 @@ MYTHOS_KEY=
 Node does not read `.env` on its own — step 5 starts the server with `--env-file`. In production, set these in your host's environment instead.
 
 ## 3. Server
-Missing `MYTHOS_KEY` is soft in 0.5.0; static listing launches remain silent, while dynamic registration, handshake and callbacks warn once per process. It will be required in 0.6.0. Update deployment env after key regeneration. See the [binding matrix](../reference/configuration.md).
+Missing `MYTHOS_KEY` is soft; static listing launches remain silent, while dynamic registration, handshake and callbacks warn once per process. It will be required in a future release. Update deployment env after key regeneration. See the [binding matrix](../reference/configuration.md).
 
 | Troubleshooting code | Fix |
 |---|---|
@@ -41,7 +41,7 @@ app.use(express.json());
 app.use(mythosExpress(mythos));
 app.post('/api/calculate', async (req, res, next) => {
   try {
-    await mythos.charge(req, { credits: 1, reason: 'calculate' });
+    await mythos.charge(req, { usd: 0.15, reason: 'calculate', consentId: req.body.consentId });
     res.json({ success: true, data: { result: req.body.a + req.body.b } });
   } catch (err) {
     if (err instanceof MythosError) return res.status(err.httpStatus).json({ success: false, error: err.message, code: err.code });
@@ -53,17 +53,19 @@ app.listen(3000);
 
 ## 4. Page
 ```html
-<button onclick="calculate()">Calculate (1 credit)</button>
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.5.0/dist/mythos-client.global.js"></script>
+<button onclick="calculate()">Calculate ($0.15)</button>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.6.0/dist/mythos-client.global.js"></script>
 <script>
   const m = Mythos.initMythos();
   m.ready.then((s) => { document.body.dataset.mythos = s.status; });
   async function calculate() {
-    const { approved } = await m.confirmCharge({ credits: 1, reason: '1 + 2' });
-    if (approved) await m.fetch('/api/calculate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ a: 1, b: 2 }) });
+    const { approved, consentId } = await m.confirmCharge({ usd: 0.15, reason: 'calculate' });
+    if (approved) await m.fetch('/api/calculate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ a: 1, b: 2, consentId }) });
   }
 </script>
 ```
+
+The popup shows credits using the session rate; the server charges the same USD amount. Alternatively, use `credits: 1500` directly in both calls. USD accepts numbers or exact decimal strings; see [USD confirmation](./browser-client.md#confirm-a-usd-charge) for validation and missing-rate errors.
 
 ## 5. Run and check it
 ```bash

@@ -19,7 +19,7 @@ mythos = create_mythos()
 app.include_router(mythos.router)
 
 session = await mythos.get_session(request)  # None in standalone mode
-await mythos.charge(request, credits=1, reason='page-view')
+await mythos.charge(request, usd=0.15, reason='calculate', consent_id=consent_id)
 client = await mythos.llm(request, api_key=producer_api_key)
 billing = mythos.billing(completion)
 ```
@@ -33,7 +33,7 @@ MYTHOS_SESSION_SECRET=
 MYTHOS_KEY=
 ```
 
-`MYTHOS_KEY` binds launch, handshake and callback tokens to your Producer: matching `pkh` accepts; missing or different `pkh` rejects with `ProducerMismatchError` (`PRODUCER_MISMATCH`, 401). Without a key, static `MYTHOS_LISTING_ID(S)` launches are silent safe legacy configuration; dynamic launches, handshake and callbacks warn once per process. A resolver or callback without a key warns at startup. Missing keys are soft in 0.5.0; **required in 0.6.0**. Regeneration requires updating deployment env and redeploying. See [configuration and exact token contract](https://docs.mythos.work/reference/configuration).
+`MYTHOS_KEY` binds launch, handshake and callback tokens to your Producer: matching `pkh` accepts; missing or different `pkh` rejects with `ProducerMismatchError` (`PRODUCER_MISMATCH`, 401). Without a key, static `MYTHOS_LISTING_ID(S)` launches are silent safe legacy configuration; dynamic launches, handshake and callbacks warn once per process. A resolver or callback without a key warns at startup. Missing keys are soft (a warning); **required in a future release**. Regeneration requires updating deployment env and redeploying. See [configuration and exact token contract](https://docs.mythos.work/reference/configuration).
 
 | Troubleshooting code | Fix |
 |---|---|
@@ -42,14 +42,16 @@ MYTHOS_KEY=
 Templates can use the framework-neutral browser client:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.5.0/dist/mythos-client.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.6.0/dist/mythos-client.global.js"></script>
 <script>
   const m = Mythos.initMythos();
   m.ready.then((state) => console.log(state.status));
-  // fixed price: m.confirmCharge({ credits: 1, reason: 'calculate' })
+  // fixed price: m.confirmCharge({ usd: 0.15, reason: 'calculate' })
   // LLM (usage-based, no credits): m.confirmCharge({ kind: 'llm', reason: 'chat' })
 </script>
 ```
+
+Use the same USD amount on the server after approval, or `credits=1500` directly (browser: `credits: 1500`). USD accepts a positive number, exact decimal string or `Decimal` with at most 4 decimal places. Computed floats such as `0.1 + 0.2` are rejected, never rounded: use `round(x, 2)` first or pass a string. Mythos converts USD on the server and returns `credits_charged`. The popup shows credits using the `initMythos` session rate; an absent rate rejects with `USD_RATE_UNAVAILABLE`. Standalone client confirmation is credits-only.
 
 ## Advanced (primitives)
 
@@ -125,7 +127,7 @@ async def dashboard(session=Depends(require_launch_token(resolve_listing_ids=get
 | Variable             | Required | Default                   | Description                                   |
 |----------------------|----------|---------------------------|-----------------------------------------------|
 | `MYTHOS_SESSION_SECRET` | Yes for `create_mythos` | — | At least 32 characters; generate with `openssl rand -base64 32` |
-| `MYTHOS_KEY` | Soft in 0.5.0 | — | Dashboard Producer key; required in 0.6.0 |
+| `MYTHOS_KEY` | Soft (missing key warns) | — | Dashboard Producer key; required in a future release |
 | `MYTHOS_LISTING_ID`  | No*      | —                         | Your listing ID                               |
 | `MYTHOS_LISTING_IDS` | No*      | —                         | Comma-separated listing IDs (overrides above) |
 | `MYTHOS_API_URL`     | No       | `https://api.mythos.work` | API base URL override                         |

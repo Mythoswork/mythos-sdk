@@ -176,6 +176,23 @@ test('header-only session transport supports getSession and charge', async () =>
   expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({ charge_id: 'k-1', credits: 1 });
 });
 
+test.each([0.15, '0.15'])('charge normalizes USD %p and rejects invalid amounts before reading a session', async (usd) => {
+  const sdk = await createSdk();
+  const launch = await sdk.handle(sessionRequest(`https://app.test/api/mythos/session?lt=${await createTestToken('j1')}`));
+  const body = await launch.json() as { data: { sessionToken: string } };
+  await sdk.charge(sessionRequest('https://app.test', undefined, body.data.sessionToken), { usd, idempotencyKey: 'usd-key' });
+  const call = jest.mocked(global.fetch).mock.calls.find(([input]) => String(input).endsWith('/meter'));
+  const meterBody = JSON.parse(String(call?.[1]?.body));
+  expect(meterBody).toMatchObject({ usd: '0.15', charge_id: 'usd-key' });
+  expect(meterBody).not.toHaveProperty('credits');
+  jest.mocked(global.fetch).mockClear();
+  for (const options of [{}, { credits: 1, usd: '0.15' }, { usd: 0.1 + 0.2 }]) {
+    await expect(sdk.charge(sessionRequest('https://app.test'), options as never))
+      .rejects.toMatchObject({ code: 'INVALID_CHARGE_AMOUNT', httpStatus: 400 });
+  }
+  expect(global.fetch).not.toHaveBeenCalled();
+});
+
 test('consume 409 returns a typed token-consumed error response', async () => {
   jest.mocked(global.fetch).mockImplementation(async () => new Response('{}', { status: 409 }));
   const sdk = await createSdk();
@@ -297,6 +314,27 @@ const refreshPayload = () => ({ success: true, data: {
   llm_identity_expires_at: new Date(Date.now() + 30 * 60_000).toISOString(),
   session_expires_at: new Date(Date.now() + 8 * 60 * 60_000).toISOString(),
 } });
+
+test.each([10000, undefined, null, true, '10000', 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+  'consume rate %p is validated, sealed and preserved on refresh', async (rate) => {
+    const sdk = await createSdk();
+    jest.mocked(global.fetch).mockResolvedValueOnce(new Response(JSON.stringify({ data: {
+      llm_identity_token: 'identity',
+      llm_identity_expires_at: new Date(Date.now() + 2 * 60_000).toISOString(),
+      credits_per_usd: rate,
+    } })));
+    const first = await sdk.handle(sessionRequest(`https://app.test/api/mythos/session?lt=${await createTestToken('rate')}`));
+    const body = await first.json() as { data: { creditsPerUsd: number | null; sessionToken: string } };
+    const expected = rate === 10000 ? 10000 : null;
+    expect(body.data.creditsPerUsd).toBe(expected);
+    const { openSession } = await import('../src/session');
+    expect(openSession(body.data.sessionToken)?.creditsPerUsd ?? null).toBe(expected);
+    jest.mocked(global.fetch).mockResolvedValueOnce(new Response(JSON.stringify(refreshPayload())));
+    const refreshed = await sdk.handle(sessionRequest('https://app.test/api/mythos/session', cookiePair(first)));
+    expect(await refreshed.json()).toMatchObject({ data: { creditsPerUsd: expected } });
+    expect(openSession(cookiePair(refreshed).split('=')[1])?.creditsPerUsd ?? null).toBe(expected);
+  },
+);
 
 test('session route refreshes a near-expiry identity and sets a new cookie and refreshAt', async () => {
   const sdk = await createSdk();

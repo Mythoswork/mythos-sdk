@@ -156,6 +156,18 @@ test('confirmCharge posts the confirm-charge request with credits and reason', a
   }
 });
 
+test('standalone confirmCharge accepts credits only', async () => {
+  const fake = installFakeWindow(true);
+  try {
+    const pending = confirmCharge(1500, 'calculate');
+    expect(fake.parentCalls[0].data).toEqual({ type: 'mythos:confirm-charge', requestId: 'fixed-request-id', credits: 1500, reason: 'calculate', kind: 'generic' });
+    fake.dispatchResponse({ type: 'mythos:confirm-charge-response', requestId: 'fixed-request-id', approved: true });
+    expect(await pending).toBe(true);
+  } finally {
+    fake.restore();
+  }
+});
+
 test('confirmCharge posts kind "llm" when explicitly requested', async () => {
   const fake = installFakeWindow(true);
   try {
@@ -194,7 +206,7 @@ test('sendHandshake posts the handshake message to the parent frame', () => {
   const fake = installFakeWindow(true);
   try {
     sendHandshake();
-    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.5.1' }, origin: '*' }]);
+    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.6.0' }, origin: '*' }]);
   } finally {
     fake.restore();
   }

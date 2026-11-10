@@ -73,7 +73,7 @@ function expectReport(code: string, step: string): void {
   expect(url).toBe('https://api.mythos.work/api/apps/sessions/diagnostic-jti/diagnostics');
   expect(init?.method).toBe('POST');
   expect(new Headers(init?.headers)).toEqual(new Headers({ 'content-type': 'application/json' }));
-  expect(JSON.parse(String(init?.body))).toEqual({ code, step, sdk_version: '0.5.1' });
+  expect(JSON.parse(String(init?.body))).toEqual({ code, step, sdk_version: '0.6.0' });
 }
 
 test.each([true, false, undefined, 'true', 1])('wrong producer reports only literal test:true (%s)', async (testClaim) => {
@@ -260,7 +260,7 @@ test('handshake-shaped producer mismatch uses sub and logs listing only', async 
 test('release metadata, browser version and exact diagnostic documentation agree', async () => {
   const { SDK_VERSION } = await import('../src/version');
   const metadata = JSON.parse(readFileSync(resolve(__dirname, '../package.json'), 'utf8')) as { version: string };
-  expect(SDK_VERSION).toBe('0.5.1');
+  expect(SDK_VERSION).toBe('0.6.0');
   expect(SDK_VERSION).toBe(metadata.version);
   const { DIAGNOSTIC_MESSAGES } = await import('../src/constants/diagnostics.constants');
   const docs = readFileSync(resolve(__dirname, '../../../docs-site/docs/resources/troubleshooting.md'), 'utf8');
@@ -277,7 +277,7 @@ test('built browser-global handshake uses package version without Node built-ins
   const postMessage = jest.fn();
   const browser = { parent: { postMessage } };
   runInNewContext(`${bundle}; Mythos.sendHandshake('https://dashboard.mythos.work');`, { window: browser });
-  expect(postMessage).toHaveBeenCalledWith({ type: 'mythos:handshake', sdk_version: '0.5.1' }, 'https://dashboard.mythos.work');
+  expect(postMessage).toHaveBeenCalledWith({ type: 'mythos:handshake', sdk_version: '0.6.0' }, 'https://dashboard.mythos.work');
   expect(bundle).not.toMatch(/require\s*\(|node:|createRequire|__filename/);
   for (const name of ['index.js', 'mythos.js']) {
     const built = readFileSync(resolve(__dirname, '../dist', name), 'utf8');

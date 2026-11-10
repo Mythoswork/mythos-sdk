@@ -2,7 +2,8 @@ import os
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import asdict, replace
 from datetime import datetime, timedelta, timezone
-from typing import Any, Protocol
+from decimal import Decimal
+from typing import Any, Protocol, cast
 from urllib.parse import urlsplit
 
 import httpx
@@ -10,8 +11,8 @@ from jose import jwt
 from jose.exceptions import JOSEError
 
 from .api_client import (
-    MeterResult, consume_session, meter_session, read_identity_fields,
-    read_session_expires_at, refresh_session,
+    MeterResult, _validate_credits, consume_session, meter_session, read_identity_fields,
+    read_session_expires_at, read_credits_per_usd, refresh_session,
 )
 from .billing_metadata import MythosLlmBillingMetadata, get_llm_billing_metadata
 from .config import load_config
@@ -33,6 +34,7 @@ from .logger import log_debug, log_error, log_warn
 from .producer_key import assert_producer_key_format, read_producer_key, warn_missing_producer_key_once
 from .session import StoredSession, open_session, seal_session
 from .types import MythosSession
+from .usd import normalize_usd
 from .version import SDK_VERSION
 from .verify import verify_launch_token
 
@@ -93,11 +95,19 @@ class Mythos:
         self,
         request: RequestLike,
         *,
-        credits: int,
+        credits: int | None = None,
+        usd: str | int | float | Decimal | None = None,
         reason: str | None = None,
         idempotency_key: str | None = None,
         consent_id: str | None = None,
     ) -> MeterResult:
+        if (credits is None) == (usd is None):
+            raise MythosError("Pass exactly one of credits or usd", "INVALID_CHARGE_AMOUNT", 400)
+        if usd is not None:
+            normalized_usd = normalize_usd(usd)
+        else:
+            _validate_credits(credits)
+        amount: int | dict[str, str] = {"usd": normalized_usd} if usd is not None else cast(int, credits)
         stored = self._read_stored_session(request)
         if stored is None:
             raise SessionRequiredError()
@@ -105,7 +115,7 @@ class Mythos:
         if consent_id:
             log_debug("charge: consentId accepted (enforcement deferred to Phase 4)")
         try:
-            return await meter_session(session.sessionJti, credits, reason, idempotency_key)
+            return await meter_session(session.sessionJti, amount, reason, idempotency_key)
         except MythosError as err:
             report_session_failure(session, err, "meter")
             if err.http_status >= 500:
@@ -202,6 +212,7 @@ class Mythos:
             "data": {
                 "session": asdict(self._public_session(session)),
                 "sessionToken": session_token,
+                "creditsPerUsd": session.credits_per_usd,
                 "expiresAt": expires_at,
                 "refreshAt": refresh_at,
             },
@@ -286,6 +297,7 @@ class Mythos:
         expires_at = read_session_expires_at(consume_body) or session.llmIdentityExpiresAt or (
             datetime.now(timezone.utc) + timedelta(seconds=DEFAULT_SESSION_TTL_SECONDS)
         ).isoformat()
+        session = replace(session, credits_per_usd=read_credits_per_usd(consume_body))
         stored = StoredSession(**asdict(session), isTest=read_test_jti(launch_token) is not None)
         return self._session_success(stored, expires_at)
 

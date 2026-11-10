@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from jose import jwt
 from httpx import ASGITransport
 
-from mythos_sdk.errors import MythosConfigError, SessionExpiredError, SessionRequiredError
+from mythos_sdk.errors import InvalidUsageError, MythosConfigError, MythosError, SessionExpiredError, SessionRequiredError
 from mythos_sdk.mythos import SESSION_COOKIE, SESSION_HEADER, create_mythos
 from mythos_sdk.session import open_session, seal_session
 from mythos_sdk.types import MythosSession
@@ -184,6 +184,36 @@ async def test_header_session_transport_and_charge_result(monkeypatch):
     assert charge.charge_id == "k-1"
     assert charge.session_metered_total == 3
     assert client.post.await_args_list[-1].kwargs["json"]["charge_id"] == "k-1"
+
+
+@pytest.mark.parametrize('usd', [0.15, '0.15'])
+async def test_charge_usd_and_invalid_amounts_fail_before_session(monkeypatch, usd):
+    monkeypatch.setenv("MYTHOS_SESSION_SECRET", "x" * 32)
+    sdk = create_mythos()
+    token = seal_session(SESSION, "2099-01-01T00:00:00Z")
+    with patch("mythos_sdk.mythos.meter_session", new_callable=AsyncMock) as meter:
+        await sdk.charge(request_like(session_header=token), usd=usd, idempotency_key="usd-key")
+        meter.assert_awaited_once_with("jti-1", {"usd": "0.15"}, None, "usd-key")
+        meter.reset_mock()
+        for options in ({}, {"credits": 1, "usd": "0.15"}, {"usd": 0.1 + 0.2}, {"usd": True}, {"usd": float("nan")}, {"usd": 1e16 * 1000}):
+            with pytest.raises(MythosError) as error:
+                await sdk.charge(request_like(), **options)
+            assert error.value.code == "INVALID_CHARGE_AMOUNT"
+            assert error.value.http_status == 400
+        meter.assert_not_awaited()
+        with pytest.raises(InvalidUsageError):
+            await sdk.charge(request_like(session_header=token), credits="1500")  # type: ignore[arg-type]
+        meter.assert_not_awaited()
+
+
+async def test_charge_decimal_usd_is_a_string_on_the_wire(monkeypatch):
+    from decimal import Decimal
+    monkeypatch.setenv("MYTHOS_SESSION_SECRET", "x" * 32)
+    sdk = create_mythos()
+    token = seal_session(SESSION, "2099-01-01T00:00:00Z")
+    with patch("mythos_sdk.mythos.meter_session", new_callable=AsyncMock) as meter:
+        await sdk.charge(request_like(session_header=token), usd=Decimal("0.15"))
+        meter.assert_awaited_once_with("jti-1", {"usd": "0.15"}, None, None)
 
 
 async def test_consume_409_maps_to_token_consumed(monkeypatch, rsa_key_pair):
@@ -363,6 +393,31 @@ def refreshed_response(status: int = 200, code: str | None = None) -> httpx.Resp
     body = {"data": {"llm_identity_token": "new-identity", "llm_identity_expires_at": expiry,
                      "session_expires_at": lifetime}} if status == 200 else ({"code": code} if code else {})
     return httpx.Response(status, json=body)
+
+
+@pytest.mark.parametrize("rate", [10000, None, True, "10000", 0, -1, 1.5])
+async def test_consume_rate_is_validated_sealed_and_preserved_on_refresh(monkeypatch, rsa_key_pair, rate):
+    monkeypatch.setenv("MYTHOS_SESSION_SECRET", "x" * 32)
+    data = {
+        "llm_identity_token": "identity",
+        "llm_identity_expires_at": (datetime.now(timezone.utc) + timedelta(minutes=2)).isoformat(),
+    }
+    if rate is not None:
+        data["credits_per_usd"] = rate
+    post = AsyncMock(side_effect=[httpx.Response(200, json={"data": data}), refreshed_response()])
+    sdk = create_mythos()
+    with mock_jwks(rsa_key_pair), patch("mythos_sdk.api_client.get_http_client") as client:
+        client.return_value.post = post
+        status, body, token, _expiry = await sdk.handle_session(request_like(lt=mint_launch_token(rsa_key_pair["private"])))
+        expected = 10000 if rate == 10000 else None
+        assert status == 200
+        assert body["data"]["creditsPerUsd"] == expected
+        assert open_session(token)[0].credits_per_usd == expected
+        status, body, rewritten, _expiry = await sdk.handle_session(request_like(cookie=token))
+    assert status == 200
+    assert body["data"]["creditsPerUsd"] == expected
+    assert open_session(rewritten)[0].credits_per_usd == expected
+    assert post.await_count == 2
 
 
 async def test_session_route_refresh_rewrites_cookie(monkeypatch):

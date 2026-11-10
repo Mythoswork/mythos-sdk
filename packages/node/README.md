@@ -17,7 +17,7 @@ export const mythos = createMythos();
 export const { GET, POST } = mythos.handlers;
 
 const session = await mythos.getSession(req); // null in standalone mode
-await mythos.charge(req, { credits: 1, reason: 'page-view' });
+await mythos.charge(req, { usd: 0.15, reason: 'calculate', consentId });
 const client = await mythos.llm<OpenAI>(req, { apiKey: process.env.PRODUCER_OPENAI_API_KEY });
 const billing = mythos.billing(completion);
 ```
@@ -31,7 +31,7 @@ MYTHOS_SESSION_SECRET=
 MYTHOS_KEY=
 ```
 
-`MYTHOS_KEY` binds launch, handshake and callback tokens to your Producer: matching `pkh` accepts; missing or different `pkh` rejects with `ProducerMismatchError` (`PRODUCER_MISMATCH`, 401). Without a key, static `MYTHOS_LISTING_ID(S)` launches are silent safe legacy configuration; dynamic launches, handshake and callbacks warn once per process. A resolver or callback without a key warns at startup. Missing keys are soft in 0.5.0; **required in 0.6.0**. Regeneration requires updating deployment env and redeploying. See [configuration and exact token contract](https://docs.mythos.work/reference/configuration).
+`MYTHOS_KEY` binds launch, handshake and callback tokens to your Producer: matching `pkh` accepts; missing or different `pkh` rejects with `ProducerMismatchError` (`PRODUCER_MISMATCH`, 401). Without a key, static `MYTHOS_LISTING_ID(S)` launches are silent safe legacy configuration; dynamic launches, handshake and callbacks warn once per process. A resolver or callback without a key warns at startup. Missing keys are soft (a warning); **required in a future release**. Regeneration requires updating deployment env and redeploying. See [configuration and exact token contract](https://docs.mythos.work/reference/configuration).
 
 | Troubleshooting code | Fix |
 |---|---|
@@ -42,20 +42,23 @@ MYTHOS_KEY=
 ```tsx
 import { useMythos } from '@mythos-work/sdk/react';
 const { status, session, fetch, confirmCharge, relaunch } = useMythos();
-await confirmCharge({ credits: 1, reason: 'calculate' }); // fixed price
+const { approved, consentId } = await confirmCharge({ usd: 0.15, reason: 'calculate' }); // fixed price
+if (approved) await fetch('/api/calculate', { method: 'POST', body: JSON.stringify({ consentId }) });
 await confirmCharge({ kind: 'llm', reason: 'chat' });     // LLM: usage-based, no credits
 ```
+
+Use the same USD amount on the server after approval, or `credits: 1500` directly in both. USD is a positive number or exact decimal string with at most 4 decimal places; numbers are never rounded. Computed floats such as `0.1 + 0.2` are rejected: round first with `Number(x.toFixed(2))` or pass a string. Mythos converts USD on the server and returns `creditsCharged`. The popup shows credits using the session rate; missing rates reject with `USD_RATE_UNAVAILABLE`.
 
 For non-bundled pages:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.5.0/dist/mythos-client.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.6.0/dist/mythos-client.global.js"></script>
 <script>const m = Mythos.initMythos(); m.ready.then(console.log);</script>
 ```
 
 ## Advanced (primitives)
 
-Legacy `sendHandshake` and boolean-returning `confirmCharge` remain available from `@mythos-work/sdk/client`.
+Legacy `sendHandshake` and boolean-returning `confirmCharge` remain available from `@mythos-work/sdk/client`. That standalone confirmation accepts credits only; USD confirmation uses the session-aware `initMythos` / `useMythos` client.
 
 ## Install
 
@@ -118,7 +121,7 @@ app.get(
 | Variable             | Required | Default                   | Description                                   |
 | ----------------------| ----------| ---------------------------| -----------------------------------------------|
 | `MYTHOS_SESSION_SECRET` | Yes for `createMythos` | — | At least 32 characters; generate with `openssl rand -base64 32` |
-| `MYTHOS_KEY` | Soft in 0.5.0 | — | Dashboard Producer key; required in 0.6.0 |
+| `MYTHOS_KEY` | Soft (missing key warns) | — | Dashboard Producer key; required in a future release |
 | `MYTHOS_LISTING_ID`  | No*      | —                         | Your listing ID                               |
 | `MYTHOS_LISTING_IDS` | No*      | —                         | Comma-separated listing IDs (overrides above) |
 | `MYTHOS_API_URL`     | No       | `https://api.mythos.work` | API base URL override                         |

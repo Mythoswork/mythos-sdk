@@ -3,6 +3,7 @@ import { join } from 'path';
 
 import { openSession, sealSessionWithIv, type StoredSession } from '../src/session';
 import { hashProducerKey } from '../src/producer-key';
+import { assertUsd, normalizeUsd } from '../src/usd';
 
 // Shared fixed vectors prove Node and Python produce the same encrypted cookie bytes.
 interface SessionVectors {
@@ -18,6 +19,30 @@ const vectors = JSON.parse(readFileSync(
 const producerVectors = JSON.parse(readFileSync(
   join(__dirname, '../../../conformance/producer-key-v1.json'), 'utf8',
 )) as { vectors: Array<{ key: string; pkh: string }> };
+
+const usdVectors = JSON.parse(readFileSync(
+  join(__dirname, '../../../conformance/usd-format-v1.json'), 'utf8',
+)) as { valid: string[]; invalid: string[]; numeric: { valid: [number, string][]; invalid: number[] } };
+
+test.each(usdVectors.numeric.valid)('numeric USD %s normalizes to %s', (usd, expected) => {
+  expect(normalizeUsd(usd)).toBe(expected);
+});
+
+test.each(usdVectors.numeric.invalid)('invalid numeric USD %s is rejected', (usd) => {
+  expect(() => normalizeUsd(usd)).toThrow(expect.objectContaining({ code: 'INVALID_CHARGE_AMOUNT', httpStatus: 400 }));
+});
+
+test.each(usdVectors.valid)('USD %s has valid format', (usd) => {
+  expect(() => assertUsd(usd)).not.toThrow();
+});
+
+test.each([...usdVectors.invalid, '1\n'])('invalid USD %s is rejected', (usd) => {
+  expect(() => assertUsd(usd)).toThrow(expect.objectContaining({ code: 'INVALID_CHARGE_AMOUNT', httpStatus: 400 }));
+});
+
+test('USD format validation imposes no client-side credit limit', () => {
+  expect(() => assertUsd('900719925474.0992')).not.toThrow();
+});
 
 test.each(producerVectors.vectors)('producer key shared hash vector', ({ key, pkh }) => {
   expect(hashProducerKey(key)).toBe(pkh);

@@ -15,12 +15,14 @@ from .errors import (
     SessionNotFoundError,
 )
 from .http import get_http_client
+from .usd import assert_usd
 
 
 @dataclass(frozen=True)
 class MeterResult:
     charge_id: str
     session_metered_total: int | None
+    credits_charged: int | None = None
 
 
 @dataclass(frozen=True)
@@ -52,6 +54,12 @@ def read_session_expires_at(body: object) -> str | None:
 def _read_code(body: object) -> str | None:
     code = body.get("code") if isinstance(body, dict) else None
     return code if isinstance(code, str) else None
+
+
+def read_credits_per_usd(body: object) -> int | None:
+    data = body.get("data") if isinstance(body, dict) else None
+    value = data.get("credits_per_usd") if isinstance(data, dict) else None
+    return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else None
 
 
 async def refresh_session(jti: str, identity_token: str) -> SessionRefreshResult | None:
@@ -104,14 +112,20 @@ async def consume_session(jti: str) -> Any:
 
 async def meter_session(
     jti: str,
-    credits: int,
+    credits: int | dict[str, str],
     reason: str | None = None,
     charge_id: str | None = None,
 ) -> MeterResult:
-    _validate_credits(credits)
+    # USD must be explicit ({"usd": "0.15"}): a bare string is never read as dollars.
+    if isinstance(credits, dict):
+        assert_usd(credits.get("usd"))
+        amount_field: dict[str, Any] = {"usd": credits["usd"]}
+    else:
+        _validate_credits(credits)
+        amount_field = {"credits": credits}
     config = load_config()
     resolved_charge_id = charge_id if charge_id is not None else str(uuid.uuid4())
-    body: dict[str, Any] = {"credits": credits, "charge_id": resolved_charge_id}
+    body: dict[str, Any] = {**amount_field, "charge_id": resolved_charge_id}
     if reason is not None:
         body["reason"] = reason
 
@@ -147,4 +161,6 @@ async def meter_session(
     data = response_body.get("data") if isinstance(response_body, dict) else None
     total = data.get("session_metered_total") if isinstance(data, dict) else None
     session_total = total if isinstance(total, int) and not isinstance(total, bool) and total >= 0 else None
-    return MeterResult(charge_id=resolved_charge_id, session_metered_total=session_total)
+    charged = data.get("credits_charged") if isinstance(data, dict) else None
+    return MeterResult(charge_id=resolved_charge_id, session_metered_total=session_total,
+                       credits_charged=charged if isinstance(charged, int) and not isinstance(charged, bool) else None)
