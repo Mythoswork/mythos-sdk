@@ -22,7 +22,7 @@ MYTHOS_SESSION_SECRET=
 MYTHOS_KEY=
 ```
 
-Or fill all three in one step: `npx @mythos-work/sdk link` (see [CLI](../reference/cli.md#link)).
+Or fill all three in one step: `npx @mythos-work/sdk link` (see [CLI](../reference/cli.md#link)). `next build` no longer needs the `MYTHOS_*` secrets: they are checked on the first request.
 
 ## 3. Server: one file, one route
 Missing `MYTHOS_KEY` is soft; static listing launches remain silent, while dynamic registration, handshake and callbacks warn once per process. It will be required in a future release. Update deployment env after key regeneration. See the [binding matrix](../reference/configuration.md).

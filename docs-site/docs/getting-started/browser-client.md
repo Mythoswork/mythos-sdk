@@ -37,7 +37,7 @@ const unsubscribe = m.subscribe(() => console.log(m.state.status));
 |---|---|---|
 | `loading` | Session initialization is in progress | Show a loading state |
 | `mythos` | A Mythos launch session is active | Enable Mythos billing |
-| `standalone` | The app was opened outside Mythos | Use your own auth or paywall |
+| `standalone` | The app was opened outside Mythos | `confirmCharge` approves without a popup (`standalone: true`); use your own auth or paywalll |
 | `expired` | The launch session expired | Embedded clients request a relaunch automatically; offer `relaunch()` as a manual fallback |
 | `error` | Initialization failed | Show `error` and a retry path |
 

@@ -1,3 +1,4 @@
+import OpenAI from 'openai';
 import { getLlmBillingMetadata, llm } from '../src/llm';
 import { MythosError } from '../src/errors';
 import type { MythosSession } from '../src/types';
@@ -74,4 +75,40 @@ test('reads backend billing metadata from a completion', () => {
      mythos_creator_earning_credits: 0,
    });
   expect(getLlmBillingMetadata({ id: 'without-metadata' })).toBeNull();
+});
+
+test('standalone without a session returns a plain OpenAI client with no Mythos identity', () => {
+  const client = llm(null, { apiKey: 'sk-test', standalone: true });
+  expect(client).toBeInstanceOf(OpenAI);
+  expect((client as OpenAI).baseURL).toBe('https://api.openai.com/v1');
+  expect((client as unknown as { _options: { defaultHeaders?: Record<string, string> } })._options.defaultHeaders ?? {}).not.toHaveProperty('X-Mythos-Identity');
+});
+
+test('standalone without a usable identity token also returns the plain client', () => {
+  const client = llm({ ...SESSION, llmIdentityToken: undefined }, { apiKey: 'sk-test', standalone: true });
+  expect((client as OpenAI).baseURL).toBe('https://api.openai.com/v1');
+});
+
+test('fallback wins over standalone', () => {
+  const fallback = { answer: 'fallback' };
+  expect(llm(null, { fallback, standalone: true, apiKey: 'sk-test' })).toBe(fallback);
+});
+
+test('standalone never replaces a real Mythos session', () => {
+  const client = llm(SESSION, { apiKey: 'sk-test', standalone: true });
+  expect((client as OpenAI).baseURL).toBe('https://api.mythos.work/v1');
+});
+
+test('standalone without any key reports a construction error', () => {
+  const previous = process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  try {
+    expect(() => llm(null, { standalone: true })).toThrow(expect.objectContaining({ code: 'LLM_CLIENT_CONSTRUCTION_ERROR' }));
+  } finally {
+    if (previous !== undefined) process.env.OPENAI_API_KEY = previous;
+  }
+});
+
+test('without standalone the session requirement is unchanged', () => {
+  expect(() => llm(null, { apiKey: 'sk-test' })).toThrow(expect.objectContaining({ code: 'LLM_SESSION_REQUIRED' }));
 });

@@ -139,22 +139,22 @@ Non-React bundled apps import `initMythos` from `@mythos-work/sdk/client`. Unbun
 ## Server Billing
 
 ```ts
-import OpenAI from 'openai';
 await mythos.charge(req, { usd: 0.15, reason: 'calculate', consentId });
-const fallback = new OpenAI({ apiKey: process.env.PRODUCER_OPENAI_API_KEY });
-const client = await mythos.llm(req, { apiKey: process.env.PRODUCER_OPENAI_API_KEY, fallback });
+const client = await mythos.llm(req, { apiKey: process.env.PRODUCER_OPENAI_API_KEY, standalone: true });
 const billing = mythos.billing(completion);
 ```
 
-Python uses `await mythos.charge(request, usd=0.15, reason="calculate", consent_id=consent_id)`, `await mythos.llm(request, api_key=producer_api_key)`, and `mythos.billing(completion)`.
+Python uses `await mythos.charge(request, usd=0.15, reason="calculate", consent_id=consent_id)`, `await mythos.llm(request, api_key=producer_api_key, standalone=True)`, and `mythos.billing(completion)`.
 
 Alternatively, charge credits directly with `credits: 1500` (Python: `credits=1500`), using the same amount for confirmation. Pass exactly one of `usd` or `credits`. `usd` accepts a positive number or exact decimal string with at most 4 decimal places (Python also accepts `Decimal`). Computed floats such as `0.1 + 0.2` are rejected, never rounded: round first with `Number(x.toFixed(2))` / `round(x, 2)`, or pass a string. Mythos converts USD on the server; the meter result exposes `creditsCharged` / `credits_charged`.
+
+Outside Mythos (standalone), `confirmCharge` approves without a popup and resolves `{ approved: true, standalone: true }`. Call `mythos.charge` only when `await mythos.getSession(req)` is non-null, or keep the app's own paywall. `standalone: true` on `mythos.llm` gives a plain OpenAI client using the producer's own key; it never replaces a real Mythos session.
 
 The approval popup shows credits. USD confirmation requires an `initMythos` / `useMythos` session rate; an absent rate rejects with `USD_RATE_UNAVAILABLE`. The standalone `@mythos-work/sdk/client` confirmation accepts credits only.
 
 ## Environment
 
-Fill these with `npx @mythos-work/sdk link` (Node and Python apps). Agents: run it yourself, show the user the URL and code it prints, and wait while they approve in the browser (up to 10 minutes). It writes `MYTHOS_KEY`, `MYTHOS_LISTING_ID` and `MYTHOS_SESSION_SECRET` into `.env.local` (Next.js) or `.env`, never overwrites a non-empty value, and prints only masked values. Never open, read or print the env file; verify with doctor. If `link` fails, the user copies the values from the dashboard.
+Fill these with `npx @mythos-work/sdk link` (Node and Python apps). For only the session secret, run `npx @mythos-work/sdk secret`. Agents: run it yourself, show the user the URL and code it prints, and wait while they approve in the browser (up to 10 minutes). It writes `MYTHOS_KEY`, `MYTHOS_LISTING_ID` and `MYTHOS_SESSION_SECRET` into `.env.local` (Next.js) or `.env`, never overwrites a non-empty value, and prints only masked values. Never open, read or print the env file; verify with doctor. If `link` fails, the user copies the values from the dashboard.
 
 | Variable | Requirement |
 |---|---|

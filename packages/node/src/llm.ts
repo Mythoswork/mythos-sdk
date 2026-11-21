@@ -12,6 +12,21 @@ export interface LlmOptions<TFallback = never> {
   fallback?: TFallback;
   baseURL?: string;
   timeout?: number;
+  /** Without a usable Mythos session, build a plain OpenAI client (own key) instead of throwing. */
+  standalone?: boolean;
+}
+
+/** Plain OpenAI client for standalone use: no Mythos gateway, no identity header, OpenAI's own endpoint. */
+export function standaloneLlm(options: LlmOptions<unknown>): OpenAI {
+  try {
+    return new OpenAI({
+      ...(options.apiKey === undefined ? {} : { apiKey: options.apiKey }),
+      ...(options.timeout === undefined ? {} : { timeout: options.timeout }),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new MythosError(`Failed to construct the standalone LLM client: ${message}`, 'LLM_CLIENT_CONSTRUCTION_ERROR');
+  }
 }
 
 export function llm<TFallback = never>(
@@ -20,6 +35,7 @@ export function llm<TFallback = never>(
 ): OpenAI | TFallback {
   if (!session) {
     if (options.fallback !== undefined) return options.fallback;
+    if (options.standalone) return standaloneLlm(options);
     throw new MythosError('An active Mythos session is required for LLM access', 'LLM_SESSION_REQUIRED');
   }
   // A session decoded before this release, or verified against an older backend, can be
@@ -28,6 +44,7 @@ export function llm<TFallback = never>(
   // rather than hard-throwing regardless of whether the caller configured one.
   if (!session.llmIdentityToken) {
     if (options.fallback !== undefined) return options.fallback;
+    if (options.standalone) return standaloneLlm(options);
     throw new MythosError('The Mythos session is missing its LLM identity token', 'LLM_IDENTITY_REQUIRED');
   }
 

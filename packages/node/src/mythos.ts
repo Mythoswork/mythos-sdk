@@ -141,7 +141,8 @@ function buildSessionCookie(token: string, expiresAt: string, request: Request):
   return `${MYTHOS_SESSION_COOKIE}=${token}; Path=/; HttpOnly; Max-Age=${maxAge}; ${attributes}`;
 }
 
-export function createMythos(options: CreateMythosOptions = {}): Mythos {
+/** Runs the once-per-process env checks. Throws MythosConfigError on bad configuration. */
+function assertConfig(options: CreateMythosOptions): void {
   assertProducerKeyFormat();
   const secret = process.env.MYTHOS_SESSION_SECRET;
   if (!secret) {
@@ -167,6 +168,21 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
   }
   mythosLog.debug('createMythos: config ok', { apiUrl: config.apiUrl, listingIds: config.listingIds });
   if (!readProducerKey() && (options.resolveListingIds || options.onListingRegistered)) warnMissingProducerKeyOnce();
+}
+
+function once(fn: () => void): () => void {
+  let done = false;
+  return () => {
+    if (done) return;
+    fn();
+    done = true;
+  };
+}
+
+export function createMythos(options: CreateMythosOptions = {}): Mythos {
+  const ensureConfigured = once(() => assertConfig(options));
+  // `next build` imports route modules to collect metadata without secrets; the checks then run on the first real call.
+  if (process.env.NEXT_PHASE !== 'phase-production-build') ensureConfigured();
 
   function readStoredSession(req: MythosRequestLike): StoredSession | null {
     const cookieToken = readCookie(req, MYTHOS_SESSION_COOKIE);
@@ -355,6 +371,7 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
   }
 
   async function handle(request: Request): Promise<Response> {
+    ensureConfigured();
     try {
       const segment = new URL(request.url).pathname.split('/').filter(Boolean).pop() ?? '';
       if (segment === 'session' && (request.method === 'GET' || request.method === 'POST')) {
@@ -382,10 +399,12 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
     handlers: { GET: handle, POST: handle },
     handle,
     async getSession(req) {
+      ensureConfigured();
       const session = readStoredSession(req);
       return session ? publicOf(session) : null;
     },
     async charge(req, chargeOptions) {
+      ensureConfigured();
       if ((chargeOptions.credits !== undefined) === (chargeOptions.usd !== undefined)) {
         throw new MythosError('Pass exactly one of credits or usd', 'INVALID_CHARGE_AMOUNT', 400);
       }
@@ -409,9 +428,11 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
       }
     },
     async llm<TClient = OpenAI>(req: MythosRequestLike, llmOptions: LlmOptions<TClient> = {}): Promise<TClient> {
+      ensureConfigured();
       const session = readStoredSession(req);
       if (!session) {
         if (llmOptions.fallback !== undefined) return llmOptions.fallback;
+        if (llmOptions.standalone) return (await import('./llm')).standaloneLlm(llmOptions) as unknown as TClient;
         throw new MythosError('An active Mythos session is required for LLM access', 'LLM_SESSION_REQUIRED');
       }
       try {
@@ -430,6 +451,7 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
     if (!session.llmIdentityToken) {
       mythosLog.warn('llm: session has no LLM identity token (backend identity key misconfigured?)');
       if (llmOptions.fallback !== undefined) return llmOptions.fallback;
+      if (llmOptions.standalone) return (await import('./llm')).standaloneLlm(llmOptions) as unknown as TClient;
       throw new MythosError('The Mythos session is missing its LLM identity token', 'LLM_IDENTITY_REQUIRED');
     }
     const outcome = await refreshIfDue(session);

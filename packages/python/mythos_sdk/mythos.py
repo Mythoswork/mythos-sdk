@@ -130,10 +130,11 @@ class Mythos:
         fallback: Any = None,
         base_url: str | None = None,
         timeout: float = 600.0,
+        standalone: bool = False,
     ) -> Any:
         stored = self._read_stored_session(request)
         try:
-            return await self._build_session_llm(stored, api_key, fallback, base_url, timeout)
+            return await self._build_session_llm(stored, api_key, fallback, base_url, timeout, standalone)
         except MythosError as err:
             if stored:
                 report_session_failure(stored[0], err, "llm")
@@ -141,7 +142,7 @@ class Mythos:
 
     async def _build_session_llm(
         self, stored: tuple[MythosSession, str] | None, api_key: str | None,
-        fallback: object, base_url: str | None, timeout: float,
+        fallback: object, base_url: str | None, timeout: float, standalone: bool = False,
     ) -> object:
         from .llm import llm as build_llm
 
@@ -152,7 +153,7 @@ class Mythos:
             outcome, session, _expires_at, error = await self._refresh_if_due(*stored)
             if outcome == "expired":
                 raise error or SessionExpiredError()
-        return build_llm(session, api_key=api_key, fallback=fallback, base_url=base_url, timeout=timeout)
+        return build_llm(session, api_key=api_key, fallback=fallback, base_url=base_url, timeout=timeout, standalone=standalone)
 
     async def _refresh_if_due(
         self, session: MythosSession, expires_at: str, force: bool = False,

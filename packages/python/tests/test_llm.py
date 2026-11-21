@@ -95,3 +95,34 @@ def test_reads_backend_billing_metadata_from_a_completion():
         "mythos_creator_earning_credits": 0,
     }
     assert get_llm_billing_metadata({"id": "without-metadata"}) is None
+
+
+def test_standalone_without_a_session_returns_plain_openai_client(monkeypatch):
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    client = llm(None, api_key="sk-test", standalone=True)
+    assert isinstance(client, AsyncOpenAI)
+    assert str(client.base_url) == "https://api.openai.com/v1/"
+    assert "X-Mythos-Identity" not in client.default_headers
+
+
+def test_standalone_never_replaces_a_real_session():
+    client = llm(SESSION, api_key="sk-test", standalone=True)
+    assert str(client.base_url) == "https://api.mythos.work/v1/"
+
+
+def test_fallback_wins_over_standalone():
+    fallback = {"answer": "fallback"}
+    assert llm(None, api_key="sk-test", fallback=fallback, standalone=True) is fallback
+
+
+def test_standalone_without_any_key_reports_construction_error(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    with pytest.raises(MythosError) as info:
+        llm(None, standalone=True)
+    assert info.value.code == "LLM_CLIENT_CONSTRUCTION_ERROR"
+
+
+def test_default_still_requires_a_session():
+    with pytest.raises(MythosError) as info:
+        llm(None, api_key="sk-test")
+    assert info.value.code == "LLM_SESSION_REQUIRED"

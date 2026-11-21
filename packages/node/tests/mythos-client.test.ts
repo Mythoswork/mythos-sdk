@@ -757,3 +757,63 @@ test.each([
     fake.restore();
   }
 });
+
+test('standalone confirmCharge approves without a popup or a parent message', async () => {
+  resetMythosClientForTests();
+  const fake = installFakeWindow({ embedded: false });
+  fake.fetchMock.mockResolvedValueOnce(response({ success: true, data: null }));
+  try {
+    const client = initMythos();
+    await client.ready;
+    await expect(client.confirmCharge({ credits: 2, reason: 'calculate' })).resolves.toEqual({ approved: true, standalone: true });
+    await expect(client.confirmCharge({ kind: 'llm', reason: 'refine' })).resolves.toEqual({ approved: true, standalone: true });
+    expect(fake.parentCalls).toEqual([]);
+  } finally {
+    fake.restore();
+  }
+});
+
+test('standalone confirmCharge still rejects an invalid amount', async () => {
+  resetMythosClientForTests();
+  const fake = installFakeWindow({ embedded: false });
+  fake.fetchMock.mockResolvedValueOnce(response({ success: true, data: null }));
+  try {
+    const client = initMythos();
+    await client.ready;
+    await expect(client.confirmCharge({ credits: 5, usd: 1 } as never)).rejects.toMatchObject({ code: 'INVALID_CHARGE_AMOUNT' });
+    await expect(client.confirmCharge({ usd: 0.1 + 0.2 })).rejects.toMatchObject({ code: 'INVALID_CHARGE_AMOUNT' });
+  } finally {
+    fake.restore();
+  }
+});
+
+test('confirmCharge called while loading still reaches the parent once the session is Mythos', async () => {
+  resetMythosClientForTests();
+  const fake = installFakeWindow();
+  const client = initialiseWithExistingCookie(fake);
+  try {
+    const pending = client.confirmCharge({ credits: 2, reason: 'calculate' });
+    await client.ready;
+    fake.dispatchMessage({ type: 'mythos:confirm-charge-response', requestId: 'request-1', approved: true, consentId: 'consent-1' });
+    expect(await pending).toEqual({ approved: true, consentId: 'consent-1' });
+  } finally {
+    fake.restore();
+  }
+});
+
+test('fetch waits for the session before attaching the header-mode token', async () => {
+  resetMythosClientForTests();
+  const fake = installFakeWindow({ search: '?lt=abc' });
+  fake.fetchMock
+    .mockResolvedValueOnce(response(sessionBody('header-token')))
+    .mockResolvedValueOnce(response({ success: true, data: null }))
+    .mockResolvedValueOnce(response({ success: true, data: {} }));
+  try {
+    const client = initMythos();
+    await client.fetch('/api/calculate', { method: 'POST' });
+    const call = fake.fetchMock.mock.calls.find((c) => String(c[0]) === '/api/calculate');
+    expect(new Headers(call?.[1]?.headers).get('X-Mythos-Session')).toBe('header-token');
+  } finally {
+    fake.restore();
+  }
+});

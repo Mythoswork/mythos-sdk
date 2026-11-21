@@ -9,10 +9,12 @@ const session = await mythos.getSession(req);
 if (!session) return handleWithYourOwnAuth(req);
 ```
 
-For LLM calls, provide an OpenAI fallback for standalone users:
+For LLM calls, `standalone: true` gives a plain OpenAI client with your own key when there is no Mythos session:
 
 ```ts
-const client = await mythos.llm(req, { apiKey: process.env.OPENAI_API_KEY, fallback: ownOpenAiClient });
+const client = await mythos.llm(req, { apiKey: process.env.OPENAI_API_KEY, standalone: true });
 ```
 
-Without a session and without `fallback`, `llm()` throws `LLM_SESSION_REQUIRED` or `LLM_IDENTITY_REQUIRED`.
+A session always wins: `standalone` never replaces a real Mythos session. Pass `fallback` only for a custom endpoint you build yourself; it takes precedence over `standalone`. Without a session, without `standalone` and without `fallback`, `llm()` throws `LLM_SESSION_REQUIRED` or `LLM_IDENTITY_REQUIRED`.
+
+In the browser, `confirmCharge` outside Mythos approves without a popup and resolves `{ approved: true, standalone: true }`. You don't need to branch on `status` around it. On the server, call `mythos.charge` only when `getSession` returns a session.

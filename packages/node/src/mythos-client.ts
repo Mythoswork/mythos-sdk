@@ -309,6 +309,8 @@ function createClient(options: InitMythosOptions): MythosClient {
   const ready = load(window.location.search);
 
   const mythosFetch = async (input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> => {
+    // Wait for the session to resolve, so an authenticated call never races the handshake.
+    if (state.status === 'loading') await ready;
     const inputHeaders = input instanceof Request ? input.headers : undefined;
     const headers = new Headers(init.headers ?? inputHeaders);
     if (transport === 'header' && memoryToken && isSameOrigin(input)) {
@@ -335,12 +337,17 @@ function createClient(options: InitMythosOptions): MythosClient {
     return response;
   };
 
-  const confirmCharge = (charge: ConfirmChargeOptions): Promise<ConfirmChargeResult> => {
-    try {
-      return requestConfirm(charge);
-    } catch (err) {
-      return Promise.reject(err);
+  const confirmCharge = async (charge: ConfirmChargeOptions): Promise<ConfirmChargeResult> => {
+    const current = state.status === 'loading' ? await ready : state;
+    if (current.status !== 'standalone') return requestConfirm(charge);
+    // Outside Mythos there is no popup and no charge: validate the amount, then approve.
+    if (charge.kind !== 'llm') {
+      if ((charge.credits !== undefined) === (charge.usd !== undefined)) {
+        throw new MythosError('Pass exactly one of credits or usd', 'INVALID_CHARGE_AMOUNT', 400);
+      }
+      if (charge.usd !== undefined) normalizeUsd(charge.usd);
     }
+    return { approved: true, standalone: true };
   };
   const requestConfirm = (charge: ConfirmChargeOptions): Promise<ConfirmChargeResult> => {
     let amount = 0; // LLM dialog ignores the numeric placeholder.
