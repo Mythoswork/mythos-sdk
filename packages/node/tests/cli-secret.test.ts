@@ -34,7 +34,7 @@ test('never overwrites an existing secret', () => {
   const output: string[] = [];
   secret({ cwd, write: (line) => output.push(line) });
   expect(readFileSync(join(cwd, '.env'), 'utf8')).toBe('MYTHOS_SESSION_SECRET=keep-me-keep-me-keep-me-keep-me-keep\n');
-  expect(output).toEqual(['MYTHOS_SESSION_SECRET already set in .env; kept.']);
+  expect(output).toEqual(['MYTHOS_SESSION_SECRET already set; kept.']);
 });
 
 test('creates the env file for a non-Next project when none exists', () => {
@@ -48,4 +48,14 @@ test('cli main routes secret', async () => {
   const output: string[] = [];
   expect(await main(['secret'], { cwd, write: (line) => output.push(line) })).toBe(0);
   expect(output[0]).toContain('MYTHOS_SESSION_SECRET');
+});
+
+test('a Next.js app with the secret in .env gets no overriding copy in .env.local', () => {
+  const cwd = fixture();
+  writeFileSync(join(cwd, 'package.json'), JSON.stringify({ dependencies: { next: '15.0.0' } }));
+  writeFileSync(join(cwd, '.env'), 'MYTHOS_SESSION_SECRET=existing-existing-existing-existing\n');
+  const output: string[] = [];
+  secret({ cwd, write: (line) => output.push(line) });
+  expect(output).toEqual(['MYTHOS_SESSION_SECRET already set; kept.']);
+  expect(() => readFileSync(join(cwd, '.env.local'), 'utf8')).toThrow();
 });

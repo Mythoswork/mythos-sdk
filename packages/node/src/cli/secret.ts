@@ -2,6 +2,7 @@ import { randomBytes } from 'crypto';
 import { join } from 'path';
 
 import { envFileName, fillEnv } from './env-file';
+import { loadEnv } from './env-read';
 
 export interface SecretOptions {
   cwd?: string;
@@ -13,9 +14,10 @@ export function secret(options: SecretOptions = {}): number {
   const cwd = options.cwd ?? process.cwd();
   const write = options.write ?? ((line: string) => process.stdout.write(`${line}\n`));
   const file = envFileName(cwd);
-  const { written } = fillEnv(join(cwd, file), { MYTHOS_SESSION_SECRET: randomBytes(32).toString('base64') });
+  // A secret already in any env file the app reads counts as set, so `.env.local` never overrides `.env`.
+  const { written } = fillEnv(join(cwd, file), { MYTHOS_SESSION_SECRET: randomBytes(32).toString('base64') }, loadEnv(cwd, {}));
   write(written.length > 0
     ? `MYTHOS_SESSION_SECRET (generated) → ${file}`
-    : `MYTHOS_SESSION_SECRET already set in ${file}; kept.`);
+    : 'MYTHOS_SESSION_SECRET already set; kept.');
   return 0;
 }

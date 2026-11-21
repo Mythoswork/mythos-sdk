@@ -214,7 +214,7 @@ export async function link(options: LinkOptions = {}): Promise<number> {
     // The code is already used, so say exactly what to set by hand (never the full key).
     write(`Could not write ${envFileName(cwd)} (${err instanceof Error ? err.message : String(err)}). `
       + `Set MYTHOS_KEY from Mythos dashboard → Settings → Mythos key${approval.listingId ? ` and MYTHOS_LISTING_ID=${approval.listingId}` : ''}, `
-      + 'set MYTHOS_SESSION_SECRET (openssl rand -base64 32), then run npx @mythos-work/sdk doctor.');
+      + 'run npx @mythos-work/sdk secret, then npx @mythos-work/sdk doctor.');
     return 1;
   }
   if ((options.isGitIgnored ?? defaultIsGitIgnored)(cwd, file) === false) {
