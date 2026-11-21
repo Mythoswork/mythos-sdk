@@ -48,7 +48,7 @@ function defaultOpenBrowser(url: string): void {
       : ['xdg-open', [url]];
   try {
     const child = spawn(command, args, { detached: true, stdio: 'ignore' });
-    child.on('error', () => undefined); // ponytail: no browser (SSH, CI, agent sandbox) is fine; the URL is printed.
+    child.on('error', () => undefined);
     child.unref();
   } catch {
     // Same as above.
