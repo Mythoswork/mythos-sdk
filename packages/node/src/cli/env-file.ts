@@ -1,14 +1,20 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 
 import { detectFramework } from './doctor';
+import { parseEnvValue } from './env-read';
 
 export function envFileName(cwd: string): '.env.local' | '.env' {
   const framework = detectFramework(cwd);
   return framework === 'next-app' || framework === 'next-pages' ? '.env.local' : '.env';
 }
 
-/** Writes each key that is absent or empty. Never overwrites a non-empty value. */
-export function fillEnv(path: string, values: Record<string, string>): { written: string[]; kept: string[] } {
+/**
+ * Writes each key that is absent or empty. Never overwrites a value: a key counts as set when it is
+ * non-empty in this file or in `loaded` (every env file the app reads, plus the process env).
+ */
+export function fillEnv(
+  path: string, values: Record<string, string>, loaded: Record<string, string | undefined> = {},
+): { written: string[]; kept: string[] } {
   let content = existsSync(path) ? readFileSync(path, 'utf8') : '';
   const written: string[] = [];
   const kept: string[] = [];
@@ -16,7 +22,7 @@ export function fillEnv(path: string, values: Record<string, string>): { written
   for (const [key, value] of Object.entries(values)) {
     const line = new RegExp(`^[ \\t]*${key}[ \\t]*=(.*)$`, 'm');
     const match = line.exec(content);
-    if (match && match[1].trim() !== '') {
+    if ((match && parseEnvValue(match[1]) !== '') || (loaded[key] ?? '').trim() !== '') {
       kept.push(key);
       continue;
     }

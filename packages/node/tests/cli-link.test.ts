@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
 import { main } from '../src/cli';
@@ -58,7 +58,7 @@ function run(cwd: string, fetchMock: typeof fetch, extra: Partial<LinkOptions> =
 }
 
 const approved = (listingId: string | null) => () =>
-  json(200, { success: true, data: { status: 'approved', mythosKey: 'mk_abcdef1234', listingId } });
+  json(200, { success: true, data: { status: 'approved', mythosKey: 'mk_aaaaaaaaaaaaaaaaaaaaaaaaaaaa1234', listingId } });
 const pending = () => json(202, { success: true, data: { status: 'pending' } });
 
 test('link writes all three keys and prints only masked secrets', async () => {
@@ -67,13 +67,13 @@ test('link writes all three keys and prints only masked secrets', async () => {
   const { promise, output, openBrowser } = run(cwd, fetchMock);
   expect(await promise).toBe(0);
   const env = readFileSync(join(cwd, '.env'), 'utf8');
-  expect(env).toContain('MYTHOS_KEY=mk_abcdef1234');
+  expect(env).toContain('MYTHOS_KEY=mk_aaaaaaaaaaaaaaaaaaaaaaaaaaaa1234');
   expect(env).toContain('MYTHOS_LISTING_ID=l1');
   expect(env).toMatch(/MYTHOS_SESSION_SECRET=\S{32,}/);
   const printed = output.join('\n');
   expect(printed).toContain('BCDF-GHJK');
   expect(printed).toContain('mk_…1234');
-  expect(printed).not.toContain('mk_abcdef1234');
+  expect(printed).not.toContain('mk_aaaaaaaaaaaaaaaaaaaaaaaaaaaa1234');
   expect(printed).not.toContain(env.match(/MYTHOS_SESSION_SECRET=(\S+)/)![1]);
   expect(openBrowser).toHaveBeenCalledWith(DEVICE.verificationUrl);
   expect(fetchMock).toHaveBeenCalledWith('https://api.test/api/cli/device/token', expect.objectContaining({
@@ -87,7 +87,7 @@ test('link fills init placeholders but keeps existing values', async () => {
   const { promise, output } = run(cwd, api(json(201, { success: true, data: DEVICE }), [approved('l1')]));
   expect(await promise).toBe(0);
   expect(readFileSync(join(cwd, '.env'), 'utf8'))
-    .toBe('MYTHOS_LISTING_ID=l1\nMYTHOS_SESSION_SECRET=keep-me\nMYTHOS_KEY=mk_abcdef1234\n# Mythos\nMYTHOS_API_URL=https://api.test\n');
+    .toBe('MYTHOS_LISTING_ID=l1\nMYTHOS_SESSION_SECRET=keep-me\nMYTHOS_KEY=mk_aaaaaaaaaaaaaaaaaaaaaaaaaaaa1234\n# Mythos\nMYTHOS_API_URL=https://api.test\n');
   expect(output.join('\n')).toContain('MYTHOS_SESSION_SECRET (kept existing)');
 });
 
@@ -169,4 +169,93 @@ test('cli main routes link', async () => {
   const fetchMock = api(json(404, {}), [pending]);
   expect(await main(['link'], { cwd, env: {}, fetch: fetchMock, write: (line) => output.push(line) })).toBe(1);
   expect(fetchMock).toHaveBeenCalledWith('https://api.mythos.work/api/cli/device', expect.anything());
+});
+
+const KEY = `mk_${'a'.repeat(28)}1234`;
+const startOk = () => json(201, { success: true, data: DEVICE });
+
+test('link reads MYTHOS_API_URL from the env file, like the app and doctor', async () => {
+  const cwd = fixture();
+  writeFileSync(join(cwd, '.env'), 'MYTHOS_API_URL=https://staging.test\n');
+  const fetchMock = api(startOk(), [approved('l1')]);
+  const { promise } = run(cwd, fetchMock, { env: {} });
+  expect(await promise).toBe(0);
+  expect(String(fetchMock.mock.calls[0][0])).toBe('https://staging.test/api/cli/device');
+});
+
+test('link writes nothing when the env already has a different MYTHOS_KEY', async () => {
+  const cwd = fixture();
+  const other = `mk_${'b'.repeat(32)}`;
+  writeFileSync(join(cwd, '.env'), `MYTHOS_KEY=${other}\n`);
+  const { promise, output } = run(cwd, api(startOk(), [approved('l1')]));
+  expect(await promise).toBe(1);
+  expect(readFileSync(join(cwd, '.env'), 'utf8')).toBe(`MYTHOS_KEY=${other}\n`);
+  expect(output.join('\n')).toContain('different MYTHOS_KEY');
+  expect(output.join('\n')).not.toContain(other);
+});
+
+test('link carries on when the existing MYTHOS_KEY matches the approved one', async () => {
+  const cwd = fixture();
+  writeFileSync(join(cwd, '.env'), `MYTHOS_KEY=${KEY}\n`);
+  const { promise } = run(cwd, api(startOk(), [approved('l1')]));
+  expect(await promise).toBe(0);
+  expect(readFileSync(join(cwd, '.env'), 'utf8')).toContain('MYTHOS_LISTING_ID=l1');
+});
+
+test('link does not write MYTHOS_LISTING_ID when MYTHOS_LISTING_IDS is set', async () => {
+  const cwd = fixture();
+  writeFileSync(join(cwd, '.env'), 'MYTHOS_LISTING_IDS=other\n');
+  const { promise, output } = run(cwd, api(startOk(), [approved('l1')]));
+  expect(await promise).toBe(0);
+  expect(readFileSync(join(cwd, '.env'), 'utf8')).not.toContain('MYTHOS_LISTING_ID=');
+  expect(output.join('\n')).toContain('Add l1 to MYTHOS_LISTING_IDS yourself');
+});
+
+test('link keeps a value set in .env instead of overriding it in .env.local (Next.js)', async () => {
+  const cwd = fixture();
+  writeFileSync(join(cwd, 'package.json'), JSON.stringify({ dependencies: { next: '15.0.0' } }));
+  writeFileSync(join(cwd, '.env'), 'MYTHOS_SESSION_SECRET=existing-secret-existing-secret-xx\n');
+  const { promise, output } = run(cwd, api(startOk(), [approved('l1')]));
+  expect(await promise).toBe(0);
+  expect(readFileSync(join(cwd, '.env.local'), 'utf8')).not.toContain('MYTHOS_SESSION_SECRET');
+  expect(output.join('\n')).toContain('MYTHOS_SESSION_SECRET (kept existing)');
+});
+
+test('link reports a protocol error for a malformed start response and does not poll', async () => {
+  const cwd = fixture();
+  const fetchMock = api(json(201, { success: true, data: { deviceCode: 'x' } }), [pending]);
+  const { promise, output } = run(cwd, fetchMock);
+  expect(await promise).toBe(1);
+  expect(output.join('\n')).toContain('sent an unexpected response');
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
+test('link reports a protocol error for a malformed approval and writes nothing', async () => {
+  const cwd = fixture();
+  const { promise, output } = run(cwd, api(startOk(), [() => json(200, { success: true, data: { status: 'approved' } })]));
+  expect(await promise).toBe(1);
+  expect(output.join('\n')).toContain('sent an unexpected response');
+  expect(existsSync(join(cwd, '.env'))).toBe(false);
+});
+
+test('link keeps polling after a request times out', async () => {
+  const cwd = fixture();
+  const timeout = () => { throw Object.assign(new Error('timed out'), { name: 'TimeoutError' }); };
+  const { promise } = run(cwd, api(startOk(), [timeout, approved('l1')]));
+  expect(await promise).toBe(0);
+});
+
+test('link explains a failed env write instead of crashing', async () => {
+  const cwd = fixture();
+  writeFileSync(join(cwd, '.env'), 'OTHER=1\n');
+  chmodSync(join(cwd, '.env'), 0o444);
+  try {
+    const { promise, output } = run(cwd, api(startOk(), [approved('l1')]));
+    expect(await promise).toBe(1);
+    expect(output.join('\n')).toContain('Could not write .env');
+    expect(output.join('\n')).toContain('MYTHOS_LISTING_ID=l1');
+    expect(output.join('\n')).not.toContain(KEY);
+  } finally {
+    chmodSync(join(cwd, '.env'), 0o644);
+  }
 });

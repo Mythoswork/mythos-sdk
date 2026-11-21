@@ -24,7 +24,7 @@ Signs you in through the browser and writes your credentials into `.env.local` (
 
 Run against a non-production API (`MYTHOS_API_URL=http://localhost:5001 npx @mythos-work/sdk link`), it also writes that `MYTHOS_API_URL`, because the key only works against the API that issued it.
 
-It fills only missing or empty keys and never overwrites a value you set. It prints values masked (`MYTHOS_KEY=mk_…a91f`), warns when the env file is not gitignored, and never prompts on stdin, so a coding agent can run it and relay the URL. The code expires after 10 minutes. Python apps use the same command (needs Node). If it cannot reach Mythos, copy the values from Dashboard → Settings → Mythos key.
+It reads `MYTHOS_API_URL` and existing values the way the SDK does (`.env`, then `.env.local`, then the process environment), fills only missing or empty keys, and never overwrites a value you set. If your env already holds a different `MYTHOS_KEY` than the account you approve, it writes nothing and says so. With `MYTHOS_LISTING_IDS` set, it leaves the listing ID to you. It prints values masked (`MYTHOS_KEY=mk_…a91f`), warns when the env file is not gitignored, and never prompts on stdin, so a coding agent can run it and relay the URL. The code expires after 10 minutes. Python apps use the same command (needs Node). If it cannot reach Mythos, copy the values from Dashboard → Settings → Mythos key.
 
 ## `doctor`
 

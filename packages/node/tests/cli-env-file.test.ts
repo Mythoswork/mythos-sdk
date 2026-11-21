@@ -56,3 +56,18 @@ test('maskSecret hides all but the prefix and last four characters', () => {
   expect(maskSecret('mk_abcdef1234')).toBe('mk_…1234');
   expect(maskSecret('short')).toBe('…');
 });
+
+test('treats quoted-empty and comment-only values as empty, like dotenv', () => {
+  const path = join(fixture(), '.env');
+  writeFileSync(path, 'MYTHOS_KEY=""\nMYTHOS_LISTING_ID= # paste here\n');
+  const result = fillEnv(path, { MYTHOS_KEY: 'mk_x', MYTHOS_LISTING_ID: 'l1' });
+  expect(result.written).toEqual(['MYTHOS_KEY', 'MYTHOS_LISTING_ID']);
+  expect(readFileSync(path, 'utf8')).toBe('MYTHOS_KEY=mk_x\nMYTHOS_LISTING_ID=l1\n');
+});
+
+test('keeps a key that another loaded env file already sets', () => {
+  const path = join(fixture(), '.env.local');
+  const result = fillEnv(path, { MYTHOS_SESSION_SECRET: 'new' }, { MYTHOS_SESSION_SECRET: 'from-dot-env' });
+  expect(result).toEqual({ written: [], kept: ['MYTHOS_SESSION_SECRET'] });
+  expect(existsSync(path)).toBe(false);
+});

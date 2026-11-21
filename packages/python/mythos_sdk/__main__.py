@@ -139,7 +139,7 @@ def doctor(
         write(
             "! MYTHOS_LISTING_ID not set — fine only if your code passes resolveListingIds to createMythos()"
         )
-        write(f"Fix: {LINK_HINT}")
+        write(f"If you use a static listing ID: {LINK_HINT}")
 
     api_url = env.get("MYTHOS_API_URL", DEFAULT_API_URL).rstrip("/")
     is_valid_api_url = _is_http_url(api_url)
