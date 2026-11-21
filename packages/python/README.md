@@ -42,7 +42,7 @@ MYTHOS_KEY=
 Templates can use the framework-neutral browser client:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.6.0/dist/mythos-client.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.7.0/dist/mythos-client.global.js"></script>
 <script>
   const m = Mythos.initMythos();
   m.ready.then((state) => console.log(state.status));

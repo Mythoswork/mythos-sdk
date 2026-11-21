@@ -1,6 +1,6 @@
 # CLI
 
-The Node package provides `init` for scaffolding, `doctor` for diagnosis, and `agents` for coding-agent setup. Python provides the same server-side diagnosis through its module entry point.
+The Node package provides `init` for scaffolding, `link` for credentials, `doctor` for diagnosis, and `agents` for coding-agent setup. Python provides the same server-side diagnosis through its module entry point.
 
 ## `init`
 
@@ -9,6 +9,22 @@ npx @mythos-work/sdk init
 ```
 
 The command detects Next.js App Router, Next.js Pages Router, Express, or FastAPI. It creates only missing integration files, adds missing env placeholders, prints required manual wiring, then runs doctor. It never overwrites an existing file and never edits `next.config.*` or `main.py`.
+
+## `link`
+
+```bash
+npx @mythos-work/sdk link
+```
+
+Signs you in through the browser and writes your credentials into `.env.local` (Next.js) or `.env` (Express, FastAPI):
+
+1. Prints a URL and a code such as `BCDF-GHJK`, and opens the browser.
+2. You sign in to Mythos, check the code matches, pick a listing (or "None" for [dynamic listing IDs](../concepts/dynamic-listing-ids.md)) and approve.
+3. The CLI writes `MYTHOS_KEY`, `MYTHOS_LISTING_ID` and a generated `MYTHOS_SESSION_SECRET`.
+
+Run against a non-production API (`MYTHOS_API_URL=http://localhost:5001 npx @mythos-work/sdk link`), it also writes that `MYTHOS_API_URL`, because the key only works against the API that issued it.
+
+It fills only missing or empty keys and never overwrites a value you set. It prints values masked (`MYTHOS_KEY=mk_…a91f`), warns when the env file is not gitignored, and never prompts on stdin, so a coding agent can run it and relay the URL. The code expires after 10 minutes. Python apps use the same command (needs Node). If it cannot reach Mythos, copy the values from Dashboard → Settings → Mythos key.
 
 ## `doctor`
 

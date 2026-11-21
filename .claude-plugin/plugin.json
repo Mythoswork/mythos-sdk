@@ -1,0 +1,23 @@
+{
+  "name": "mythos",
+  "version": "0.7.0",
+  "description": "Install and integrate the Mythos SDK into Next.js, Express or FastAPI apps: launch, sessions, charges and LLM billing, verified with doctor.",
+  "author": {
+    "name": "Mythos",
+    "url": "https://docs.mythos.work"
+  },
+  "homepage": "https://docs.mythos.work",
+  "repository": "https://github.com/Mythoswork/mythos-sdk",
+  "license": "Apache-2.0",
+  "keywords": [
+    "mythos",
+    "sdk",
+    "billing",
+    "nextjs",
+    "express",
+    "fastapi"
+  ],
+  "skills": [
+    "./skills/integrate-mythos-sdk"
+  ]
+}

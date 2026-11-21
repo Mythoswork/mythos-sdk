@@ -9,6 +9,22 @@ Official SDK packages for integrating with the Mythos platform.
 | [`@mythos-work/sdk`](./packages/node) | Node.js / TypeScript | npm |
 | [`mythos-sdk`](./packages/python) | Python | PyPI |
 
+## Install the AI skill
+
+Give your coding agent the Mythos skill. It installs the SDK and checks the result with `doctor`.
+
+Claude Code (2.1.275 or later):
+
+```text
+/plugin install mythos --marketplace Mythoswork/mythos-sdk
+```
+
+Other tools (Cursor, Codex, Devin and more):
+
+```bash
+npx skills@latest add Mythoswork/mythos-sdk --skill integrate-mythos-sdk
+```
+
 ## Overview
 
 Producers install the Mythos SDK to:
@@ -73,6 +89,8 @@ app.include_router(mythos.router)
 Use `confirmCharge({ usd: 0.15, reason: 'calculate' })` in an `initMythos` / `useMythos` browser session before the matching server charge. Alternatively, use `credits: 1500` (Python: `credits=1500`) directly in both. USD accepts positive numbers or exact decimal strings with at most 4 decimal places; Python also accepts `Decimal`. Computed floats such as `0.1 + 0.2` are rejected, never rounded: round first or pass a string. Mythos converts USD on the server and returns `creditsCharged` (Python: `credits_charged`). The popup shows credits using the session rate; an absent rate rejects with `USD_RATE_UNAVAILABLE`. Standalone client confirmation is credits-only.
 
 ## Configuration
+
+Fill these in one step: `npx @mythos-work/sdk link` signs you in through the browser and writes them to your env file.
 
 ```dotenv
 # openssl rand -base64 32  (>= 32 chars)

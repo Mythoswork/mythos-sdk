@@ -12,6 +12,7 @@ export interface DoctorOptions {
 }
 
 const DEFAULT_API_URL = 'https://api.mythos.work';
+export const LINK_HINT = 'npx @mythos-work/sdk link (fills MYTHOS_KEY, MYTHOS_LISTING_ID and MYTHOS_SESSION_SECRET from your Mythos account)';
 
 function parseEnvFile(path: string): Record<string, string> {
   if (!existsSync(path)) return {};
@@ -153,6 +154,7 @@ export async function doctor(options: DoctorOptions = {}): Promise<number> {
   const producerKey = env.MYTHOS_KEY?.trim();
   if (!producerKey) {
     write(`⚠ ${MISSING_PRODUCER_KEY_WARNING}`);
+    write(`Fix: ${LINK_HINT}`);
   } else if (PRODUCER_KEY_PATTERN.test(producerKey)) {
     write('✔ MYTHOS_KEY is set');
     passed += 1;
@@ -168,6 +170,7 @@ export async function doctor(options: DoctorOptions = {}): Promise<number> {
   } else {
     write('✖ MYTHOS_SESSION_SECRET is not set');
     write('Set MYTHOS_SESSION_SECRET (≥32 chars): openssl rand -base64 32');
+    write(`Or: ${LINK_HINT}`);
     failed += 1;
   }
 
@@ -191,6 +194,7 @@ export async function doctor(options: DoctorOptions = {}): Promise<number> {
     passed += 1;
   } else {
     write('! MYTHOS_LISTING_ID not set — fine only if your code passes resolveListingIds to createMythos()');
+    write(`Fix: ${LINK_HINT}`);
   }
 
   const apiUrl = (env.MYTHOS_API_URL === undefined ? DEFAULT_API_URL : env.MYTHOS_API_URL).replace(/\/$/, '');

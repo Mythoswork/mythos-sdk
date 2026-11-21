@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0
+
+### Added
+- `npx @mythos-work/sdk link` signs a Producer in through the browser (device code) and writes `MYTHOS_KEY`, `MYTHOS_LISTING_ID` and a generated `MYTHOS_SESSION_SECRET` into `.env.local` (Next.js) or `.env`. Run against a non-production `MYTHOS_API_URL`, it also writes that URL. It fills only missing or empty keys, prints values masked, warns when the env file is not gitignored, and never prompts on stdin, so coding agents can run it. Needs the Mythos API with `/api/cli/device`; otherwise it falls back to the dashboard instructions.
+- Claude Code plugin (`/plugin install mythos --marketplace Mythoswork/mythos-sdk`) and `npx skills add Mythoswork/mythos-sdk --skill integrate-mythos-sdk` install the `integrate-mythos-sdk` skill, which now installs the SDK when missing and runs `link`.
+
+### Changed
+- `doctor` (Node and Python) and `init` point to `link` when `MYTHOS_KEY`, `MYTHOS_SESSION_SECRET` or `MYTHOS_LISTING_ID` is missing.
+
 ## 0.6.0
 
 ### Added

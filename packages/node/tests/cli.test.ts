@@ -3,7 +3,7 @@ import { join } from 'path';
 
 import { main, USAGE } from '../src/cli';
 import { agents } from '../src/cli/agents';
-import { doctor } from '../src/cli/doctor';
+import { doctor, LINK_HINT } from '../src/cli/doctor';
 import { init } from '../src/cli/init';
 import { MISSING_PRODUCER_KEY_WARNING } from '../src/constants/producer-key.constants';
 
@@ -168,6 +168,7 @@ test('doctor passes all checks in order', async () => {
   expect(result).toBe(0);
   expect(output).toEqual([
     `⚠ ${MISSING_PRODUCER_KEY_WARNING}`,
+    `Fix: ${LINK_HINT}`,
     '✔ MYTHOS_SESSION_SECRET is set',
     '✔ MYTHOS_SESSION_SECRET is at least 32 chars',
     '✔ 1 Mythos listing ID(s) configured',
