@@ -33,8 +33,7 @@ def llm(
     if not session.llmIdentityToken:
         if fallback is not None:
             return fallback
-        if standalone:
-            return _standalone_llm(api_key, timeout)
+        # A real Mythos user must never run on the producer's key: standalone applies only without a session.
         raise MythosError("The Mythos session is missing its LLM identity token", "LLM_IDENTITY_REQUIRED")
 
     resolved_base_url = base_url if base_url is not None else f"{load_config().api_url.rstrip('/')}/v1"

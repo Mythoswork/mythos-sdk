@@ -84,9 +84,9 @@ test('standalone without a session returns a plain OpenAI client with no Mythos 
   expect((client as unknown as { _options: { defaultHeaders?: Record<string, string> } })._options.defaultHeaders ?? {}).not.toHaveProperty('X-Mythos-Identity');
 });
 
-test('standalone without a usable identity token also returns the plain client', () => {
-  const client = llm({ ...SESSION, llmIdentityToken: undefined }, { apiKey: 'sk-test', standalone: true });
-  expect((client as OpenAI).baseURL).toBe('https://api.openai.com/v1');
+test('standalone never bills a real session without an identity token to the producer key', () => {
+  expect(() => llm({ ...SESSION, llmIdentityToken: undefined }, { apiKey: 'sk-test', standalone: true }))
+    .toThrow(expect.objectContaining({ code: 'LLM_IDENTITY_REQUIRED' }));
 });
 
 test('fallback wins over standalone', () => {

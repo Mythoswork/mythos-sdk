@@ -371,8 +371,8 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
   }
 
   async function handle(request: Request): Promise<Response> {
-    ensureConfigured();
     try {
+      ensureConfigured();
       const segment = new URL(request.url).pathname.split('/').filter(Boolean).pop() ?? '';
       if (segment === 'session' && (request.method === 'GET' || request.method === 'POST')) {
         return await handleSession(request);
@@ -451,7 +451,7 @@ export function createMythos(options: CreateMythosOptions = {}): Mythos {
     if (!session.llmIdentityToken) {
       mythosLog.warn('llm: session has no LLM identity token (backend identity key misconfigured?)');
       if (llmOptions.fallback !== undefined) return llmOptions.fallback;
-      if (llmOptions.standalone) return (await import('./llm')).standaloneLlm(llmOptions) as unknown as TClient;
+      // A real Mythos user must never run on the producer's key: `standalone` applies only without a session.
       throw new MythosError('The Mythos session is missing its LLM identity token', 'LLM_IDENTITY_REQUIRED');
     }
     const outcome = await refreshIfDue(session);

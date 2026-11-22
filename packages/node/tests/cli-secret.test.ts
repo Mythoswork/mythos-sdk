@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
 import { main } from '../src/cli';
@@ -58,4 +58,22 @@ test('a Next.js app with the secret in .env gets no overriding copy in .env.loca
   secret({ cwd, write: (line) => output.push(line) });
   expect(output).toEqual(['MYTHOS_SESSION_SECRET already set; kept.']);
   expect(() => readFileSync(join(cwd, '.env.local'), 'utf8')).toThrow();
+});
+
+test('flags a secret shorter than 32 characters without printing it', () => {
+  const cwd = fixture();
+  writeFileSync(join(cwd, '.env'), 'MYTHOS_SESSION_SECRET=too-short-value\n');
+  const output: string[] = [];
+  expect(secret({ cwd, write: (line) => output.push(line) })).toBe(1);
+  expect(output.join('\n')).toContain('shorter than 32 characters');
+  expect(output.join('\n')).not.toContain('too-short-value');
+  expect(readFileSync(join(cwd, '.env'), 'utf8')).toBe('MYTHOS_SESSION_SECRET=too-short-value\n');
+});
+
+test('reports a write failure instead of crashing', () => {
+  const cwd = fixture();
+  mkdirSync(join(cwd, '.env'));
+  const output: string[] = [];
+  expect(secret({ cwd, write: (line) => output.push(line) })).toBe(1);
+  expect(output.join('\n')).toContain('openssl rand -base64 32');
 });

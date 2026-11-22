@@ -433,3 +433,18 @@ test('a successful config check runs once per process, not per call', async () =
   await sdk.getSession(sessionRequest('https://app.test'));
   await expect(sdk.getSession(sessionRequest('https://app.test'))).resolves.toBeNull();
 });
+
+test('a config error in the build phase reaches the handler as a JSON CONFIG_ERROR', async () => {
+  const previousPhase = process.env.NEXT_PHASE;
+  process.env.NEXT_PHASE = 'phase-production-build';
+  delete process.env.MYTHOS_SESSION_SECRET;
+  try {
+    const sdk = await createSdk();
+    const response = await sdk.handle(sessionRequest('https://app.test/api/mythos/session'));
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({ success: false, code: 'CONFIG_ERROR' });
+  } finally {
+    if (previousPhase === undefined) delete process.env.NEXT_PHASE;
+    else process.env.NEXT_PHASE = previousPhase;
+  }
+});

@@ -44,7 +44,6 @@ export function llm<TFallback = never>(
   // rather than hard-throwing regardless of whether the caller configured one.
   if (!session.llmIdentityToken) {
     if (options.fallback !== undefined) return options.fallback;
-    if (options.standalone) return standaloneLlm(options);
     throw new MythosError('The Mythos session is missing its LLM identity token', 'LLM_IDENTITY_REQUIRED');
   }
 

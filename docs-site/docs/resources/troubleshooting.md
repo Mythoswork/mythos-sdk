@@ -35,7 +35,7 @@ SDK-side session failures in a test launch show a fixed overlay titled **Mythos 
 | `MYTHOS_KEY is not set` warning | Set the dashboard key in the host environment. This is soft (a missing key warns) and required in a future release; static listing launches without a key remain silent. |
 | `SESSION_NOT_FOUND` | Relaunch to establish a current session. |
 | `INVALID_USAGE` | Send integer credits and valid charge options. |
-| `LLM_SESSION_REQUIRED` / `LLM_IDENTITY_REQUIRED` | Launch through Mythos, or pass `standalone: true` (or a `fallback`) for standalone users. |
+| `LLM_SESSION_REQUIRED` / `LLM_IDENTITY_REQUIRED` | Launch through Mythos, or, behind your own login, pass `standalone: true` (or a `fallback`) for standalone users. |
 | Handshake is 404 | Wire the handler and make `/.well-known/mythos-handshake` reachable. |
 | Works locally but not after deploy | Set env vars in the host and rerun doctor in production. |
 

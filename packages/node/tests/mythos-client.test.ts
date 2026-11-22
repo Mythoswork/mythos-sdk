@@ -758,15 +758,15 @@ test.each([
   }
 });
 
-test('standalone confirmCharge approves without a popup or a parent message', async () => {
+test('standalone confirmCharge reports standalone without approving, popup or parent message', async () => {
   resetMythosClientForTests();
   const fake = installFakeWindow({ embedded: false });
   fake.fetchMock.mockResolvedValueOnce(response({ success: true, data: null }));
   try {
     const client = initMythos();
     await client.ready;
-    await expect(client.confirmCharge({ credits: 2, reason: 'calculate' })).resolves.toEqual({ approved: true, standalone: true });
-    await expect(client.confirmCharge({ kind: 'llm', reason: 'refine' })).resolves.toEqual({ approved: true, standalone: true });
+    await expect(client.confirmCharge({ credits: 2, reason: 'calculate' })).resolves.toEqual({ approved: false, standalone: true });
+    await expect(client.confirmCharge({ kind: 'llm', reason: 'refine' })).resolves.toEqual({ approved: false, standalone: true });
     expect(fake.parentCalls).toEqual([]);
   } finally {
     fake.restore();
@@ -815,5 +815,44 @@ test('fetch waits for the session before attaching the header-mode token', async
     expect(new Headers(call?.[1]?.headers).get('X-Mythos-Session')).toBe('header-token');
   } finally {
     fake.restore();
+  }
+});
+
+test('an embedded page without a session still asks the dashboard instead of reporting standalone', async () => {
+  resetMythosClientForTests();
+  const fake = installFakeWindow();
+  fake.fetchMock.mockResolvedValueOnce(response({ success: true, data: null }));
+  try {
+    const client = initMythos();
+    await client.ready;
+    expect(client.state.status).toBe('standalone');
+    const pending = client.confirmCharge({ credits: 2, reason: 'calculate' });
+    await Promise.resolve();
+    expect(fake.parentCalls.some((call) => (call.data as { type: string }).type === 'mythos:confirm-charge')).toBe(true);
+    fake.dispatchMessage({ type: 'mythos:confirm-charge-response', requestId: 'request-1', approved: false });
+    expect(await pending).toEqual({ approved: false });
+  } finally {
+    fake.restore();
+  }
+});
+
+test('a hung session request times out so fetch does not stall', async () => {
+  jest.useFakeTimers();
+  resetMythosClientForTests();
+  const fake = installFakeWindow({ embedded: false });
+  fake.fetchMock
+    .mockImplementationOnce((_input: unknown, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+    }))
+    .mockResolvedValueOnce(response({ success: true, data: {} }));
+  try {
+    const client = initMythos();
+    const pending = client.fetch('/api/calculate', { method: 'POST' });
+    await jest.advanceTimersByTimeAsync(10_000);
+    await expect(pending).resolves.toBeDefined();
+    expect(client.state.error?.code).toBe('NETWORK_ERROR');
+  } finally {
+    fake.restore();
+    jest.useRealTimers();
   }
 });

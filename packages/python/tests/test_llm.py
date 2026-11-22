@@ -1,3 +1,4 @@
+import dataclasses
 from unittest.mock import patch
 
 import httpx
@@ -126,3 +127,10 @@ def test_default_still_requires_a_session():
     with pytest.raises(MythosError) as info:
         llm(None, api_key="sk-test")
     assert info.value.code == "LLM_SESSION_REQUIRED"
+
+
+def test_standalone_never_bills_a_session_without_identity_to_the_producer_key():
+    session = dataclasses.replace(SESSION, llmIdentityToken=None)
+    with pytest.raises(MythosError) as info:
+        llm(session, api_key="sk-test", standalone=True)
+    assert info.value.code == "LLM_IDENTITY_REQUIRED"
