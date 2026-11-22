@@ -27,6 +27,8 @@ export type MythosChargeKind = 'generic' | 'llm';
 export interface ConfirmChargeResult {
   approved: boolean;
   consentId?: string;
+  /** Set outside Mythos (with `approved: false`): nobody was asked; apply the app's own paywall. */
+  standalone?: true;
 }
 
 interface ConfirmChargeResponseMessage {

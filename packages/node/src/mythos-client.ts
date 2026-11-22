@@ -58,6 +58,8 @@ const TRANSPORT_KEY = 'mythos:transport';
 const TOKEN_KEY = 'mythos:session-token';
 const DEFAULT_SESSION_PATH = '/api/mythos/session';
 const DEFAULT_CONFIRM_TIMEOUT_MS = 10_000;
+// A hung session route must not stall fetch/confirmCharge, which wait for the first load.
+const SESSION_REQUEST_TIMEOUT_MS = 10_000;
 
 let instance: MythosClient | null = null;
 let cleanupInstance: (() => void) | null = null;
@@ -193,13 +195,17 @@ function createClient(options: InitMythosOptions): MythosClient {
     const headers = new Headers();
     if (memoryToken && isSameOrigin(sessionUrl)) headers.set(MYTHOS_SESSION_HEADER, memoryToken);
     let response: Response;
+    const controller = new AbortController();
+    const abortTimer = setTimeout(() => controller.abort(), SESSION_REQUEST_TIMEOUT_MS);
 
     try {
       response = await window.fetch(sessionUrl, {
         credentials: 'same-origin',
         headers,
+        signal: controller.signal,
       });
     } catch (error) {
+      clearTimeout(abortTimer);
       if (isRefresh && state.status === 'mythos') return retryRefresh();
       setState({
         status: 'error',
@@ -209,6 +215,7 @@ function createClient(options: InitMythosOptions): MythosClient {
       return state;
     }
 
+    clearTimeout(abortTimer);
     const body = await readJson(response);
     if (disposed) return state;
     if (body?.success === true && body.data === null) {
@@ -309,6 +316,8 @@ function createClient(options: InitMythosOptions): MythosClient {
   const ready = load(window.location.search);
 
   const mythosFetch = async (input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> => {
+    // Wait for the session to resolve, so an authenticated call never races the handshake.
+    if (state.status === 'loading') await ready;
     const inputHeaders = input instanceof Request ? input.headers : undefined;
     const headers = new Headers(init.headers ?? inputHeaders);
     if (transport === 'header' && memoryToken && isSameOrigin(input)) {
@@ -335,12 +344,18 @@ function createClient(options: InitMythosOptions): MythosClient {
     return response;
   };
 
-  const confirmCharge = (charge: ConfirmChargeOptions): Promise<ConfirmChargeResult> => {
-    try {
-      return requestConfirm(charge);
-    } catch (err) {
-      return Promise.reject(err);
+  const confirmCharge = async (charge: ConfirmChargeOptions): Promise<ConfirmChargeResult> => {
+    const current = state.status === 'loading' ? await ready : state;
+    // Embedded pages always ask the dashboard, so a frame load without a session never skips the popup.
+    if (current.status !== 'standalone' || isEmbedded()) return requestConfirm(charge);
+    // Outside Mythos nobody is asked: validate the amount, then report standalone without approving.
+    if (charge.kind !== 'llm') {
+      if ((charge.credits !== undefined) === (charge.usd !== undefined)) {
+        throw new MythosError('Pass exactly one of credits or usd', 'INVALID_CHARGE_AMOUNT', 400);
+      }
+      if (charge.usd !== undefined) normalizeUsd(charge.usd);
     }
+    return { approved: false, standalone: true };
   };
   const requestConfirm = (charge: ConfirmChargeOptions): Promise<ConfirmChargeResult> => {
     let amount = 0; // LLM dialog ignores the numeric placeholder.

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.1
+
+### Added
+- `npx @mythos-work/sdk secret` generates `MYTHOS_SESSION_SECRET` into the env file, filling only an empty value. It never prints the value, and flags an existing value shorter than 32 characters.
+- `mythos.llm(req, { standalone: true })` (Node) and `mythos.llm(request, standalone=True)` (Python) return a plain OpenAI client with the producer's own key when there is no Mythos session. Opt-in for apps behind their own login: it runs on the producer's key. A real session always wins, and a session without an LLM identity token still throws `LLM_IDENTITY_REQUIRED`; `fallback` still takes precedence.
+
+### Changed
+- Outside Mythos, browser `confirmCharge` asks nobody and resolves `{ approved: false, standalone: true }`, so apps branch on the result instead of on `status`. An embedded page always asks the dashboard. `confirmCharge` and `fetch` wait while the session loads; the session request times out after 10 seconds.
+- Node `createMythos()` defers its env checks during `next build` (`NEXT_PHASE=phase-production-build`); they run on the first `getSession`, `charge`, `llm` or handler call, so builds need no `MYTHOS_*` secrets.
+
 ## 0.7.0
 
 ### Added

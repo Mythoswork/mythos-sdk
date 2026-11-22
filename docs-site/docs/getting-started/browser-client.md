@@ -27,7 +27,7 @@ const unsubscribe = m.subscribe(() => console.log(m.state.status));
 ## No bundler
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.7.0/dist/mythos-client.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.7.1/dist/mythos-client.global.js"></script>
 <script>const m = Mythos.initMythos();</script>
 ```
 
@@ -37,7 +37,7 @@ const unsubscribe = m.subscribe(() => console.log(m.state.status));
 |---|---|---|
 | `loading` | Session initialization is in progress | Show a loading state |
 | `mythos` | A Mythos launch session is active | Enable Mythos billing |
-| `standalone` | The app was opened outside Mythos | Use your own auth or paywall |
+| `standalone` | The app was opened outside Mythos | `confirmCharge` resolves `{ approved: false, standalone: true }`; use your own auth or paywall |
 | `expired` | The launch session expired | Embedded clients request a relaunch automatically; offer `relaunch()` as a manual fallback |
 | `error` | Initialization failed | Show `error` and a retry path |
 

@@ -192,7 +192,7 @@ test('cross-site cookie-less iframe retains header fallback with unavailable sto
     expect(headers.get('X-Mythos-Session')).toBe('sealed-session');
     expect(headers.get('x-app')).toBe('retained');
     expect(headers.has('cookie')).toBe(false);
-    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.7.0' }, origin: 'https://dashboard.mythos.work' }]);
+    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.7.1' }, origin: 'https://dashboard.mythos.work' }]);
   } finally {
     fake.restore();
   }
@@ -237,7 +237,7 @@ test('first session uses cookie mode when the one-time probe finds the same sess
     expect(new Headers(fake.fetchMock.mock.calls[1][1]?.headers).has('X-Mythos-Session')).toBe(false);
     expect(fake.storage.get('mythos:transport')).toBe('cookie');
     expect(fake.storage.has('mythos:session-token')).toBe(false);
-    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.7.0' }, origin: '*' }]);
+    expect(fake.parentCalls).toEqual([{ data: { type: 'mythos:handshake', sdk_version: '0.7.1' }, origin: '*' }]);
   } finally {
     fake.restore();
   }
@@ -755,5 +755,104 @@ test.each([
     expect(fake.parentCalls.filter((call) => (call.data as { type: string }).type === 'mythos:relaunch')).toHaveLength(expected);
   } finally {
     fake.restore();
+  }
+});
+
+test('standalone confirmCharge reports standalone without approving, popup or parent message', async () => {
+  resetMythosClientForTests();
+  const fake = installFakeWindow({ embedded: false });
+  fake.fetchMock.mockResolvedValueOnce(response({ success: true, data: null }));
+  try {
+    const client = initMythos();
+    await client.ready;
+    await expect(client.confirmCharge({ credits: 2, reason: 'calculate' })).resolves.toEqual({ approved: false, standalone: true });
+    await expect(client.confirmCharge({ kind: 'llm', reason: 'refine' })).resolves.toEqual({ approved: false, standalone: true });
+    expect(fake.parentCalls).toEqual([]);
+  } finally {
+    fake.restore();
+  }
+});
+
+test('standalone confirmCharge still rejects an invalid amount', async () => {
+  resetMythosClientForTests();
+  const fake = installFakeWindow({ embedded: false });
+  fake.fetchMock.mockResolvedValueOnce(response({ success: true, data: null }));
+  try {
+    const client = initMythos();
+    await client.ready;
+    await expect(client.confirmCharge({ credits: 5, usd: 1 } as never)).rejects.toMatchObject({ code: 'INVALID_CHARGE_AMOUNT' });
+    await expect(client.confirmCharge({ usd: 0.1 + 0.2 })).rejects.toMatchObject({ code: 'INVALID_CHARGE_AMOUNT' });
+  } finally {
+    fake.restore();
+  }
+});
+
+test('confirmCharge called while loading still reaches the parent once the session is Mythos', async () => {
+  resetMythosClientForTests();
+  const fake = installFakeWindow();
+  const client = initialiseWithExistingCookie(fake);
+  try {
+    const pending = client.confirmCharge({ credits: 2, reason: 'calculate' });
+    await client.ready;
+    fake.dispatchMessage({ type: 'mythos:confirm-charge-response', requestId: 'request-1', approved: true, consentId: 'consent-1' });
+    expect(await pending).toEqual({ approved: true, consentId: 'consent-1' });
+  } finally {
+    fake.restore();
+  }
+});
+
+test('fetch waits for the session before attaching the header-mode token', async () => {
+  resetMythosClientForTests();
+  const fake = installFakeWindow({ search: '?lt=abc' });
+  fake.fetchMock
+    .mockResolvedValueOnce(response(sessionBody('header-token')))
+    .mockResolvedValueOnce(response({ success: true, data: null }))
+    .mockResolvedValueOnce(response({ success: true, data: {} }));
+  try {
+    const client = initMythos();
+    await client.fetch('/api/calculate', { method: 'POST' });
+    const call = fake.fetchMock.mock.calls.find((c) => String(c[0]) === '/api/calculate');
+    expect(new Headers(call?.[1]?.headers).get('X-Mythos-Session')).toBe('header-token');
+  } finally {
+    fake.restore();
+  }
+});
+
+test('an embedded page without a session still asks the dashboard instead of reporting standalone', async () => {
+  resetMythosClientForTests();
+  const fake = installFakeWindow();
+  fake.fetchMock.mockResolvedValueOnce(response({ success: true, data: null }));
+  try {
+    const client = initMythos();
+    await client.ready;
+    expect(client.state.status).toBe('standalone');
+    const pending = client.confirmCharge({ credits: 2, reason: 'calculate' });
+    await Promise.resolve();
+    expect(fake.parentCalls.some((call) => (call.data as { type: string }).type === 'mythos:confirm-charge')).toBe(true);
+    fake.dispatchMessage({ type: 'mythos:confirm-charge-response', requestId: 'request-1', approved: false });
+    expect(await pending).toEqual({ approved: false });
+  } finally {
+    fake.restore();
+  }
+});
+
+test('a hung session request times out so fetch does not stall', async () => {
+  jest.useFakeTimers();
+  resetMythosClientForTests();
+  const fake = installFakeWindow({ embedded: false });
+  fake.fetchMock
+    .mockImplementationOnce((_input: unknown, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+    }))
+    .mockResolvedValueOnce(response({ success: true, data: {} }));
+  try {
+    const client = initMythos();
+    const pending = client.fetch('/api/calculate', { method: 'POST' });
+    await jest.advanceTimersByTimeAsync(10_000);
+    await expect(pending).resolves.toBeDefined();
+    expect(client.state.error?.code).toBe('NETWORK_ERROR');
+  } finally {
+    fake.restore();
+    jest.useRealTimers();
   }
 });

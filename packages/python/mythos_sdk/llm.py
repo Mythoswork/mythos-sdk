@@ -18,10 +18,13 @@ def llm(
     fallback: Fallback | None = None,
     base_url: str | None = None,
     timeout: float = 600.0,
+    standalone: bool = False,
 ) -> AsyncOpenAI | Fallback:
     if session is None:
         if fallback is not None:
             return fallback
+        if standalone:
+            return _standalone_llm(api_key, timeout)
         raise MythosError("An active Mythos session is required for LLM access", "LLM_SESSION_REQUIRED")
     # A session decoded before this release, or verified against an older backend, can be
     # real and active but still lack an identity token -- that's the same "can't reach
@@ -30,6 +33,7 @@ def llm(
     if not session.llmIdentityToken:
         if fallback is not None:
             return fallback
+        # A real Mythos user must never run on the producer's key: standalone applies only without a session.
         raise MythosError("The Mythos session is missing its LLM identity token", "LLM_IDENTITY_REQUIRED")
 
     resolved_base_url = base_url if base_url is not None else f"{load_config().api_url.rstrip('/')}/v1"
@@ -46,4 +50,14 @@ def llm(
         # MythosError instead, consistent with every other failure mode of this function.
         raise MythosError(
             f"Failed to construct the Mythos LLM client: {err}", "LLM_CLIENT_CONSTRUCTION_ERROR"
+        ) from err
+
+
+def _standalone_llm(api_key: str | None, timeout: float) -> AsyncOpenAI:
+    """Plain OpenAI client for standalone use: no Mythos gateway, no identity header."""
+    try:
+        return AsyncOpenAI(api_key=api_key, timeout=timeout)
+    except Exception as err:
+        raise MythosError(
+            f"Failed to construct the standalone LLM client: {err}", "LLM_CLIENT_CONSTRUCTION_ERROR"
         ) from err

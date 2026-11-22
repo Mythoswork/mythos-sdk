@@ -257,6 +257,8 @@ test('llm is lazy and billing metadata is available on core', async () => {
   const client = await sdk.llm(sessionRequest('https://app.test', cookiePair(launch)), { apiKey: 'sk-test' });
   expect(client).toMatchObject({ baseURL: 'https://api.mythos.work/v1' });
   await expect(sdk.llm(sessionRequest('https://app.test'), { fallback: 'FB' })).resolves.toBe('FB');
+  await expect(sdk.llm(sessionRequest('https://app.test'), { apiKey: 'sk-test', standalone: true }))
+    .resolves.toMatchObject({ baseURL: 'https://api.openai.com/v1' });
   expect(sdk.billing({ mythos_cost_microunits: '5', mythos_pricing_source: 'rate_card' }))
     .toMatchObject({ mythos_cost_microunits: '5', mythos_pricing_source: 'rate_card' });
 });
@@ -401,4 +403,48 @@ test.each([true, false])('consume stores absolute lifetime when provided=%s', as
   const { openSession } = await import('../src/session');
   const stored = openSession(cookiePair(response).split('=')[1] ?? '');
   expect(stored?.expiresAt).toBe(hasLifetime ? absolute : stored?.llmIdentityExpiresAt);
+});
+
+test('next build defers env checks until the first real call', async () => {
+  const previousPhase = process.env.NEXT_PHASE;
+  process.env.NEXT_PHASE = 'phase-production-build';
+  delete process.env.MYTHOS_SESSION_SECRET;
+  try {
+    const sdk = await createSdk();
+    await expect(sdk.getSession(sessionRequest('https://app.test')))
+      .rejects.toThrow('MYTHOS_SESSION_SECRET is not set');
+    await expect(sdk.charge(sessionRequest('https://app.test'), { credits: 1 }))
+      .rejects.toThrow('MYTHOS_SESSION_SECRET is not set');
+    await expect(sdk.llm(sessionRequest('https://app.test'), {}))
+      .rejects.toThrow('MYTHOS_SESSION_SECRET is not set');
+  } finally {
+    if (previousPhase === undefined) delete process.env.NEXT_PHASE;
+    else process.env.NEXT_PHASE = previousPhase;
+  }
+});
+
+test('outside next build a missing session secret still fails at createMythos', async () => {
+  delete process.env.MYTHOS_SESSION_SECRET;
+  await expect(createSdk()).rejects.toThrow('MYTHOS_SESSION_SECRET is not set');
+});
+
+test('a successful config check runs once per process, not per call', async () => {
+  const sdk = await createSdk();
+  await sdk.getSession(sessionRequest('https://app.test'));
+  await expect(sdk.getSession(sessionRequest('https://app.test'))).resolves.toBeNull();
+});
+
+test('a config error in the build phase reaches the handler as a JSON CONFIG_ERROR', async () => {
+  const previousPhase = process.env.NEXT_PHASE;
+  process.env.NEXT_PHASE = 'phase-production-build';
+  delete process.env.MYTHOS_SESSION_SECRET;
+  try {
+    const sdk = await createSdk();
+    const response = await sdk.handle(sessionRequest('https://app.test/api/mythos/session'));
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({ success: false, code: 'CONFIG_ERROR' });
+  } finally {
+    if (previousPhase === undefined) delete process.env.NEXT_PHASE;
+    else process.env.NEXT_PHASE = previousPhase;
+  }
 });

@@ -55,7 +55,7 @@ Defining `mythos = create_mythos()` directly in `main.py` is equivalent.
 ## 4. Page
 ```html
 <button onclick="calculate()">Calculate ($0.15)</button>
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.7.0/dist/mythos-client.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.7.1/dist/mythos-client.global.js"></script>
 <script>
   const m = Mythos.initMythos();
   m.ready.then((s) => { document.body.dataset.mythos = s.status; });
