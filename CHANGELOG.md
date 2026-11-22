@@ -1,10 +1,18 @@
 # Changelog
 
-## 0.7.0
+## 0.7.1
 
 ### Added
 - `npx @mythos-work/sdk secret` generates `MYTHOS_SESSION_SECRET` into the env file, filling only an empty value. It never prints the value, and flags an existing value shorter than 32 characters.
 - `mythos.llm(req, { standalone: true })` (Node) and `mythos.llm(request, standalone=True)` (Python) return a plain OpenAI client with the producer's own key when there is no Mythos session. Opt-in for apps behind their own login: it runs on the producer's key. A real session always wins, and a session without an LLM identity token still throws `LLM_IDENTITY_REQUIRED`; `fallback` still takes precedence.
+
+### Changed
+- Outside Mythos, browser `confirmCharge` asks nobody and resolves `{ approved: false, standalone: true }`, so apps branch on the result instead of on `status`. An embedded page always asks the dashboard. `confirmCharge` and `fetch` wait while the session loads; the session request times out after 10 seconds.
+- Node `createMythos()` defers its env checks during `next build` (`NEXT_PHASE=phase-production-build`); they run on the first `getSession`, `charge`, `llm` or handler call, so builds need no `MYTHOS_*` secrets.
+
+## 0.7.0
+
+### Added
 - `npx @mythos-work/sdk link` signs a Producer in through the browser (device code) and writes `MYTHOS_KEY`, `MYTHOS_LISTING_ID` and a generated `MYTHOS_SESSION_SECRET` into `.env.local` (Next.js) or `.env`. Run against a non-production `MYTHOS_API_URL`, it also writes that URL. It fills only missing or empty keys, prints values masked, warns when the env file is not gitignored, and never prompts on stdin, so coding agents can run it. Needs the Mythos API with `/api/cli/device`; otherwise it falls back to the dashboard instructions.
 - Claude Code plugin (`/plugin install mythos --marketplace Mythoswork/mythos-sdk`) and `npx skills add Mythoswork/mythos-sdk --skill integrate-mythos-sdk` install the `integrate-mythos-sdk` skill, which now installs the SDK when missing and runs `link`.
 
@@ -17,8 +25,6 @@
 - `charge` accepts `usd: 0.15` (number or exact decimal string, up to 4 dp; Python also accepts `Decimal`) as an alternative to `credits`; numbers are stringified without rounding, and computed floats such as `0.1 + 0.2` are rejected with a rounding hint. The wire value remains a string; the backend converts at its current rate and returns `credits_charged`. With an `initMythos`/`useMythos` session, `confirmCharge({ usd: 0.15 })` converts exactly using the session's `creditsPerUsd` rate and the popup shows credits. Missing rates reject with `USD_RATE_UNAVAILABLE`; standalone client confirmation remains credits-only. Node and Python preserve the optional consume rate across session refresh.
 
 ### Changed
-- Outside Mythos, browser `confirmCharge` asks nobody and resolves `{ approved: false, standalone: true }`, so apps branch on the result instead of on `status`. An embedded page always asks the dashboard. `confirmCharge` and `fetch` wait while the session loads; the session request times out after 10 seconds.
-- Node `createMythos()` defers its env checks during `next build` (`NEXT_PHASE=phase-production-build`); they run on the first `getSession`, `charge`, `llm` or handler call, so builds need no `MYTHOS_*` secrets.
 - `MYTHOS_KEY` is still optional. The requirement announced in 0.5.x is deferred to a future release, and the missing-key warning now says so.
 - The browser global bundle (`mythos-client.global.js`) targets ES2020 instead of ES2019 because USD confirmation uses `BigInt`. It needs Safari 14 or later.
 

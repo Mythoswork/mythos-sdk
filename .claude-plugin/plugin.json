@@ -1,6 +1,6 @@
 {
   "name": "mythos",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Install and integrate the Mythos SDK into Next.js, Express or FastAPI apps: launch, sessions, charges and LLM billing, verified with doctor.",
   "author": {
     "name": "Mythos",
