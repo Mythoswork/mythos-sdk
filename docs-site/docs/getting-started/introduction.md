@@ -8,6 +8,28 @@ Mythos is a platform where users buy credits once and spend them across apps. Pr
 
 The SDK handles launch token exchange, secure sessions, charge confirmation, wallet charging, LLM billing, and the routes Mythos uses to verify an integration. You work with `createMythos()` in Node or `create_mythos()` in Python instead of wiring those protocols yourself.
 
+## Integrate with your AI tool
+
+The fastest route: install the Mythos skill once, then ask your coding agent to add Mythos to your app. The skill sets up the SDK and checks the result with `doctor`.
+
+Claude Code (2.1.275 or later):
+
+```text
+/plugin install mythos --marketplace Mythoswork/mythos-sdk
+```
+
+Other tools (Cursor, Codex, Devin and more):
+
+```bash
+npx skills@latest add Mythoswork/mythos-sdk --skill integrate-mythos-sdk
+```
+
+Then ask your agent:
+
+> Add Mythos to this app.
+
+See [Use with AI agents](../ai-agents.md) for what each tool installs.
+
 ## Integrate in 3 steps
 
 1. Install the package and run the scaffold command.

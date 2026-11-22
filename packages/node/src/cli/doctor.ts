@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
+import { loadEnv, parseEnvFile } from './env-read';
 import { MISSING_PRODUCER_KEY_WARNING, PRODUCER_KEY_PATTERN } from '../constants/producer-key.constants';
 
 export type Framework = 'next-app' | 'next-pages' | 'express' | 'fastapi' | null;
@@ -12,35 +13,7 @@ export interface DoctorOptions {
 }
 
 const DEFAULT_API_URL = 'https://api.mythos.work';
-
-function parseEnvFile(path: string): Record<string, string> {
-  if (!existsSync(path)) return {};
-  const values: Record<string, string> = {};
-  for (const rawLine of readFileSync(path, 'utf8').split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith('#') || !line.includes('=')) continue;
-    const separator = line.indexOf('=');
-    const key = line.slice(0, separator).trim();
-    let value = line.slice(separator + 1).trim();
-    if (value.startsWith('"') || value.startsWith("'")) {
-      const closingQuote = value.indexOf(value[0], 1);
-      if (closingQuote >= 1) value = value.slice(1, closingQuote);
-    } else {
-      // Match Node dotenv: an unquoted value ends at the first `#`, even without whitespace.
-      value = value.split('#')[0].trim();
-    }
-    values[key] = value;
-  }
-  return values;
-}
-
-function loadEnv(cwd: string, processEnv: NodeJS.ProcessEnv): Record<string, string | undefined> {
-  return {
-    ...parseEnvFile(join(cwd, '.env')),
-    ...parseEnvFile(join(cwd, '.env.local')),
-    ...processEnv,
-  };
-}
+export const LINK_HINT = 'npx @mythos-work/sdk link (fills MYTHOS_KEY, MYTHOS_LISTING_ID and MYTHOS_SESSION_SECRET from your Mythos account)';
 
 const REQUIRED_ENV = ['MYTHOS_SESSION_SECRET', 'MYTHOS_LISTING_ID', 'MYTHOS_LISTING_IDS', 'MYTHOS_KEY'];
 
@@ -153,6 +126,7 @@ export async function doctor(options: DoctorOptions = {}): Promise<number> {
   const producerKey = env.MYTHOS_KEY?.trim();
   if (!producerKey) {
     write(`⚠ ${MISSING_PRODUCER_KEY_WARNING}`);
+    write(`Fix: ${LINK_HINT}`);
   } else if (PRODUCER_KEY_PATTERN.test(producerKey)) {
     write('✔ MYTHOS_KEY is set');
     passed += 1;
@@ -168,6 +142,7 @@ export async function doctor(options: DoctorOptions = {}): Promise<number> {
   } else {
     write('✖ MYTHOS_SESSION_SECRET is not set');
     write('Set MYTHOS_SESSION_SECRET (≥32 chars): openssl rand -base64 32');
+    write(`Or: ${LINK_HINT}`);
     failed += 1;
   }
 
@@ -191,6 +166,7 @@ export async function doctor(options: DoctorOptions = {}): Promise<number> {
     passed += 1;
   } else {
     write('! MYTHOS_LISTING_ID not set — fine only if your code passes resolveListingIds to createMythos()');
+    write(`If you use a static listing ID: ${LINK_HINT}`);
   }
 
   const apiUrl = (env.MYTHOS_API_URL === undefined ? DEFAULT_API_URL : env.MYTHOS_API_URL).replace(/\/$/, '');

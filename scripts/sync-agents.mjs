@@ -29,4 +29,20 @@ for (const { source, target } of copies) {
   }
 }
 
+const pluginPath = path.join(root, '.claude-plugin', 'plugin.json');
+const packageVersion = JSON.parse(
+  await readFile(path.join(root, 'packages/node/package.json'), 'utf8'),
+).version;
+const plugin = JSON.parse(await readFile(pluginPath, 'utf8'));
+
+if (isCheck) {
+  if (plugin.version !== packageVersion) {
+    console.error(`plugin.json version ${plugin.version} != package version ${packageVersion}`);
+    hasDrift = true;
+  }
+} else {
+  await writeFile(pluginPath, `${JSON.stringify({ ...plugin, version: packageVersion }, null, 2)}\n`);
+  console.log('Synced .claude-plugin/plugin.json');
+}
+
 if (hasDrift) process.exitCode = 1;

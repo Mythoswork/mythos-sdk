@@ -1,0 +1,24 @@
+{
+  "name": "mythos",
+  "owner": {
+    "name": "Mythos",
+    "url": "https://docs.mythos.work"
+  },
+  "description": "Mythos SDK skill for AI coding tools: installs and wires the SDK into your app.",
+  "plugins": [
+    {
+      "name": "mythos",
+      "source": "./",
+      "description": "Install and integrate the Mythos SDK into Next.js, Express or FastAPI apps, verified with doctor.",
+      "category": "engineering",
+      "keywords": [
+        "mythos",
+        "sdk",
+        "billing",
+        "nextjs",
+        "express",
+        "fastapi"
+      ]
+    }
+  ]
+}

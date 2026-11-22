@@ -14,6 +14,10 @@ from .constants.producer_key import MISSING_PRODUCER_KEY_WARNING, PRODUCER_KEY_P
 
 USAGE = "Usage: python -m mythos_sdk doctor"
 DEFAULT_API_URL = "https://api.mythos.work"
+LINK_HINT = (
+    "npx @mythos-work/sdk link (fills MYTHOS_KEY, MYTHOS_LISTING_ID and MYTHOS_SESSION_SECRET "
+    "from your Mythos account)"
+)
 
 
 def _parse_env_file(path: Path) -> dict[str, str]:
@@ -92,6 +96,7 @@ def doctor(
     producer_key = env.get("MYTHOS_KEY", "").strip()
     if not producer_key:
         write(f"⚠ {MISSING_PRODUCER_KEY_WARNING}")
+        write(f"Fix: {LINK_HINT}")
     elif PRODUCER_KEY_PATTERN.fullmatch(producer_key):
         write("✔ MYTHOS_KEY is set")
         passed += 1
@@ -106,6 +111,7 @@ def doctor(
     else:
         write("✖ MYTHOS_SESSION_SECRET is not set")
         write("Set MYTHOS_SESSION_SECRET (≥32 chars): openssl rand -base64 32")
+        write(f"Or: {LINK_HINT}")
         failed += 1
 
     if _only_in_env_file(root, source_env):
@@ -133,6 +139,7 @@ def doctor(
         write(
             "! MYTHOS_LISTING_ID not set — fine only if your code passes resolveListingIds to createMythos()"
         )
+        write(f"If you use a static listing ID: {LINK_HINT}")
 
     api_url = env.get("MYTHOS_API_URL", DEFAULT_API_URL).rstrip("/")
     is_valid_api_url = _is_http_url(api_url)

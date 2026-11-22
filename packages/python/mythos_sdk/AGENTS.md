@@ -132,7 +132,7 @@ const { approved: chatApproved } = await confirmCharge({ kind: 'llm', reason: 'c
 Non-React bundled apps import `initMythos` from `@mythos-work/sdk/client`. Unbundled pages use:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.6.0/dist/mythos-client.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.7.0/dist/mythos-client.global.js"></script>
 <script>const m = Mythos.initMythos(); m.ready.then(console.log);</script>
 ```
 
@@ -153,6 +153,8 @@ Alternatively, charge credits directly with `credits: 1500` (Python: `credits=15
 The approval popup shows credits. USD confirmation requires an `initMythos` / `useMythos` session rate; an absent rate rejects with `USD_RATE_UNAVAILABLE`. The standalone `@mythos-work/sdk/client` confirmation accepts credits only.
 
 ## Environment
+
+Fill these with `npx @mythos-work/sdk link` (Node and Python apps). Agents: run it yourself, show the user the URL and code it prints, and wait while they approve in the browser (up to 10 minutes). It writes `MYTHOS_KEY`, `MYTHOS_LISTING_ID` and `MYTHOS_SESSION_SECRET` into `.env.local` (Next.js) or `.env`, never overwrites a non-empty value, and prints only masked values. Never open, read or print the env file; verify with doctor. If `link` fails, the user copies the values from the dashboard.
 
 | Variable | Requirement |
 |---|---|

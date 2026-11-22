@@ -3,8 +3,9 @@
 import { agents } from './cli/agents';
 import { doctor, type DoctorOptions } from './cli/doctor';
 import { init } from './cli/init';
+import { link } from './cli/link';
 
-export const USAGE = 'Usage: mythos-sdk <init|doctor|agents>';
+export const USAGE = 'Usage: mythos-sdk <init|doctor|agents|link>';
 
 export async function main(argv: string[] = process.argv.slice(2), options: DoctorOptions = {}): Promise<number> {
   const write = options.write ?? ((line: string) => process.stdout.write(`${line}\n`));
@@ -16,6 +17,7 @@ export async function main(argv: string[] = process.argv.slice(2), options: Doct
   if (command === 'doctor') return doctor({ ...options, write });
   if (command === 'init') return init({ ...options, write });
   if (command === 'agents') return agents({ cwd: options.cwd, write });
+  if (command === 'link') return link({ ...options, write });
   write(USAGE);
   return 2;
 }

@@ -27,7 +27,7 @@ const unsubscribe = m.subscribe(() => console.log(m.state.status));
 ## No bundler
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.6.0/dist/mythos-client.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mythos-work/sdk@0.7.0/dist/mythos-client.global.js"></script>
 <script>const m = Mythos.initMythos();</script>
 ```
 

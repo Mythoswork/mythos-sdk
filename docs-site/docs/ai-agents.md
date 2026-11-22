@@ -11,6 +11,22 @@ Give an agent one canonical source instead of asking it to infer the integration
 
 `llms-full.txt` follows the public sidebar order and excludes all Advanced 0.0.x primitives.
 
+## Install the skill
+
+Claude Code (2.1.275 or later):
+
+```text
+/plugin install mythos --marketplace Mythoswork/mythos-sdk
+```
+
+Other tools (Cursor, Codex, Devin and more):
+
+```bash
+npx skills@latest add Mythoswork/mythos-sdk --skill integrate-mythos-sdk
+```
+
+The skill installs the SDK if your app lacks it, reads the `AGENTS.md` that matches that version, and runs `doctor` until it passes. Use the `npx @mythos-work/sdk agents` route below when you want the skill files written straight into the project.
+
 ## Set up your coding agent
 
 Run once in your project:

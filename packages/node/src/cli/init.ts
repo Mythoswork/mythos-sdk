@@ -78,7 +78,7 @@ function appendEnv(cwd: string, framework: Exclude<Framework, null>, write: (lin
   if (!hasProducerKey) lines.push('# copy from Mythos dashboard → Settings → Mythos key', 'MYTHOS_KEY=');
   const separator = existing && !existing.endsWith('\n') ? '\n' : '';
   writeFileSync(path, `${existing}${separator}${lines.join('\n')}\n`, 'utf8');
-  write(`Added MYTHOS_* to ${filename} (fill MYTHOS_LISTING_ID from the Mythos dashboard)`);
+  write(`Added MYTHOS_* to ${filename}. Fill them with: npx @mythos-work/sdk link`);
 }
 
 function printManualStep(framework: Exclude<Framework, null>, write: (line: string) => void): void {
